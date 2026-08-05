@@ -134,4 +134,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, code standards, and PR workflo
 
 ## License
 
-GPL-2.0-only — see [package.json](package.json).
+[CC BY-NC-SA 4.0](LICENSE) — Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International.
+
+| What you can do | What you cannot do |
+|---|---|
+| Use, study, and audit the source code | Fork or publish a competing commercial product |
+| Use for personal (non-commercial) purposes | Sell or sublicense this software |
+| Modify and redistribute for non-commercial purposes | Use the Orion Wallet name or trademarks |
+| Run your own node or instance | Remove attribution or license notices |
+
+The source code is open for transparency and security auditing. Any derivative work must use the same CC BY-NC-SA 4.0 license (ShareAlike).

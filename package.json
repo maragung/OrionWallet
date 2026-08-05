@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Orion Wallet — client-side React+Vite+WASM wallet for the Octra Network with FHE (PVAC) support",
-  "license": "GPL-2.0-only",
+  "license": "CC-BY-NC-SA-4.0",
   "scripts": {
     "dev": "vite",
     "dev:all": "node scripts/watch-dev.mjs",
