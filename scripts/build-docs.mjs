@@ -71,28 +71,55 @@ function processDocs() {
     const body = mdToHtml(md);
 
     const html = '<!doctype html>\n' +
-      '<html lang="en" data-theme="dark">\n' +
+      '<html lang="en">\n' +
       '<head>\n' +
       '  <meta charset="UTF-8" />\n' +
       '  <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n' +
       '  <title>' + name + ' — Orion Wallet Docs</title>\n' +
       '  <style>\n' +
-      '    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: #e7e7ef; background: #0a0a0f; }\n' +
-      '    a { color: #6d6dff; }\n' +
-      '    code { background: #1a1a2e; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }\n' +
-      '    pre { background: #1a1a2e; padding: 1rem; border-radius: 8px; overflow-x: auto; }\n' +
+      '    :root {\n' +
+      '      --bg: #0a0a0f;\n' +
+      '      --text: #e7e7ef;\n' +
+      '      --text-muted: #8a8aa0;\n' +
+      '      --accent: #6d6dff;\n' +
+      '      --code-bg: #1a1a2e;\n' +
+      '      --border: #26263a;\n' +
+      '      --blockquote-border: #6d6dff;\n' +
+      '      --th-bg: #15151f;\n' +
+      '    }\n' +
+      '    [data-theme="light"] {\n' +
+      '      --bg: #fafafa;\n' +
+      '      --text: #1a1a2e;\n' +
+      '      --text-muted: #666;\n' +
+      '      --accent: #2a5db0;\n' +
+      '      --code-bg: #f0f0f0;\n' +
+      '      --border: #ddd;\n' +
+      '      --blockquote-border: #999;\n' +
+      '      --th-bg: #e8e8e8;\n' +
+      '    }\n' +
+      '    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }\n' +
+      '    a { color: var(--accent); }\n' +
+      '    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }\n' +
+      '    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }\n' +
       '    pre code { background: none; padding: 0; }\n' +
-      '    h1 { border-bottom: 1px solid #26263a; padding-bottom: 0.5rem; }\n' +
+      '    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }\n' +
       '    h2 { margin-top: 2rem; }\n' +
       '    h3 { margin-top: 1.5rem; }\n' +
-      '    hr { border: none; border-top: 1px solid #26263a; margin: 2rem 0; }\n' +
+      '    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }\n' +
       '    ul { padding-left: 1.5rem; }\n' +
       '    li { margin: 0.25rem 0; }\n' +
-      '    blockquote { border-left: 3px solid #6d6dff; padding-left: 1rem; margin-left: 0; color: #8a8aa0; }\n' +
+      '    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }\n' +
       '    table { border-collapse: collapse; margin: 1rem 0; }\n' +
-      '    th, td { border: 1px solid #26263a; padding: 0.5rem 1rem; text-align: left; }\n' +
-      '    th { background: #15151f; }\n' +
+      '    th, td { border: 1px solid var(--border); padding: 0.5rem 1rem; text-align: left; }\n' +
+      '    th { background: var(--th-bg); }\n' +
       '  </style>\n' +
+      '  <script>\n' +
+      '    (function() {\n' +
+      '      function apply(t) { document.documentElement.setAttribute("data-theme", t); }\n' +
+      '      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}\n' +
+      '      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}\n' +
+      '    })();\n' +
+      '  </script>\n' +
       '</head>\n' +
       '<body>\n' +
       body + '\n' +
