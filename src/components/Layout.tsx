@@ -15,6 +15,7 @@ import { AccountPicker } from './AccountPicker';
 import { NetworkSwitcher } from './NetworkSwitcher';
 import { ReceiveView } from './ReceiveView';
 import { CirclesPanel } from './CirclesPanel';
+import { TokensView } from './TokensView';
 import { Toasts } from './Toasts';
 import { LoadingOverlay } from './LoadingOverlay';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -28,6 +29,7 @@ type Tab =
   | 'send'
   | 'receive'
   | 'history'
+  | 'tokens'
   | 'encrypt'
   | 'contract'
   | 'contract-viewer'
@@ -78,6 +80,15 @@ const NAV_ITEMS: NavItem[] = [
     icon: '📜',
     group: 'Wallet',
     mobile: true,
+  },
+  {
+    // Not in the mobile bottom bar: it already carries 5 items plus "More",
+    // and adding a 6th crowds it. Reachable via the "More" sheet instead.
+    id: 'tokens',
+    labelKey: 'nav.tokens',
+    shortLabelKey: 'nav.tokens',
+    icon: '💎',
+    group: 'Wallet',
   },
   // ─── Privacy ───
   {
@@ -438,6 +449,7 @@ export function Layout() {
           {tab === 'send' && <SendForm />}
           {tab === 'receive' && <ReceiveView />}
           {tab === 'history' && <HistoryView />}
+          {tab === 'tokens' && <TokensView />}
           {tab === 'encrypt' && <EncryptPanel />}
           {tab === 'stealth' && <StealthPanel />}
           {tab === 'contract' && <ContractPanel />}

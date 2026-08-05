@@ -37,6 +37,7 @@ const en: Translations = {
   'nav.deploy': 'Deploy',
   'nav.viewer': 'Viewer',
   'nav.circles': 'Circles',
+  'nav.tokens': 'Tokens',
   'nav.settings': 'Settings',
   'nav.docs': 'Docs',
   'nav.wallet': 'Wallet',
@@ -46,6 +47,37 @@ const en: Translations = {
   'nav.home': 'Home',
   'nav.more': 'More',
   'nav.receive': 'Receive',
+
+  // Tokens (OCS01)
+  'tokens.title': 'Tokens',
+  'tokens.tooltip':
+    'OCS01 tokens are smart contracts. Balances are read directly from contract storage.',
+  'tokens.holdings': 'Your tokens',
+  'tokens.addLabel': 'Add token by contract address',
+  'tokens.add': 'Add',
+  'tokens.added': 'Token added',
+  'tokens.invalidAddress': 'Invalid contract address',
+  'tokens.remove': 'Remove',
+  'tokens.removeTitle': 'Remove token',
+  'tokens.removeConfirm':
+    'Stop tracking {symbol}? This only affects this wallet view — your on-chain balance is unchanged.',
+  'tokens.scan': 'Scan for my tokens',
+  'tokens.scanExplainer':
+    'Tokens you received cannot be detected from transaction history, so finding them requires checking every deployed contract. This can take a while and makes many network requests. You can cancel at any time.',
+  'tokens.scanFound': '{n} found',
+  'tokens.scanDone': 'Scan complete — {n} token(s)',
+  'tokens.scanCancelled': 'Scan cancelled',
+  'tokens.emptyTitle': 'No tokens yet',
+  'tokens.emptyDesc':
+    'Add a token by its contract address, or run a scan to find tokens you already hold.',
+  'tokens.unknownSymbol': 'Unknown',
+  'tokens.manual': 'added manually',
+  'tokens.incomplete': 'incomplete metadata',
+  'tokens.unscaledHint':
+    'This contract does not publish a decimals value, so the balance is shown in raw base units and its true scale is unknown.',
+  'tokens.rawUnits': 'raw',
+  'tokens.spoofWarning':
+    'Anyone can deploy a token using any name or symbol. Always verify the contract address before trusting or transferring a token.',
 
   // Network switcher
   'network.label': 'Network',

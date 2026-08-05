@@ -1354,3 +1354,118 @@ button.icon {
 .connect-select-account {
   min-width: 200px;
 }
+
+/* ===== OCS01 token list ===== */
+
+.token-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.token-card {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  transition:
+    border-color var(--t-fast),
+    background var(--t-fast);
+}
+.token-card:hover {
+  background: var(--bg-elevated-3);
+  border-color: var(--border-default);
+}
+
+/* Symbol monogram. Decorative only — the address below is the real identity. */
+.token-mark {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-full);
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.5px;
+}
+
+.token-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.token-line {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.token-symbol {
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.token-name {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.token-addr {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.token-side {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--sp-1);
+}
+
+/* Balances can be very long (u128). Allow wrapping rather than overflowing. */
+.token-balance {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  text-align: right;
+  max-width: 220px;
+  overflow-wrap: anywhere;
+}
+
+.token-raw-suffix {
+  font-size: var(--fs-xs);
+  font-weight: normal;
+  color: var(--text-muted);
+}
+
+@media (max-width: 560px) {
+  .token-card {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .token-side {
+    align-items: flex-start;
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  .token-balance {
+    max-width: none;
+    text-align: left;
+  }
+}

@@ -15,7 +15,7 @@ import { openDB, type IDBPDatabase } from 'idb';
 const DB_NAME = 'orion-wallet';
 /** Pre-rebrand database name. Data is copied forward on first launch. */
 const LEGACY_DB_NAME = 'webcli-react';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 /** Every object store, in the order they are created and migrated. */
 const OBJECT_STORES: { name: string; keyPath: string }[] = [
@@ -27,6 +27,10 @@ const OBJECT_STORES: { name: string; keyPath: string }[] = [
   { name: 'sdk-sessions', keyPath: 'sid' },
   { name: 'sdk-trusted-sites', keyPath: 'origin' },
   { name: 'sdk-permissions', keyPath: 'origin' },
+  // v3: OCS01 token stores (additive migration).
+  { name: 'token-registry', keyPath: 'id' },
+  { name: 'token-holdings', keyPath: 'key' },
+  { name: 'token-custom', keyPath: 'key' },
 ];
 
 export interface StoredWalletEntry {
@@ -423,6 +427,109 @@ export async function savePermissions(rec: PermissionRecord): Promise<void> {
 export async function getPermissions(origin: string): Promise<PermissionRecord | null> {
   const db = await getDb();
   return ((await db.get('sdk-permissions', origin)) as PermissionRecord | undefined) ?? null;
+}
+
+// ===== OCS01 tokens =====
+
+/**
+ * Cached result of `octra_listContracts`, scoped per RPC endpoint.
+ *
+ * The contract set differs per network (~2k on mainnet, ~6.5k on devnet), so
+ * the endpoint URL is part of the key to stop a devnet scan from being reused
+ * against mainnet.
+ */
+export interface TokenRegistryEntry {
+  id: string; // rpcUrl
+  addresses: string[];
+  fetchedAt: number;
+}
+
+/**
+ * One token holding for one wallet address.
+ *
+ * `rawBalance` and `totalSupply` are decimal STRINGS, not bigint: IndexedDB
+ * cannot structured-clone a BigInt. Callers parse them back with `parseU128`
+ * at the boundary — never with Number.
+ */
+export interface TokenHoldingEntry {
+  key: string; // `${rpcUrl}|${ownerAddr}|${contractAddr}`
+  rpcUrl: string;
+  owner: string;
+  contract: string;
+  rawBalance: string;
+  symbol: string | null;
+  name: string | null;
+  /** null means the contract exposes no `decimals` key — scaling unknown. */
+  decimals: number | null;
+  totalSupply: string | null;
+  updatedAt: number;
+}
+
+/** A token the user added by hand, kept even when its balance is zero. */
+export interface TokenCustomEntry {
+  key: string; // `${rpcUrl}|${ownerAddr}|${contractAddr}`
+  rpcUrl: string;
+  owner: string;
+  contract: string;
+  addedAt: number;
+}
+
+/** Composite key for holdings and custom entries. */
+export function tokenKey(rpcUrl: string, owner: string, contract: string): string {
+  return `${rpcUrl}|${owner}|${contract}`;
+}
+
+export async function saveTokenRegistry(entry: TokenRegistryEntry): Promise<void> {
+  const db = await getDb();
+  await db.put('token-registry', entry);
+}
+
+export async function getTokenRegistry(rpcUrl: string): Promise<TokenRegistryEntry | null> {
+  const db = await getDb();
+  return ((await db.get('token-registry', rpcUrl)) as TokenRegistryEntry | undefined) ?? null;
+}
+
+export async function saveTokenHolding(entry: TokenHoldingEntry): Promise<void> {
+  const db = await getDb();
+  await db.put('token-holdings', entry);
+}
+
+export async function listTokenHoldings(
+  rpcUrl: string,
+  owner: string,
+): Promise<TokenHoldingEntry[]> {
+  const db = await getDb();
+  const all = (await db.getAll('token-holdings')) as TokenHoldingEntry[];
+  return all.filter((e) => e.rpcUrl === rpcUrl && e.owner === owner);
+}
+
+export async function deleteTokenHolding(
+  rpcUrl: string,
+  owner: string,
+  contract: string,
+): Promise<void> {
+  const db = await getDb();
+  await db.delete('token-holdings', tokenKey(rpcUrl, owner, contract));
+}
+
+export async function saveCustomToken(entry: TokenCustomEntry): Promise<void> {
+  const db = await getDb();
+  await db.put('token-custom', entry);
+}
+
+export async function listCustomTokens(rpcUrl: string, owner: string): Promise<TokenCustomEntry[]> {
+  const db = await getDb();
+  const all = (await db.getAll('token-custom')) as TokenCustomEntry[];
+  return all.filter((e) => e.rpcUrl === rpcUrl && e.owner === owner);
+}
+
+export async function deleteCustomToken(
+  rpcUrl: string,
+  owner: string,
+  contract: string,
+): Promise<void> {
+  const db = await getDb();
+  await db.delete('token-custom', tokenKey(rpcUrl, owner, contract));
 }
 
 // ===== Maintenance =====
