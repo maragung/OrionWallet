@@ -1,5 +1,7 @@
 # Orion Wallet — Developer Guide
 
+> **GitHub:** [github.com/maragung/OrionWallet](https://github.com/maragung/OrionWallet) — Source code, issues, and releases.
+
 ## Contents
 
 - [Setup](#setup)

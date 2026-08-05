@@ -3,6 +3,8 @@
 Orion Wallet runs entirely in your browser. Your keys are generated locally, encrypted
 with your PIN, and stored only on your own device. Nothing is sent to a server.
 
+> **GitHub:** [github.com/maragung/OrionWallet](https://github.com/maragung/OrionWallet) — Source code, issues, and releases.
+
 ---
 
 ## Contents

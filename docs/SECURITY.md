@@ -1,5 +1,8 @@
 # Security
 
+> **GitHub:** [github.com/maragung/OrionWallet](https://github.com/maragung/OrionWallet) — Source code, issues, and releases.
+> **Report vulnerabilities:** [GitHub Security Advisories](https://github.com/maragung/OrionWallet/security/advisories/new)
+
 ## Audit status
 
 **Orion Wallet has not undergone an independent third-party security audit.**
