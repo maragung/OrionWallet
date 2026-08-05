@@ -143,11 +143,14 @@
            - Envelope      (bidirectional, all subsequent port messages)
          ================================================================ */
 
+       // ── Protocol constants (mirrored from src/sdk/protocol.ts) ──────
+       var PROTOCOL_VERSION = 1;
+       var TIMEOUT_MS = 60000;
+
        // ── Configuration ─────────────────────────────────────
-       // Set WALLET_ORIGIN to the Orion Wallet URL where your dApp
-       // will be deployed. For local development use '/connect'.
-       // For production dApps on other domains, use the full URL:
-       //   'https://orionwallet.vercel.app'
+       // Set WALLET_ORIGIN to the Orion Wallet deployment your dApp talks to.
+       // Same-origin demo:  location.origin
+       // Cross-origin dApp: 'https://orionwallet.vercel.app'
        var WALLET_ORIGIN = 'https://orionwallet.vercel.app';
        var WALLET_PATH = '/connect';
        var WALLET_URL = WALLET_ORIGIN + WALLET_PATH;

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>USER_GUIDE — Orion Wallet Docs</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: #e7e7ef; background: #0a0a0f; }
+    a { color: #6d6dff; }
+    code { background: #1a1a2e; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: #1a1a2e; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid #26263a; padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    hr { border: none; border-top: 1px solid #26263a; margin: 2rem 0; }
+    ul { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid #6d6dff; padding-left: 1rem; margin-left: 0; color: #8a8aa0; }
+    table { border-collapse: collapse; margin: 1rem 0; }
+    th, td { border: 1px solid #26263a; padding: 0.5rem 1rem; text-align: left; }
+    th { background: #15151f; }
+  </style>
+</head>
+<body>
+<h1>Orion Wallet — User Guide</h1>
+<p>Orion Wallet runs entirely in your browser. Your keys are generated locally, encrypted<br />with your PIN, and stored only on your own device. Nothing is sent to a server.</p>
+<p>&gt; <strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Source code, issues, and releases.</p>
+<hr />
+<h2>Contents</h2>
+<p>- <a href="#getting-started">Getting started</a><br />- <a href="#creating-a-wallet">Creating a wallet</a><br />- <a href="#importing-an-existing-wallet">Importing an existing wallet</a><br />- <a href="#everyday-use">Everyday use</a><br />- <a href="#encrypted-balance-fhe">Encrypted balance (FHE)</a><br />- <a href="#stealth-transfers">Stealth transfers</a><br />- <a href="#connecting-to-a-dapp">Connecting to a dApp</a><br />- <a href="#backup-and-recovery">Backup and recovery</a><br />- <a href="#troubleshooting">Troubleshooting</a><br />- <a href="#keeping-your-funds-safe">Keeping your funds safe</a></p>
+<hr />
+<h2>Getting started</h2>
+<h3>Requirements</h3>
+<p>- A current version of Chrome, Edge, Firefox, or Safari<br />- JavaScript enabled<br />- Roughly 4 GB of RAM if you plan to use encrypted-balance features</p>
+<h3>Running it</h3>
+<p>Use a hosted deployment, or run it locally:</p>
+<pre><code class="language-bash">npm install --legacy-peer-deps
+npm run dev</code></pre>
+<p>Then open &lt;http://localhost:5173&gt;.</p>
+<hr />
+<h2>Creating a wallet</h2>
+<li>Select <strong>Create Wallet</strong>.</li>
+<li><strong>Write down your recovery phrase.</strong> You are shown 12 or 24 words. Copy them onto</li>
+   paper in the exact order given.
+<li>Confirm the phrase when prompted.</li>
+<li>Choose a PIN. This encrypts the wallet on this device.</li>
+<p>&gt; <strong>Your recovery phrase is the only way to restore your wallet.</strong> Anyone who has it<br />&gt; controls your funds. Store it offline. Never photograph it, type it into a website,<br />&gt; or paste it into a chat or email.</p>
+<h3>PIN versus recovery phrase</h3>
+<p>| | Recovery phrase | PIN |<br />|---|---|---|<br />| Purpose | Restores your wallet anywhere | Unlocks it on this device only |<br />| If lost | Funds are unrecoverable | Restore from the recovery phrase |<br />| Where stored | Offline, by you | Never stored — only you know it |</p>
+<hr />
+<h2>Importing an existing wallet</h2>
+<p>Choose <strong>Import</strong> and pick one of:</p>
+<p>- <strong>Recovery phrase</strong> — enter your 12/24 words<br />- <strong>Private key</strong> — paste a base64 private key<br />- <strong>Wallet file</strong> — upload an encrypted <code>.oct</code> file and enter its PIN</p>
+<hr />
+<h2>Everyday use</h2>
+<h3>Checking your balance</h3>
+<p>The <strong>Balance</strong> tab shows your public balance and, if PVAC is enabled, your encrypted balance.</p>
+<h3>Receiving</h3>
+<p>Open <strong>Receive</strong> to display your address and a QR code. Your address is public and safe<br />to share.</p>
+<h3>Sending</h3>
+<li>Open <strong>Send</strong>.</li>
+<li>Paste the recipient address (it begins with <code>oct</code>).</li>
+<li>Enter an amount.</li>
+<li>Review the fee, then confirm with your PIN.</li>
+<p>Always verify the first and last characters of the recipient address before confirming.<br />Transactions cannot be reversed.</p>
+<h3>History</h3>
+<strong>History</strong> lists recent transactions. When the network is unreachable, cached entries
+are shown and marked <code>⚠ Cached</code>.
+<hr />
+<h2>Encrypted balance (FHE)</h2>
+<p>Orion Wallet can hold part of your balance encrypted using fully homomorphic encryption,<br />so the amount is not publicly visible on-chain.</p>
+<p>This is optional. Everything else works whether or not it is enabled.</p>
+<h3>Enabling it</h3>
+<p>Go to <strong>Settings → PVAC</strong>. Two indicators must both be green:</p>
+<p>- <strong>WASM Module</strong> — the cryptographic module has loaded<br />- <strong>Bridge Initialized</strong> — it has been keyed from your wallet seed</p>
+<p>If either is not ready, the panel explains the exact cause and the fix.</p>
+<h3>Encrypting and decrypting</h3>
+<p>Use <strong>Encrypt</strong> to move funds between your public and encrypted balances. These<br />operations are computationally heavy and may take several seconds; a progress dialog<br />shows each stage.</p>
+<hr />
+<h2>Stealth transfers</h2>
+<p>Stealth transfers send funds to a one-time address derived from the recipient's public<br />key, so the payment is not publicly linkable to their main address.</p>
+<p>Open <strong>Stealth</strong>, enter the recipient and amount, and confirm. The recipient claims the<br />funds from their own Stealth tab.</p>
+<hr />
+<h2>Connecting to a dApp</h2>
+<p>When a website requests a connection, a popup appears showing the requesting origin.</p>
+<p>Before approving:</p>
+<p>- <strong>Check the origin carefully.</strong> Confirm the domain is exactly the site you intended.<br />- Approve only the permissions you expect.<br />- "Trust this site" skips future prompts for read-only requests — use it sparingly.</p>
+<p>Review and revoke connections at any time under <strong>Settings → Connected Sites</strong>.</p>
+<hr />
+<h2>Backup and recovery</h2>
+<h3>Exporting</h3>
+<strong>Settings → Backup → Export</strong> downloads an encrypted <code>.oct</code> file. It is protected by
+your PIN, but treat it as sensitive.
+<h3>Restoring</h3>
+<p>Use <strong>Import → Wallet file</strong> and supply the PIN in use when the file was exported.</p>
+<h3>Multiple accounts</h3>
+<strong>Settings → Accounts</strong> derives additional accounts from the same recovery phrase. One
+phrase restores all of them.
+<hr />
+<h2>Troubleshooting</h2>
+<h3>The page is blank or stuck loading</h3>
+<p>Reload. If it persists, an error card with a <strong>Retry</strong> button should appear. Report the<br />message shown there.</p>
+<h3>Encrypted balance is unavailable</h3>
+<p>Settings → PVAC shows one of the following:</p>
+<p>| Message | Meaning | Fix |<br />|---|---|---|<br />| <em>The WASM module has not been compiled</em> | <code>pvac.js</code> is not being served | Run <code>npm run build:wasm</code> |<br />| <em>Content-Security-Policy is blocking WebAssembly</em> | The CSP lacks <code>'wasm-unsafe-eval'</code> | Add it to <code>script-src</code> in <code>index.html</code> |<br />| <em>The compiled module is out of date</em> | The build predates required functions | Rebuild with <code>npm run build:wasm</code> |<br />| <em>FHE key generation failed</em> | The module loaded but keying failed | Check the browser console and report it |</p>
+<p>Press <strong>↻ Reload PVAC</strong> after applying a fix — no restart needed.</p>
+<h3>"Failed to load history" / network errors</h3>
+<p>Usually the RPC node is unreachable or blocking CORS. Verify the RPC URL under<br /><strong>Settings</strong>, and see the <a href="../README.md#cors">CORS notes</a>.</p>
+<h3>I forgot my PIN</h3>
+<p>Reinstall the wallet using your recovery phrase and set a new PIN. Without the phrase,<br />the funds cannot be recovered — by anyone.</p>
+<h3>My wallet vanished after an update</h3>
+<p>Data is migrated automatically from older builds on first launch. If your accounts are<br />missing, <strong>do not create a new wallet</strong> — that could overwrite the old data. Report the<br />issue, and restore from your recovery phrase in the meantime.</p>
+<hr />
+<h2>Keeping your funds safe</h2>
+<strong>Do</strong>
+<p>- Keep your recovery phrase offline, on paper, ideally in more than one location<br />- Verify recipient addresses before sending<br />- Verify the origin shown in dApp connection prompts<br />- Start with a small test transaction when sending to a new address</p>
+<strong>Never</strong>
+<p>- Enter your recovery phrase on any website. Orion Wallet will never ask for it after setup<br />- Store the phrase in a screenshot, password manager note, cloud drive, or chat<br />- Share your private key or <code>.oct</code> file<br />- Use a wallet holding real funds on a shared or untrusted computer</p>
+<p>Orion Wallet has <strong>not been independently audited</strong>. Please review the<br /><a href="SECURITY.md">Security document</a> before storing significant value.</p>
+</body>
+</html>

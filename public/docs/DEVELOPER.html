@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DEVELOPER — Orion Wallet Docs</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: #e7e7ef; background: #0a0a0f; }
+    a { color: #6d6dff; }
+    code { background: #1a1a2e; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: #1a1a2e; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid #26263a; padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    hr { border: none; border-top: 1px solid #26263a; margin: 2rem 0; }
+    ul { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid #6d6dff; padding-left: 1rem; margin-left: 0; color: #8a8aa0; }
+    table { border-collapse: collapse; margin: 1rem 0; }
+    th, td { border: 1px solid #26263a; padding: 0.5rem 1rem; text-align: left; }
+    th { background: #15151f; }
+  </style>
+</head>
+<body>
+<h1>Orion Wallet — Developer Guide</h1>
+<p>&gt; <strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Source code, issues, and releases.</p>
+<h2>Contents</h2>
+<p>- <a href="#setup">Setup</a><br />- <a href="#project-layout">Project layout</a><br />- <a href="#architecture">Architecture</a><br />- <a href="#build-system">Build system</a><br />- <a href="#the-pvac-wasm-pipeline">The PVAC WASM pipeline</a><br />- <a href="#state-management">State management</a><br />- <a href="#error-handling">Error handling</a><br />- <a href="#loading-states">Loading states</a><br />- <a href="#storage-and-migrations">Storage and migrations</a><br />- <a href="#wallet-sdk">Wallet SDK</a><br />- <a href="#testing">Testing</a><br />- <a href="#release-checklist">Release checklist</a><br />- <a href="#known-issues">Known issues</a></p>
+<hr />
+<h2>Setup</h2>
+<pre><code class="language-bash">npm install --legacy-peer-deps
+npm run dev</code></pre>
+<code>--legacy-peer-deps</code> is mandatory: ESLint 9 and <code>@eslint/js</code> 10 declare conflicting peer
+ranges. <code>vercel.json</code> uses the same flag, so CI and local installs match.
+<p>Node 20+ is recommended.</p>
+<hr />
+<h2>Project layout</h2>
+<pre><code class="language-">src/
+├── api/          High-level operations (wallet-api, send, encrypt)
+├── components/   React components, one panel per tab
+├── connect/      dApp approval popup (/connect route)
+├── crypto/       Primitives: ed25519, x25519, sha256, aes, bip39, hd, base58/64
+├── hooks/        useTheme, usePanelLoading
+├── i18n/         Translations and the provider
+├── pvac/         FHE bridge: stub + WASM implementation
+├── rpc/          JSON-RPC client
+├── sdk/          Provider injected into dApps + transport
+├── stealth/      Stealth address derivation
+├── store/        Zustand store
+├── tx/           Canonical JSON, signing, ABI helpers
+├── utils/        Clipboard, progress reporting
+└── wallet/       Keystore, IndexedDB storage, PIN
+<p>public/wasm/      Compiled PVAC module (pvac.js + pvac.wasm)<br />scripts/          build-wasm.sh, patch-pvac-aes.py, autofix.mjs, health-check.mjs<br />tests/unit/       Vitest<br />tests/e2e/        Playwright<br />docs/             This documentation</code></pre></p>
+<hr />
+<h2>Architecture</h2>
+<p>Pure client-side; there is no backend. Data flows in one direction:</p>
+<pre><code class="language-">React components  (src/components/)
+      │  read state, dispatch actions
+      ▼
+Zustand store  (src/store/wallet-store.ts)
+      │
+      ▼
+API layer  (src/api/)          ← orchestrates crypto + RPC
+      │
+      ├──► Crypto core  (src/crypto/)   WebCrypto, tweetnacl, @noble
+      ├──► PVAC FHE     (src/pvac/)     WebAssembly
+      ├──► Transaction  (src/tx/)       canonical JSON + signing
+      └──► RPC client   (src/rpc/)      fetch
+                                          │ HTTPS
+                                          ▼
+                                   Octra RPC node</code></pre>
+<h3>Design constraints</h3>
+<strong>Canonical JSON must be byte-exact.</strong> <code>src/tx/canonical-json.ts</code> reproduces
+<code>nlohmann::json</code> key ordering and formatting exactly. Signatures are computed over these
+bytes, so any deviation produces a signature the network rejects. Do not "tidy up" this
+serializer.
+<strong>Naming: product versus protocol.</strong> "Orion Wallet" is the product. <code>octra_<em></code> RPC methods,
+the <code>oct</code> address prefix, the <code>OCT</code> ticker, and "Octra Network" are protocol identifiers
+and must never be renamed.
+<hr />
+<h2>Build system</h2>
+<p>TypeScript config files are the <strong>single source of truth</strong>:</p>
+<p>- <code>vite.config.ts</code><br />- <code>vitest.config.ts</code><br />- <code>playwright.config.ts</code></p>
+<p>&gt; <strong>Do not add <code>.js</code> siblings for these.</strong> Vite resolves <code>vite.config.js</code> ahead of<br />&gt; <code>vite.config.ts</code>. Stale transpiled copies previously shadowed the <code>.ts</code> files, so edits<br />&gt; to the <code>.ts</code> configs had no effect. Those three filenames are now in <code>.gitignore</code>.<br />&gt; <code>eslint.config.js</code> is genuine flat config and is intentionally kept.</p>
+<h3>Headers</h3>
+<p>COOP/COEP are set to <code>same-origin</code> / <code>require-corp</code> (reserved for future WASM threading),<br />with <code>unsafe-none</code> overrides on <code>/connect</code> so the popup's <code>postMessage</code> + MessagePort<br />transfer works. Dev headers live in <code>vite.config.ts</code>; production headers in <code>vercel.json</code>.<br /><strong>Keep the two in sync.</strong></p>
+<h3>Content-Security-Policy</h3>
+<p>Defined in <code>index.html</code>. <code>script-src</code> must include <code>'wasm-unsafe-eval'</code> — Chromium refuses<br /><code>WebAssembly.instantiate()</code> without it, which is exactly what made the PVAC module fail to<br />load silently. That directive permits WebAssembly compilation only; it does not re-enable<br />JavaScript <code>eval()</code>.</p>
+<hr />
+<h2>The PVAC WASM pipeline</h2>
+<h3>Building</h3>
+<pre><code class="language-bash">git clone https://github.com/emscripten-core/emsdk.git /tmp/emsdk
+cd /tmp/emsdk &amp;&amp; ./emsdk install latest &amp;&amp; ./emsdk activate latest
+source /tmp/emsdk/emsdk_env.sh
+<p>git clone https://github.com/octra-labs/webcli ../webcli-source<br />python3 scripts/patch-pvac-aes.py ../webcli-source/pvac   # software AES fallback<br />npm run build:wasm</code></pre></p>
+<code>patch-pvac-aes.py</code> is required because PVAC hard-<code>#error</code>s without hardware AES (AES-NI or
+ARM crypto extensions), which WebAssembly does not offer. The patch adds a portable
+software implementation that is bit-identical but roughly 5–10× slower. It is additive: the
+hardware paths are untouched, and a backup <code>.hpp.bak</code> is written.
+<h3>Loading</h3>
+<code>src/pvac/wasm-bridge.ts</code> loads the module in three steps:
+<li><strong>Probe</strong> — <code>HEAD</code> on the glue URL, so "not built" (404) is distinguishable from</li>
+   "blocked by CSP". Without this both surface as an identical opaque import failure.
+<li><strong>Import</strong> — dynamic <code>import()</code> of an absolute URL with <code>/</em> @vite-ignore <em>/</code>. It must be</li>
+   absolute: a bare specifier fails to resolve, and <code>./wasm/pvac.js</code> resolves against
+   <code>/assets/</code> and 404s.
+<li><strong>Verify</strong> — assert all 13 required <code>_pvac_</em></code> exports exist before swapping the bridge in.</li>
+   Earlier builds omitted the serialization functions, which broke encrypt/decrypt in a way
+   the node reported only as "malformed transaction".
+<p>Failures are classified as <code>PvacFailureReason</code>: <code>not-built</code>, <code>csp-blocked</code>,<br /><code>missing-exports</code>, <code>init-failed</code>, <code>unknown</code>. Each maps to a concrete remedy shown in<br />Settings. The singleton promise is reset on failure so <strong>↻ Reload PVAC</strong> can retry rather<br />than replaying a cached rejection.</p>
+<h3>Memory rules</h3>
+<p>The C API is manual-memory. Every <code>_malloc</code> needs a <code>_free</code>; every <code>serialize_<em></code> returns a<br />buffer that must be released with <code>_pvac_free_bytes</code>. Handles from <code>keygen</code>/<code>enc_</em></code> need<br />their matching <code>_pvac_free_<em></code>. Use <code>try/finally</code> — see <code>WasmPvacBridge</code> for the pattern.</p>
+<hr />
+<h2>State management</h2>
+<p>Zustand, in <code>src/store/wallet-store.ts</code>. It owns the wallet, RPC client, settings, PVAC<br />status, toasts, and the global loading flag.</p>
+<p>The global loading flag (<code>isLoading</code>) drives a full-screen blur overlay and is reserved for<br /><strong>whole-app transitions only</strong>, such as wallet unlock. Per-panel work must use<br /><code>usePanelLoading</code> instead — see below.</p>
+<hr />
+<h2>Error handling</h2>
+<code>src/components/ErrorBoundary.tsx</code> wraps every panel in <code>Layout.tsx</code>, keyed by the active
+tab so a tripped boundary resets on navigation, plus one boundary at the root in <code>main.tsx</code>.
+<p>This matters more than it looks. <code>index.html</code> contains:</p>
+<pre><code class="language-css">#root:empty::before { content: 'Loading Orion Wallet…'; }</code></pre>
+<p>Without a boundary, any render-time throw makes React 18 unmount the whole tree, <code>#root</code><br />becomes empty, and that fallback renders — producing a blank white page that appears stuck<br />loading forever. The boundary keeps the shell alive and shows a retryable error card.</p>
+<strong>Consequence:</strong> functions called during render must not throw on malformed input.
+<code>formatAmount</code> in <code>src/tx/builder.ts</code> accepts <code>unknown</code> and degrades to a placeholder,
+because neither RPC responses nor the local tx cache are schema-validated. Normalise
+untrusted rows before rendering them — <code>HistoryView</code> shows the pattern.
+<hr />
+<h2>Loading states</h2>
+<p>Use <code>usePanelLoading</code> (<code>src/hooks/usePanelLoading.ts</code>) for panel-scoped work:</p>
+<pre><code class="language-typescript">const panelLoading = usePanelLoading();
+<p>await panelLoading.run('Loading history', async () =&gt; {<br />  const data = await fetchSomething();<br />  if (!panelLoading.isMounted()) return;   // guard late setState<br />  setData(data);<br />}, 'Fetching from the network…');</code></pre></p>
+<p>Then render <code>&lt;ProcessingModal open={panelLoading.loading} … dismissible onClose={panelLoading.hide} /&gt;</code>.</p>
+<p>Two properties matter: the modal is <strong>dismissible</strong> (work continues in the background, so a<br />slow network never traps the user), and state writes are gated on <code>isMounted()</code> so<br />navigating away mid-flight cannot leave a modal stuck on screen.</p>
+<hr />
+<h2>Storage and migrations</h2>
+<p>IndexedDB via <code>idb</code>, database <code>orion-wallet</code>, version 2. Stores are declared once in the<br /><code>OBJECT_STORES</code> array in <code>src/wallet/storage.ts</code>; add new ones there so creation and<br />migration stay consistent.</p>
+<h3>The rebrand migration</h3>
+<p>Renaming the database from <code>webcli-react</code> would have orphaned every existing wallet, since<br />IndexedDB scopes data by database name. <code>migrateLegacyDatabase</code> copies all stores forward on<br />first launch. It is:</p>
+<p>- <strong>idempotent</strong> — skipped once the target has any wallet<br />- <strong>non-destructive</strong> — the legacy database is left intact for rollback<br />- <strong>non-fatal</strong> — failures are logged, never thrown; a migration bug must not block startup</p>
+<p>Remember that <code>clearIndexedDB</code> in E2E helpers must delete <strong>both</strong> databases, or the<br />migration copies the legacy data straight back and "clean state" is not clean.</p>
+<hr />
+<h2>Wallet SDK</h2>
+<code>src/sdk/</code> is the dApp-facing provider; <code>src/connect/</code> is the approval popup served at
+<code>/connect</code>.
+<h3>Method namespaces</h3>
+<p>The wallet answers to two equivalent namespaces:</p>
+<p>| Generic | Orion-branded | Operation |<br />|---|---|---|<br />| <code>wallet_connect</code> | <code>orion_wallet_connect</code> | Initiate connection |<br />| <code>wallet_signMessage</code> | <code>orion_wallet_signMessage</code> | Sign a plain message |<br />| <code>wallet_signTypedData</code> | <code>orion_wallet_signTypedData</code> | Sign structured data |<br />| <code>wallet_approveContract</code> | <code>orion_wallet_approveContract</code> | Pre-approve a contract call |<br />| <code>wallet_signContract</code> | <code>orion_wallet_signContract</code> | Sign a contract transaction |<br />| <code>wallet_getAccounts</code> | <code>orion_wallet_getAccounts</code> | List accounts |<br />| <code>wallet_getBalance</code> | <code>orion_wallet_getBalance</code> | Read balance |<br />| … | … | … |</p>
+<p>Both are accepted and execute identically. The <code>orion_wallet_</em></code> names exist for dApps that<br />want to explicitly target Orion Wallet; the generic <code>wallet_<em></code> names remain supported so<br />that existing integrations keep working.</p>
+<code>canonicalizeMethod</code> in <code>src/sdk/protocol.ts</code> reduces every method name to its canonical
+<code>wallet_</em></code> form before dispatch, so the two namespaces can never drift out of sync.
+<h3>Connection lifecycle</h3>
+<strong>Handshake (once per session):</strong>
+<li>dApp calls <code>provider.connect()</code> → <code>PopupTransport</code> opens <code>/connect?v=1&amp;rid=…&amp;origin=…</code></li>
+<li>Wallet renders <code>ConnectApp</code>, user unlocks if needed</li>
+<li>Wallet sends <code>hello</code> + MessagePort over <code>window.postMessage</code>, origin-validated</li>
+<li>dApp echoes <code>challenge</code> over the port (anti-replay)</li>
+<li><code>ConnectHandler</code> verifies ack, serves <code>CONNECT</code> RPC → returns address, accounts, network</li>
+<strong>After connect:</strong>
+<p>- The <strong>popup may close</strong>, but the MessagePort stays open — it is independent of the window<br />- The session persists in IndexedDB (<code>sdk-sessions</code>) with idle + absolute TTL<br />- Read methods (<code>getBalance</code>, <code>getAccounts</code>) are session-silent<br />- Signing methods <strong>always</strong> open a fresh approval prompt</p>
+<strong>The fix for "connect works, nothing else does":</strong>
+<p>Originally <code>PopupTransport.isConnected()</code> checked <code>popup.closed</code>, so every call after the<br />approval window closed failed with "Transport is not connected". Now it checks only the<br />port, which outlives the popup. The wallet closes the popup after approval, but the<br />connection stays live.</p>
+<h3>Permission model</h3>
+<strong>Connect-time:</strong> Only read-only scopes (<code>viewAccounts</code>, <code>viewBalance</code>, <code>viewNetwork</code>).
+<strong>Signing scopes</strong> (<code>signMessage</code>, <code>signContract</code>, etc.) are <strong>granted lazily</strong> on first
+successful approval. Before the fix, they were absent from <code>DEFAULT_PERMISSIONS</code> and the
+dispatcher rejected every signing call with <code>UNAUTHORIZED</code> before the prompt could appear —
+the second root cause of the symptom.
+<p>Now:<br />- Permission check allows ungranted signing scopes to proceed to the approval prompt<br />- On approval, <code>grantPermission</code> persists the scope to the session<br />- Subsequent calls skip the permission check but <strong>still require approval</strong> — granting a<br />  scope only records that the user agrees the dApp may ask</p>
+<p>Revocation is explicit: <code>revokePermission</code> removes the scope from <code>permissions</code> and records<br />it in <code>deniedPermissions</code>, which the dispatcher refuses outright.</p>
+<h3>Security invariants</h3>
+<p>Do not weaken these:</p>
+<p>- <strong>Origin validation</strong> on every inbound <code>postMessage</code> (<code>PopupTransport.ts</code>, <code>rpc-handler.ts</code>)<br />- <strong>Anti-replay:</strong> CSPRNG challenge + dApp nonce + per-session monotonic nonce. <code>makeId</code> is<br />  for message correlation only and must never be used as a security value<br />- <strong>Permissions</strong> are per-origin, persisted in <code>sdk-sessions</code>, and granted/revoked explicitly<br />- <strong>MessagePort independence:</strong> The port outlives the popup. Once transferred, the wallet can<br />  close the approval window without breaking the connection<br />- <strong>Prohibited methods</strong> are rejected both client-side (<code>WalletProvider</code>) and wallet-side<br />  (<code>rpc-handler</code>), so transaction execution can never escape to the SDK even via the<br />  low-level <code>request()</code> escape hatch<br />- <strong><code>localStorage</code></strong> holds only a session-restore hint (address, network) — never secrets</p>
+<hr />
+<h2>Testing</h2>
+<pre><code class="language-bash">npm test                 # 350 unit tests, 30 files
+npm run test:coverage    # V8 coverage, 60% threshold
+npm run test:e2e         # 7 Playwright specs (needs npm run build first)
+npm run autofix          # typecheck → format → lint --fix → test → build
+npm run check            # same, read-only (CI)</code></pre>
+<p>Unit tests run under jsdom with <code>fake-indexeddb</code>. Component tests use<br /><code>renderToStaticMarkup</code> rather than a DOM testing library — see<br /><code>tests/unit/processing-modal.test.tsx</code>.</p>
+<p>When fixing a bug, add a test that documents the failure mode, not just the fix.<br /><code>tests/unit/history-view.test.ts</code> and <code>error-boundary.test.tsx</code> follow this: each names the<br />symptom it prevents from recurring.</p>
+<hr />
+<h2>Release checklist</h2>
+<li><code>npm run autofix</code> — must be fully green</li>
+<li><code>npm run test:e2e</code> against a fresh <code>npm run build</code></li>
+<li><code>npm audit --omit=dev</code> — production must report zero vulnerabilities</li>
+<li>Verify PVAC loads in a production preview (<code>npm run preview</code>), not just dev</li>
+<li>Test the migration path from a pre-rebrand build with existing wallet data</li>
+<li>Confirm <code>vite.config.ts</code> server headers still match <code>vercel.json</code></li>
+<hr />
+<h2>Known issues</h2>
+<strong>Dev-dependency advisories.</strong> <code>npm audit</code> reports vulnerabilities in vitest, vite, esbuild,
+and related packages. Every remaining fix needs a major upgrade (vite 5→8, vitest 2→4).
+These are build-tooling only and do not ship to users; production audits clean. See
+<a href="SECURITY.md#dependency-status">SECURITY.md</a>.
+<strong><code>storage.ts</code> chunking warning.</strong> The build warns that <code>storage.ts</code> is both statically and
+dynamically imported, so it cannot be split into its own chunk. Harmless, but it does mean
+the dynamic imports in <code>HistoryView</code> and <code>WalletExportImport</code> provide no code-splitting
+benefit.
+<strong>Software AES performance.</strong> The WASM AES fallback is 5–10× slower than native. Heavy PVAC
+operations block the main thread; moving them into a Web Worker is the logical next step.
+</body>
+</html>
