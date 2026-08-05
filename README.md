@@ -13,6 +13,7 @@
 <p align="center">
   <a href="https://orionwallet.vercel.app">Live App</a> &middot;
   <a href="https://orionwallet.vercel.app/docs">Documentation</a> &middot;
+  <a href="CHANGELOG.md">Changelog</a> &middot;
   <a href="docs/SECURITY.md">Security</a>
 </p>
 
