@@ -183,20 +183,38 @@ export interface SignContractParams {
  * object for the dApp to inspect/submit through the wallet UI — this function
  * does not touch the network.
  *
- * `opType` selects the on-chain operation label and defaults to `program_call`,
- * so existing callers keep byte-identical output. The alternate `call` label is
- * accepted for programs that expect the shorter form.
+ * `opType` selects the on-chain operation label AND the payload encoding, which
+ * are NOT interchangeable — the Octra VM parses each differently:
+ *
+ *   - `program_call` (default): the whole invocation is one JSON blob in
+ *     `encrypted_data` → `{"program":…,"method":…,"args":[…]}`.
+ *
+ *   - `call`: the VM reads the method name from `encrypted_data` as a bare
+ *     string and the argument list from `message` as JSON. Packing the nested
+ *     blob into `encrypted_data` here would make the node read the method name
+ *     as `{"program":...` and revert.
+ *
+ * Because the Ed25519 signature covers the canonical JSON, the payload MUST be
+ * shaped correctly BEFORE signing; a dApp cannot repair it afterwards without
+ * invalidating the signature.
  */
 export function signContractCall(
   wallet: Wallet,
   params: SignContractParams,
 ): { tx: Transaction; program: string; method: string; opType: 'call' | 'program_call' } {
   const opType = params.opType ?? 'program_call';
-  const encrypted_data = JSON.stringify({
-    program: params.program,
-    method: params.method,
-    args: params.args ?? [],
-  });
+  const args = params.args ?? [];
+  // Payload encoding is dictated by opType — see the doc comment above.
+  const payload =
+    opType === 'call'
+      ? { encrypted_data: params.method, message: JSON.stringify(args) }
+      : {
+          encrypted_data: JSON.stringify({
+            program: params.program,
+            method: params.method,
+            args,
+          }),
+        };
   const tx = signTransaction({
     secretKey: wallet.sk,
     publicKeyB64: wallet.pubB64,
@@ -208,7 +226,7 @@ export function signContractCall(
       ou: params.ou ?? recommendedOu(opType, 0n),
       timestamp: nowTs(),
       op_type: opType,
-      encrypted_data,
+      ...payload,
     },
   });
   return { tx, program: params.program, method: params.method, opType };

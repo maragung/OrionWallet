@@ -94,6 +94,12 @@ export interface SignContractParams {
   args?: unknown[];
   amount?: string;
   ou?: string;
+  /**
+   * On-chain operation label, which also selects the payload encoding.
+   * Defaults to `program_call`. Use `call` for programs whose VM expects the
+   * method name in `encrypted_data` and the args as JSON in `message`.
+   */
+  opType?: 'call' | 'program_call';
 }
 
 type Listener = (payload: unknown) => void;

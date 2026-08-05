@@ -237,6 +237,55 @@ describe('ConnectHandler: signing requires approval every time', () => {
     expect(res.result).toBeDefined();
     expect((res.result as { signedTransaction?: unknown }).signedTransaction).toBeDefined();
   });
+
+  it('signContract honours opType "call" and reports it back', async () => {
+    const host = makeHost();
+    const { driver } = wire(host);
+    await connect(driver);
+    const res = await driver.request(METHODS.SIGN_CONTRACT, {
+      program: 'octProg',
+      method: 'buy',
+      args: ['1', '1000'],
+      opType: 'call',
+    });
+    const result = res.result as {
+      signedTransaction: { op_type: string; encrypted_data: string; message: string };
+      opType: string;
+      nonce: number;
+    };
+    expect(result.opType).toBe('call');
+    expect(result.signedTransaction.op_type).toBe('call');
+    // Bare method + JSON args, the encoding the VM expects for `call`.
+    expect(result.signedTransaction.encrypted_data).toBe('buy');
+    expect(result.signedTransaction.message).toBe('["1","1000"]');
+    // The nonce used is echoed so a dApp can retry on a nonce race.
+    expect(result.nonce).toBe(5);
+  });
+
+  // An unrecognised opType must not be coerced to a default: it selects the
+  // payload encoding, so guessing wrong yields a tx the chain rejects.
+  it('signContract rejects an unsupported opType instead of defaulting', async () => {
+    const host = makeHost();
+    const { driver } = wire(host);
+    await connect(driver);
+    const res = await driver.request(METHODS.SIGN_CONTRACT, {
+      program: 'octProg',
+      method: 'buy',
+      opType: 'transfer',
+    });
+    expect(res.error?.code).toBe(ERROR_CODES.INVALID_PARAMS);
+    // Refused before any approval prompt is shown.
+    expect(host.approvals.some((a) => a.kind === 'signContract')).toBe(false);
+  });
+
+  it('signContract surfaces the resolved opType to the approval prompt', async () => {
+    const host = makeHost();
+    const { driver } = wire(host);
+    await connect(driver);
+    await driver.request(METHODS.SIGN_CONTRACT, { program: 'octProg', method: 'stake' });
+    const prompt = host.approvals.find((a) => a.kind === 'signContract');
+    expect(prompt?.detail.opType).toBe('program_call');
+  });
 });
 
 describe('ConnectHandler: locked wallet', () => {

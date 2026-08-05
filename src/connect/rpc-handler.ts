@@ -469,10 +469,26 @@ export class ConnectHandler {
             message: 'signContract requires program and method',
           });
         }
+        // opType drives the payload ENCODING, not just a label, so an
+        // unrecognised value must be refused rather than silently coerced —
+        // signing under the wrong encoding produces a tx the node rejects,
+        // and the signature cannot be repaired after the fact.
+        if (
+          params.opType !== undefined &&
+          params.opType !== 'call' &&
+          params.opType !== 'program_call'
+        ) {
+          return this.fail(env.id, {
+            code: ERROR_CODES.INVALID_PARAMS,
+            message: `signContract: unsupported opType "${String(params.opType)}" (expected "call" or "program_call")`,
+          });
+        }
         const approved = await this.host.requestApproval({
           kind: 'signContract',
           origin: this.origin,
-          detail: { ...params },
+          // Surface the resolved opType so the approval UI shows which
+          // operation the user is actually authorising.
+          detail: { ...params, opType: params.opType ?? 'program_call' },
         });
         if (!approved) return this.rejected(env.id);
         this.session = await grantPermission(session, 'signContract');
@@ -483,6 +499,8 @@ export class ConnectHandler {
           signedTransaction: signed.tx,
           program: signed.program,
           method: signed.method,
+          opType: signed.opType,
+          nonce,
           note: 'Signed only. Submit via the wallet UI; the SDK cannot broadcast.',
         });
       }

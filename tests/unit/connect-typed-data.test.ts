@@ -171,6 +171,70 @@ describe('signContract', () => {
     expect(opType).toBe('call');
   });
 
+  // The VM reads a `call` differently from a `program_call`: the method name is
+  // a bare string in encrypted_data and the args are JSON in message. Signing
+  // the nested program_call blob under the `call` label makes the node parse
+  // the method as `{"program":...` and revert, so the encoding is asserted here
+  // rather than only the op_type label.
+  it('encodes opType "call" as bare method + JSON args in message', () => {
+    const { tx } = signContractCall(wallet, {
+      program: 'octProg',
+      method: 'buy',
+      args: ['1', '2'],
+      nonce: 7,
+      opType: 'call',
+    });
+    expect(tx.encrypted_data).toBe('buy');
+    expect(tx.message).toBe('["1","2"]');
+  });
+
+  it('encodes a "call" with no args as an empty JSON array', () => {
+    const { tx } = signContractCall(wallet, {
+      program: 'octProg',
+      method: 'claim',
+      nonce: 7,
+      opType: 'call',
+    });
+    expect(tx.encrypted_data).toBe('claim');
+    expect(tx.message).toBe('[]');
+  });
+
+  it('keeps the nested blob encoding for program_call and sets no message', () => {
+    const { tx } = signContractCall(wallet, {
+      program: 'octProg',
+      method: 'stake',
+      args: [1, 2],
+      nonce: 7,
+    });
+    expect(JSON.parse(tx.encrypted_data as string)).toEqual({
+      program: 'octProg',
+      method: 'stake',
+      args: [1, 2],
+    });
+    expect(tx.message).toBeUndefined();
+  });
+
+  it('prices a "call" off the node schedule instead of the program_call default', () => {
+    const { tx } = signContractCall(wallet, {
+      program: 'octProg',
+      method: 'buy',
+      nonce: 7,
+      opType: 'call',
+    });
+    expect(tx.ou).toBe('2000');
+  });
+
+  it('lets an explicit ou override the per-opType default', () => {
+    const { tx } = signContractCall(wallet, {
+      program: 'octProg',
+      method: 'buy',
+      nonce: 7,
+      opType: 'call',
+      ou: '5000',
+    });
+    expect(tx.ou).toBe('5000');
+  });
+
   it('defaults opType to "program_call" when omitted', () => {
     const { tx, opType } = signContractCall(wallet, {
       program: 'octProg',

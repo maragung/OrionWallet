@@ -17,6 +17,7 @@ export type OpType =
   | 'key_switch'
   | 'program_deploy'
   | 'program_call'
+  | 'call'
   | 'circle_deploy'
   | 'circle_update'
   | 'circle_asset_put'
@@ -131,6 +132,12 @@ export function buildTxJson(tx: Transaction): string {
  *   stealth:    1000000 raw (1 OCT)
  *   program_deploy: 5000000 raw (5 OCT)
  *   program_call:   100000 raw (0.1 OCT)
+ *   call:           2000 raw (0.002 OCT)
+ *
+ * `call` is priced off the node's own schedule: devnet reports
+ * recommended=1000 / fast=2000 for this op. We default to the `fast` tier so a
+ * call lands promptly without the 50x overpay that the `program_call` default
+ * would impose.
  *
  * These can be overridden by the user in the Send form.
  */
@@ -147,6 +154,8 @@ export function recommendedOu(opType: string, amountRaw: number | bigint): strin
     case 'program_deploy':
     case 'circle_deploy':
       return '5000000';
+    case 'call':
+      return '2000';
     case 'program_call':
     case 'register_pvac':
       return '100000';
