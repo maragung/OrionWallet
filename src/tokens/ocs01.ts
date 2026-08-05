@@ -210,3 +210,55 @@ export function formatStorageAmount(
   const raw = parseU128(rawValue);
   return raw === null ? null : formatTokenAmount(raw, decimals);
 }
+
+/** Why a user-entered amount could not be converted to base units. */
+export type AmountError =
+  'empty' | 'malformed' | 'negative' | 'too-precise' | 'exceeds-u128' | 'unknown-decimals';
+
+export type ParseAmountResult =
+  { ok: true; raw: bigint } | { ok: false; error: AmountError; detail?: string };
+
+/**
+ * Convert a human-entered amount into raw base units.
+ *
+ * Parsing is done on the digit string — the input never passes through
+ * `Number`, so precision is preserved for the full u128 range.
+ *
+ * Rejects rather than rounds when the input carries more fractional digits
+ * than the token supports: silently truncating "1.9999999" for a 6-decimal
+ * token would move a different amount than the user typed.
+ *
+ * When `decimals` is unknown the amount cannot be scaled at all, so the caller
+ * must not guess — sending raw units under a wrong assumed scale could be off
+ * by many orders of magnitude.
+ */
+export function parseAmountToRaw(input: string, decimals: number | null): ParseAmountResult {
+  const s = input.trim();
+  if (s === '') return { ok: false, error: 'empty' };
+  if (decimals === null) return { ok: false, error: 'unknown-decimals' };
+  if (s.startsWith('-')) return { ok: false, error: 'negative' };
+
+  // Plain decimal only: no exponent form, no separators, no sign.
+  const m = /^(\d*)(?:\.(\d*))?$/.exec(s);
+  if (!m) return { ok: false, error: 'malformed' };
+
+  const intPart = m[1] ?? '';
+  const fracPart = m[2] ?? '';
+  if (intPart === '' && fracPart === '') return { ok: false, error: 'malformed' };
+
+  const significantFrac = fracPart.replace(/0+$/, '');
+  if (significantFrac.length > decimals) {
+    return {
+      ok: false,
+      error: 'too-precise',
+      detail: `${significantFrac.length} decimal places given, token supports ${decimals}`,
+    };
+  }
+
+  const scaledFrac = fracPart.padEnd(decimals, '0').slice(0, decimals);
+  const digits = `${intPart === '' ? '0' : intPart}${scaledFrac}`;
+  const raw = BigInt(digits);
+
+  if (raw > MAX_U128) return { ok: false, error: 'exceeds-u128' };
+  return { ok: true, raw };
+}

@@ -25,6 +25,7 @@ import { hexEncode } from '../crypto/hex';
 import { base64Encode } from '../crypto/base64';
 import { canonicalSerializeOrdered, type CanonicalObject } from '../tx/canonical-json';
 import { signTransaction, nowTs, recommendedOu, type Transaction } from '../tx/builder';
+import { encodeCallArgs } from '../tx/call-args';
 import type { Wallet } from '../wallet/wallet';
 
 const MSG_TAG = 'octra-signed-message:v1\n';
@@ -204,16 +205,20 @@ export function signContractCall(
 ): { tx: Transaction; program: string; method: string; opType: 'call' | 'program_call' } {
   const opType = params.opType ?? 'program_call';
   const args = params.args ?? [];
+  // Args are encoded with encodeCallArgs rather than JSON.stringify so that
+  // u128 amounts can be passed as bigint: JSON.stringify throws on a BigInt,
+  // and Number silently corrupts values above 2^53. Output is byte-identical
+  // to JSON.stringify for argument lists containing no bigint.
+  const encodedArgs = encodeCallArgs(args);
   // Payload encoding is dictated by opType — see the doc comment above.
   const payload =
     opType === 'call'
-      ? { encrypted_data: params.method, message: JSON.stringify(args) }
+      ? { encrypted_data: params.method, message: encodedArgs }
       : {
-          encrypted_data: JSON.stringify({
-            program: params.program,
-            method: params.method,
-            args,
-          }),
+          encrypted_data:
+            `{"program":${JSON.stringify(params.program)},` +
+            `"method":${JSON.stringify(params.method)},` +
+            `"args":${encodedArgs}}`,
         };
   const tx = signTransaction({
     secretKey: wallet.sk,

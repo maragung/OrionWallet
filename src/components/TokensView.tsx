@@ -6,6 +6,7 @@ import { PanelSkeleton } from './PanelSkeleton';
 import { CopyButton } from './CopyButton';
 import { Tooltip } from './Tooltip';
 import { ConfirmDialog } from './ConfirmDialog';
+import { TokenTransferForm } from './TokenTransferForm';
 import {
   loadCachedHoldings,
   refreshHoldings,
@@ -40,6 +41,7 @@ export function TokensView() {
   const [addr, setAddr] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<TokenHolding | null>(null);
+  const [sending, setSending] = useState<TokenHolding | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const mounted = useRef(true);
 
@@ -317,9 +319,21 @@ export function TokensView() {
                       <span className="token-raw-suffix"> {t('tokens.rawUnits')}</span>
                     )}
                   </div>
-                  <button className="ghost" onClick={() => setConfirmRemove(h)}>
-                    {t('tokens.remove')}
-                  </button>
+                  <div style={{ display: 'flex', gap: 'var(--sp-1)' }}>
+                    <button
+                      className="ghost"
+                      onClick={() => setSending(h)}
+                      // Without decimals the amount cannot be scaled safely, so
+                      // sending is blocked rather than risking a wrong amount.
+                      disabled={h.raw === 0n || h.decimals === null}
+                      title={h.decimals === null ? t('tokenTx.unknownDecimals') : undefined}
+                    >
+                      {t('tokenTx.send')}
+                    </button>
+                    <button className="ghost" onClick={() => setConfirmRemove(h)}>
+                      {t('tokens.remove')}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -348,6 +362,19 @@ export function TokensView() {
         onConfirm={doRemove}
         onCancel={() => setConfirmRemove(null)}
       />
+
+      {sending && (
+        <TokenTransferForm
+          token={sending}
+          onClose={() => setSending(null)}
+          onDone={() => {
+            setSending(null);
+            // Balance changes only once the tx confirms, so re-read rather
+            // than optimistically subtracting.
+            void doRefresh();
+          }}
+        />
+      )}
     </>
   );
 }

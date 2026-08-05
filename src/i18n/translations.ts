@@ -79,6 +79,28 @@ const en: Translations = {
   'tokens.spoofWarning':
     'Anyone can deploy a token using any name or symbol. Always verify the contract address before trusting or transferring a token.',
 
+  // Token transfer
+  'tokenTx.title': 'Send',
+  'tokenTx.send': 'Send',
+  'tokenTx.recipient': 'Recipient',
+  'tokenTx.amount': 'Amount',
+  'tokenTx.available': 'Available:',
+  'tokenTx.max': 'Max',
+  'tokenTx.token': 'Token',
+  'tokenTx.contract': 'Contract',
+  'tokenTx.rawUnits': 'Raw base units',
+  'tokenTx.confirm': 'Confirm send',
+  'tokenTx.sent': 'Transfer submitted:',
+  'tokenTx.insufficient': 'Amount exceeds your balance',
+  'tokenTx.badAmount': 'Enter a valid amount',
+  'tokenTx.selfTransfer': 'This token contract rejects transfers to your own address',
+  'tokenTx.tooPrecise': 'This token supports at most {n} decimal places',
+  'tokenTx.tooLarge': 'Amount is too large for this token',
+  'tokenTx.unknownDecimals':
+    'This contract does not publish a decimals value, so amounts cannot be scaled safely. Sending is disabled.',
+  'tokenTx.irreversible':
+    'Token transfers cannot be reversed. Check the recipient and the raw amount carefully.',
+
   // Network switcher
   'network.label': 'Network',
   'network.switched': 'Network switched',

@@ -21,8 +21,13 @@
  * cancellable; manual add-by-address stays instant.
  */
 import type { RpcClient } from '../rpc/client';
+import type { Wallet } from '../wallet/wallet';
+import { buildTxJson } from '../tx/builder';
+import { isValidAddress } from '../crypto/address';
+import { signContractCall } from '../connect/typed-data';
 import {
   OCS01_KEYS,
+  MAX_U128,
   balanceKey,
   parseU128,
   parseDecimals,
@@ -378,4 +383,110 @@ export async function scanForTokens(
   }
 
   return loadCachedHoldings(rpc.url, owner);
+}
+
+// ===== Transfer =====
+
+/** OCS01 method name for a direct transfer. */
+export const TRANSFER_METHOD = 'transfer';
+
+export interface TransferTokenInput {
+  contract: string;
+  to: string;
+  /** Amount in raw base units. Must already be scaled by the token's decimals. */
+  raw: bigint;
+  /** Fee override in raw OCT units. Defaults to the live schedule's fast tier. */
+  ou?: string;
+}
+
+export interface TransferTokenResult {
+  hash: string;
+  /** The exact `message` payload that was signed, for display/audit. */
+  argsJson: string;
+  ou: string;
+  nonce: number;
+}
+
+/**
+ * Transfer an OCS01 token.
+ *
+ * Encoded as an `op_type: "call"` transaction, matching the shape observed
+ * on-chain: the tx is addressed TO THE TOKEN CONTRACT, `encrypted_data` holds
+ * the bare method name, and `message` holds the JSON argument array. The OCT
+ * `amount` is zero — the token moves in contract state, not as native value.
+ *
+ * The amount is passed as a bigint all the way into the signer, which encodes
+ * it as a bare JSON integer. Because the Ed25519 signature covers the canonical
+ * JSON, an amount mangled here cannot be repaired afterwards.
+ */
+export async function transferToken(
+  rpc: RpcClient,
+  wallet: Wallet,
+  input: TransferTokenInput,
+): Promise<TransferTokenResult> {
+  if (!isValidAddress(input.contract)) {
+    throw new Error('Invalid token contract address');
+  }
+  if (!isValidAddress(input.to)) {
+    throw new Error('Invalid recipient address');
+  }
+  if (input.to === wallet.addr) {
+    // The reference contract rejects this outright ("self transfer disabled"),
+    // so fail before spending a fee on a transaction that cannot succeed.
+    throw new Error('Cannot transfer to your own address');
+  }
+  if (input.raw <= 0n) {
+    throw new Error('Amount must be greater than zero');
+  }
+  if (input.raw > MAX_U128) {
+    throw new Error('Amount exceeds the u128 maximum');
+  }
+
+  // Verify the on-chain balance covers this transfer before paying a fee.
+  const balRes = await rpc.rpcCall<{ value?: unknown }>('octra_contractStorage', [
+    input.contract,
+    balanceKey(wallet.addr),
+  ]);
+  if (balRes.ok) {
+    const held = parseU128(balRes.result?.value) ?? 0n;
+    if (held < input.raw) {
+      throw new Error('Insufficient token balance');
+    }
+  }
+
+  const nonceRes = await rpc.getBalance(wallet.addr);
+  if (!nonceRes.ok || !nonceRes.result) {
+    throw new Error(`Failed to fetch nonce: ${nonceRes.error ?? 'unknown'}`);
+  }
+  const nonce = nonceRes.result.nonce + 1;
+
+  // Prefer the node's live fee schedule over a hardcoded constant: observed
+  // `call` fees on devnet ranged from 2000 to 150000.
+  let ou = input.ou;
+  if (!ou) {
+    const fee = await rpc.getFee();
+    ou = fee.ok && fee.result?.fast ? String(fee.result.fast) : undefined;
+  }
+
+  const signed = signContractCall(wallet, {
+    program: input.contract,
+    method: TRANSFER_METHOD,
+    // bigint reaches the encoder intact; it is emitted as bare JSON digits.
+    args: [input.to, input.raw],
+    nonce,
+    opType: 'call',
+    ou,
+  });
+
+  const submit = await rpc.submitTx(JSON.parse(buildTxJson(signed.tx)));
+  if (!submit.ok || !submit.result) {
+    throw new Error(`Submit failed: ${submit.error ?? 'unknown'}`);
+  }
+
+  return {
+    hash: submit.result.hash ?? signed.tx.hash ?? '',
+    argsJson: signed.tx.message ?? '',
+    ou: signed.tx.ou,
+    nonce,
+  };
 }

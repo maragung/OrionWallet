@@ -1469,3 +1469,28 @@ button.icon {
     text-align: left;
   }
 }
+
+/* Confirmation rows in the token transfer dialog. */
+.token-confirm-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+.token-confirm-rows > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--sp-3);
+  font-size: var(--fs-sm);
+}
+.token-confirm-rows > div > span:first-child {
+  color: var(--text-muted);
+  flex: 0 0 auto;
+}
+/* Addresses and u128 integers are long; wrap instead of overflowing. */
+.token-confirm-rows > div > span:last-child {
+  text-align: right;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+}
