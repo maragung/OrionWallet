@@ -204,6 +204,17 @@ describe('ConnectHandler: signing requires approval every time', () => {
     const res = await driver.request(METHODS.SIGN_MESSAGE, { message: 'gm' });
     expect(res.result).toBeDefined();
     expect((res.result as { signature?: string }).signature).toBeTruthy();
+    expect((res.result as { scheme?: string }).scheme).toBe('octra-ed25519-sha256/v1');
+  });
+
+  it('signs a raw message when scheme is "raw"', async () => {
+    const host = makeHost();
+    const { driver } = wire(host);
+    await connect(driver);
+    const res = await driver.request(METHODS.SIGN_MESSAGE, { message: 'gm', scheme: 'raw' });
+    expect(res.result).toBeDefined();
+    expect((res.result as { signature?: string }).signature).toBeTruthy();
+    expect((res.result as { scheme?: string }).scheme).toBe('octra-ed25519-sha256-raw/v1');
   });
 
   it('returns USER_REJECTED when the user declines connect', async () => {

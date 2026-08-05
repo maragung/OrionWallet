@@ -1,12 +1,19 @@
 /**
  * Octra-native, domain-separated signing encoders (wallet side).
  *
- * Every scheme below is prefixed with a UNIQUE domain tag before hashing, so a
- * signature produced for one purpose can never be replayed as another — and
- * critically, none of them can collide with a transaction signature. A signed
- * Octra transaction is Ed25519 over canonical JSON that begins with
- * `{"from":...`; the tags here begin with `octra-*:` ASCII, so the signed byte
- * strings are structurally disjoint from any transaction.
+ * Every DEFAULT scheme below is prefixed with a UNIQUE domain tag before
+ * hashing, so a signature produced for one purpose can never be replayed as
+ * another — and critically, none of them can collide with a transaction
+ * signature. A signed Octra transaction is Ed25519 over canonical JSON that
+ * begins with `{"from":...`; the tags here begin with `octra-*:` ASCII, so the
+ * signed byte strings are structurally disjoint from any transaction.
+ *
+ * EXCEPTION: `signPlainMessage` accepts an opt-in `scheme: 'raw'` that signs
+ * SHA-256(message) with NO domain tag, for interop with external verifiers.
+ * It remains disjoint from transaction signing only because a transaction is
+ * signed over its full canonical JSON bytes (always far longer than the
+ * 32-byte digest signed here), never over a hash. Callers must opt in
+ * explicitly; the default stays `'domain'`.
  *
  * IMPORTANT: These produce SIGNATURES ONLY. `signContract` builds a signed
  * transaction object but DOES NOT submit it — broadcasting happens only inside
@@ -24,20 +31,36 @@ const MSG_TAG = 'octra-signed-message:v1\n';
 const TYPED_TAG = 'octra-typed-data:v1|';
 const APPROVE_TAG = 'octra-contract-approval:v1|';
 
-/** Sign a plain UTF-8 message: Ed25519 over SHA-256(TAG + len + message). */
+export interface SignMessageParams {
+  message: string;
+  scheme?: 'raw' | 'domain';
+}
+
+/**
+ * Sign a plain UTF-8 message with configurable domain separation.
+ *
+ * `scheme: 'domain'` (default) signs SHA-256(TAG + len + message), ensuring
+ * the signature can never be replayed as a transaction or other typed data.
+ *
+ * `scheme: 'raw'` signs SHA-256(message) directly, for compatibility with
+ * external systems that expect untagged message signing.
+ */
 export function signPlainMessage(
   wallet: Wallet,
-  message: string,
+  params: SignMessageParams,
 ): { address: string; publicKey: string; message: string; signature: string; scheme: string } {
-  const body = `${MSG_TAG}${message.length}\n${message}`;
-  const digest = sha256(new TextEncoder().encode(body));
+  const { message, scheme = 'domain' } = params;
+  const digest =
+    scheme === 'raw'
+      ? sha256(new TextEncoder().encode(message))
+      : sha256(new TextEncoder().encode(`${MSG_TAG}${message.length}\n${message}`));
   const sig = sign(digest, wallet.sk);
   return {
     address: wallet.addr,
     publicKey: wallet.pubB64,
     message,
     signature: base64Encode(sig),
-    scheme: 'octra-ed25519-sha256/v1',
+    scheme: scheme === 'raw' ? 'octra-ed25519-sha256-raw/v1' : 'octra-ed25519-sha256/v1',
   };
 }
 
@@ -152,17 +175,23 @@ export interface SignContractParams {
   amount?: string;
   ou?: string;
   nonce: number;
+  opType?: 'call' | 'program_call';
 }
 
 /**
- * Build and sign a `program_call` transaction. Returns the SIGNED transaction
+ * Build and sign a contract-call transaction. Returns the SIGNED transaction
  * object for the dApp to inspect/submit through the wallet UI — this function
  * does not touch the network.
+ *
+ * `opType` selects the on-chain operation label and defaults to `program_call`,
+ * so existing callers keep byte-identical output. The alternate `call` label is
+ * accepted for programs that expect the shorter form.
  */
 export function signContractCall(
   wallet: Wallet,
   params: SignContractParams,
-): { tx: Transaction; program: string; method: string } {
+): { tx: Transaction; program: string; method: string; opType: 'call' | 'program_call' } {
+  const opType = params.opType ?? 'program_call';
   const encrypted_data = JSON.stringify({
     program: params.program,
     method: params.method,
@@ -176,11 +205,11 @@ export function signContractCall(
       to: params.program,
       amount: params.amount ?? '0',
       nonce: params.nonce,
-      ou: params.ou ?? recommendedOu('program_call', 0n),
+      ou: params.ou ?? recommendedOu(opType, 0n),
       timestamp: nowTs(),
-      op_type: 'program_call',
+      op_type: opType,
       encrypted_data,
     },
   });
-  return { tx, program: params.program, method: params.method };
+  return { tx, program: params.program, method: params.method, opType };
 }

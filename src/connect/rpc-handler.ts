@@ -410,17 +410,22 @@ export class ConnectHandler {
 
     switch (method) {
       case METHODS.SIGN_MESSAGE: {
-        const message = String((env.params as { message?: unknown })?.message ?? '');
+        const raw = env.params as { message?: unknown; scheme?: unknown } | undefined;
+        const message = String(raw?.message ?? '');
+        // Only the two known schemes are honoured; anything else falls back to
+        // the domain-separated default rather than silently signing raw bytes.
+        const scheme: 'raw' | 'domain' = raw?.scheme === 'raw' ? 'raw' : 'domain';
         const approved = await this.host.requestApproval({
           kind: 'signMessage',
           origin: this.origin,
-          detail: { message },
+          // Surface the scheme so the approval UI can warn on untagged signing.
+          detail: { message, scheme },
         });
         if (!approved) return this.rejected(env.id);
         // Grant permission on first successful approval, so subsequent calls do
         // not hit the permission check and can proceed straight to the prompt.
         this.session = await grantPermission(session, 'signMessage');
-        return this.reply(env.id, signPlainMessage(wallet, message));
+        return this.reply(env.id, signPlainMessage(wallet, { message, scheme }));
       }
       case METHODS.SIGN_TYPED_DATA: {
         const td = (env.params as { typedData?: TypedData })?.typedData;

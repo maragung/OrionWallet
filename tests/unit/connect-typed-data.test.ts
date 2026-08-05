@@ -23,7 +23,7 @@ function verifyDigest(digestInput: string, sigB64: string): boolean {
 
 describe('signMessage', () => {
   it('produces a verifiable Ed25519 signature over the tagged digest', () => {
-    const res = signPlainMessage(wallet, 'hello world');
+    const res = signPlainMessage(wallet, { message: 'hello world' });
     expect(res.address).toBe(wallet.addr);
     expect(res.publicKey).toBe(wallet.pubB64);
     const body = `octra-signed-message:v1\n${'hello world'.length}\nhello world`;
@@ -31,13 +31,35 @@ describe('signMessage', () => {
   });
 
   it('is deterministic for the same message', () => {
-    expect(signPlainMessage(wallet, 'x').signature).toBe(signPlainMessage(wallet, 'x').signature);
+    expect(signPlainMessage(wallet, { message: 'x' }).signature).toBe(
+      signPlainMessage(wallet, { message: 'x' }).signature,
+    );
   });
 
   it('differs for different messages', () => {
-    expect(signPlainMessage(wallet, 'a').signature).not.toBe(
-      signPlainMessage(wallet, 'b').signature,
+    expect(signPlainMessage(wallet, { message: 'a' }).signature).not.toBe(
+      signPlainMessage(wallet, { message: 'b' }).signature,
     );
+  });
+
+  it('defaults to the domain scheme when scheme is omitted', () => {
+    const implicit = signPlainMessage(wallet, { message: 'gm' });
+    const explicit = signPlainMessage(wallet, { message: 'gm', scheme: 'domain' });
+    expect(implicit.signature).toBe(explicit.signature);
+    expect(implicit.scheme).toBe('octra-ed25519-sha256/v1');
+  });
+
+  it('signs the untagged message bytes under scheme "raw"', () => {
+    const res = signPlainMessage(wallet, { message: 'hello world', scheme: 'raw' });
+    expect(res.scheme).toBe('octra-ed25519-sha256-raw/v1');
+    // Raw digest is sha256 of the message bytes only: no tag, no length frame.
+    expect(verifyDigest('hello world', res.signature)).toBe(true);
+  });
+
+  it('produces different signatures for raw vs domain on the same message', () => {
+    const domain = signPlainMessage(wallet, { message: 'same', scheme: 'domain' });
+    const raw = signPlainMessage(wallet, { message: 'same', scheme: 'raw' });
+    expect(raw.signature).not.toBe(domain.signature);
   });
 });
 
@@ -124,7 +146,7 @@ describe('approveContract', () => {
 
 describe('signContract', () => {
   it('returns a SIGNED program_call tx but does not submit it', () => {
-    const { tx, program, method } = signContractCall(wallet, {
+    const { tx, program, method, opType } = signContractCall(wallet, {
       program: 'octProg',
       method: 'stake',
       args: [1, 2],
@@ -135,5 +157,27 @@ describe('signContract', () => {
     expect(tx.hash).toMatch(/^[0-9a-f]{64}$/);
     expect(program).toBe('octProg');
     expect(method).toBe('stake');
+    expect(opType).toBe('program_call');
+  });
+
+  it('accepts opType "call" and produces op_type "call" in the tx', () => {
+    const { tx, opType } = signContractCall(wallet, {
+      program: 'octProg',
+      method: 'stake',
+      nonce: 7,
+      opType: 'call',
+    });
+    expect(tx.op_type).toBe('call');
+    expect(opType).toBe('call');
+  });
+
+  it('defaults opType to "program_call" when omitted', () => {
+    const { tx, opType } = signContractCall(wallet, {
+      program: 'octProg',
+      method: 'stake',
+      nonce: 7,
+    });
+    expect(tx.op_type).toBe('program_call');
+    expect(opType).toBe('program_call');
   });
 });
