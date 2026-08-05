@@ -1,0 +1,306 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  pull-requests: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ────────────────────────────────────────────────────────────────────────
+  # Job 1: Health check + install verification
+  # ────────────────────────────────────────────────────────────────────────
+  health:
+    name: Health Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: webcli-react/package-lock.json
+
+      - name: Install dependencies
+        working-directory: webcli-react
+        run: npm ci --no-audit --no-fund --legacy-peer-deps
+
+      - name: Run health check
+        working-directory: webcli-react
+        run: node scripts/health-check.mjs
+
+  # ────────────────────────────────────────────────────────────────────────
+  # Job 2: Auto-fix (format + lint --fix) — commits fixes back to PR
+  # ────────────────────────────────────────────────────────────────────────
+  autofix:
+    name: Auto-Fix (format + lint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: health
+    # Only on PRs — pushes to main go straight to test
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.head_ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: webcli-react/package-lock.json
+
+      - name: Install dependencies
+        working-directory: webcli-react
+        run: npm ci --no-audit --no-fund --legacy-peer-deps
+
+      - name: Run auto-fix (write mode)
+        working-directory: webcli-react
+        run: node scripts/autofix.mjs --no-test --no-build
+        continue-on-error: true
+
+      - name: Check for changes
+        id: changes
+        working-directory: webcli-react
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit fixes
+        if: steps.changes.outputs.changed == 'true'
+        working-directory: webcli-react
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: auto-fix (format + lint + typecheck)
+
+  Applied by autofix.mjs in CI.
+  Co-authored-by: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>"
+          git push
+
+      - name: Comment on PR if fixes were applied
+        if: steps.changes.outputs.changed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🤖 Auto-fix applied: formatting + lint fixes committed to this PR.'
+            })
+
+  # ────────────────────────────────────────────────────────────────────────
+  # Job 3: Lint + Typecheck + Unit Tests (matrix: Node 20 + 22)
+  # ────────────────────────────────────────────────────────────────────────
+  test:
+    name: Test (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [health, autofix]
+    # Skip if autofix is running (it will re-trigger on the auto-commit)
+    if: always() && needs.health.result == 'success'
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['20', '22']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: webcli-react/package-lock.json
+
+      - name: Install dependencies
+        working-directory: webcli-react
+        run: npm ci --no-audit --no-fund --legacy-peer-deps
+
+      - name: Format check
+        working-directory: webcli-react
+        run: npx prettier --check "src/**/*.{ts,tsx,css}" "tests/**/*.{ts,tsx}"
+
+      - name: Lint
+        working-directory: webcli-react
+        run: npx eslint . --max-warnings=0
+
+      - name: Typecheck
+        working-directory: webcli-react
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        working-directory: webcli-react
+        run: npx vitest run --coverage
+        env:
+          CI: 'true'
+
+      - name: Upload coverage
+        if: always() && matrix.node-version == '20'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: webcli-react/coverage/
+          retention-days: 7
+
+  # ────────────────────────────────────────────────────────────────────────
+  # Job 4: Build (auto-build on every push)
+  # ────────────────────────────────────────────────────────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: webcli-react/package-lock.json
+
+      - name: Install dependencies
+        working-directory: webcli-react
+        run: npm ci --no-audit --no-fund --legacy-peer-deps
+
+      - name: Build
+        working-directory: webcli-react
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: webcli-react-dist
+          path: webcli-react/dist/
+          retention-days: 30
+
+      - name: Verify build size
+        working-directory: webcli-react
+        run: |
+          echo "## Build Size" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          du -sh dist/ >> $GITHUB_STEP_SUMMARY
+          du -sh dist/assets/* >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # ────────────────────────────────────────────────────────────────────────
+  # Job 5: E2E tests (Playwright) — desktop + mobile
+  # ────────────────────────────────────────────────────────────────────────
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: webcli-react/package-lock.json
+
+      - name: Install dependencies
+        working-directory: webcli-react
+        run: npm ci --no-audit --no-fund --legacy-peer-deps
+
+      - name: Install Playwright browsers
+        working-directory: webcli-react
+        run: npx playwright install --with-deps chromium
+
+      - name: Build (for preview)
+        working-directory: webcli-react
+        run: npm run build
+
+      - name: Run Playwright tests
+        working-directory: webcli-react
+        run: npx playwright test
+        env:
+          CI: 'true'
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: webcli-react/playwright-report/
+          retention-days: 7
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: webcli-react/test-results/
+          retention-days: 7
+
+  # ────────────────────────────────────────────────────────────────────────
+  # Job 6: Deploy to GitHub Pages (on main/master push only)
+  # ────────────────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [build, e2e]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: webcli-react/package-lock.json
+
+      - name: Install dependencies
+        working-directory: webcli-react
+        run: npm ci --no-audit --no-fund --legacy-peer-deps
+
+      - name: Build
+        working-directory: webcli-react
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: webcli-react/dist/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

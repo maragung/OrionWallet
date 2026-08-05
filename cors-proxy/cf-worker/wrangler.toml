@@ -1,0 +1,11 @@
+name = "octra-cors-proxy"
+main = "index.ts"
+compatibility_date = "2024-09-01"
+
+# Deploy with: wrangler deploy
+# After deploy, set in the React app's Settings:
+#   RPC URL: https://octra-cors-proxy.<your-subdomain>.workers.dev/proxy
+
+[vars]
+# Add allowed upstreams as comma-separated list (or hard-code in index.ts)
+# ALLOWED_UPSTREAMS = "https://octra.network,https://devnet.octra.network"

@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Octra Wallet SDK — Demo dApp</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0a0a0f;
+        --fg: #e7e7ef;
+        --muted: #8a8aa0;
+        --card: #15151f;
+        --border: #26263a;
+        --accent: #6d6dff;
+        --ok: #35c67a;
+        --err: #ff5c6c;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        padding: 24px;
+      }
+      main { max-width: 720px; margin: 0 auto; }
+      h1 { font-size: 20px; }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      button {
+        background: var(--accent);
+        color: white;
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 14px;
+        font-size: 13px;
+        cursor: pointer;
+        margin: 4px 4px 4px 0;
+      }
+      button.secondary { background: #2a2a3d; }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
+      input {
+        background: #0e0e16;
+        color: var(--fg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px;
+        width: 100%;
+        font-family: ui-monospace, monospace;
+      }
+      pre {
+        background: #0e0e16;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        overflow: auto;
+        max-height: 260px;
+        font-size: 12px;
+      }
+      .row { display: flex; gap: 8px; align-items: center; }
+      .muted { color: var(--muted); font-size: 12px; }
+      .pill {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        background: #2a2a3d;
+      }
+      .pill.ok { background: rgba(53, 198, 122, 0.15); color: var(--ok); }
+      .pill.err { background: rgba(255, 92, 108, 0.15); color: var(--err); }
+      code { font-family: ui-monospace, monospace; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Octra Wallet SDK — Demo dApp</h1>
+      <p class="muted">
+        Self-contained demo — no SDK import. Talks to wallet at <code>/connect</code>
+        via popup + MessageChannel using the official Octra envelope protocol.
+      </p>
+
+      <div class="card">
+        <div class="row">
+          <strong>Status:</strong>
+          <span id="status" class="pill">disconnected</span>
+          <span id="addr" class="muted"></span>
+        </div>
+        <div style="margin-top: 12px">
+          <button id="connect">Connect</button>
+          <button id="disconnect" class="secondary" disabled>Disconnect</button>
+          <button id="accounts" class="secondary" disabled>getAccounts</button>
+          <button id="balance" class="secondary" disabled>getBalance</button>
+          <button id="network" class="secondary" disabled>getNetwork</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <strong>Sign message</strong>
+        <div class="row" style="margin-top: 8px">
+          <input id="msg" value="gm from the demo dApp" />
+          <button id="signMsg" disabled>signMessage</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <strong>Sign typed data / contract</strong>
+        <div style="margin-top: 8px">
+          <button id="signTyped" disabled>signTypedData</button>
+          <button id="approve" disabled>approveContract</button>
+          <button id="signContract" disabled>signContract</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <strong>Prohibited (must be rejected locally)</strong>
+        <div style="margin-top: 8px">
+          <button id="forbidden" class="secondary" disabled>request("sendTransaction")</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <strong>Output</strong>
+        <pre id="out">—</pre>
+      </div>
+    </main>
+
+    <script>
+    (function () {
+      'use strict';
+
+      /* ================================================================
+         Octra Wallet SDK — self-contained vanilla JS demo.
+         Uses the EXACT wire protocol from src/sdk/protocol.ts:
+           - HelloMessage  (wallet → dApp, window-level, transfers port)
+           - HelloAck      (dApp → wallet, first port message)
+           - Envelope      (bidirectional, all subsequent port messages)
+         ================================================================ */
+
+      // ── Protocol constants (mirrored from src/sdk/protocol.ts) ──────
+      var PROTOCOL_VERSION = 1;
+      var WALLET_PATH = '/connect';
+      var TIMEOUT_MS = 60000;
+
+      var METHODS = {
+        CONNECT:         'wallet_connect',
+        DISCONNECT:      'wallet_disconnect',
+        GET_ACCOUNTS:    'wallet_getAccounts',
+        GET_ADDRESS:     'wallet_getAddress',
+        GET_PUBLIC_KEY:  'wallet_getPublicKey',
+        GET_BALANCE:     'wallet_getBalance',
+        GET_NETWORK:     'wallet_getNetwork',
+        GET_CHAIN_ID:    'wallet_getChainId',
+        GET_PERMISSIONS: 'wallet_getPermissions',
+        SIGN_MESSAGE:    'wallet_signMessage',
+        SIGN_TYPED_DATA: 'wallet_signTypedData',
+        APPROVE_CONTRACT:'wallet_approveContract',
+        SIGN_CONTRACT:   'wallet_signContract',
+      };
+
+      var PROHIBITED = [
+        'wallet_sendTransaction', 'sendTransaction',
+        'wallet_broadcastTransaction', 'broadcastTransaction',
+        'wallet_transfer', 'transfer',
+        'wallet_swap', 'swap',
+        'wallet_bridge', 'bridge',
+      ];
+
+      var CAPABILITIES = [
+        'signMessage', 'signTypedData', 'approveContract',
+        'signContract', 'multiAccount', 'events', 'sessionRestore',
+      ];
+
+      var EVENTS = {
+        CONNECT: 'connect',
+        DISCONNECT: 'disconnect',
+        ACCOUNT_CHANGED: 'accountChanged',
+        NETWORK_CHANGED: 'networkChanged',
+        SESSION_EXPIRED: 'sessionExpired',
+      };
+
+      // ── State ──────────────────────────────────────────────────────
+      var port = null;
+      var popup = null;
+      var pending = {};
+      var nonceCounter = 0;
+      var connected = false;
+      var eventListeners = {};
+
+      var out = document.getElementById('out');
+      var statusEl = document.getElementById('status');
+      var addrEl = document.getElementById('addr');
+
+      // ── Helpers ────────────────────────────────────────────────────
+      function log(label, data) {
+        out.textContent = label + '\n\n' + JSON.stringify(data, null, 2);
+      }
+      function logErr(label, e) {
+        out.textContent = label + ' — ERROR\n\ncode: ' + (e && e.code || '?') + '\nmessage: ' + (e && e.message || e);
+      }
+      function makeId(prefix) {
+        var r = crypto.getRandomValues(new Uint32Array(2));
+        return (prefix || 'req') + '_' + Date.now().toString(36) + '_' +
+               r[0].toString(36) + r[1].toString(36) + '_' + (++nonceCounter).toString(36);
+      }
+      function nextNonce() { return nonceCounter + 1; }
+
+      function setConnected(state, address) {
+        connected = state;
+        statusEl.textContent = state ? 'connected' : 'disconnected';
+        statusEl.className = 'pill' + (state ? ' ok' : '');
+        addrEl.textContent = address || '';
+        var ids = ['disconnect','accounts','balance','network','signMsg','signTyped','approve','signContract','forbidden'];
+        for (var i = 0; i < ids.length; i++) {
+          document.getElementById(ids[i]).disabled = !state;
+        }
+        document.getElementById('connect').disabled = state;
+      }
+
+      // ── Build an Envelope (matches src/sdk/protocol.ts makeRequest) ─
+      function buildEnvelope(method, params) {
+        return {
+          v: PROTOCOL_VERSION,
+          id: makeId('req'),
+          kind: 'req',
+          method: method,
+          params: params || {},
+          nonce: nextNonce(),
+          ts: Date.now(),
+        };
+      }
+
+      // ── Send request over port, return promise ─────────────────────
+      function sendRequest(method, params) {
+        return new Promise(function (resolve, reject) {
+          if (!port) return reject({ code: 'NOT_CONNECTED', message: 'No port' });
+          for (var i = 0; i < PROHIBITED.length; i++) {
+            if (PROHIBITED[i] === method) {
+              return reject({ code: 'METHOD_FORBIDDEN', message: method + ' is prohibited' });
+            }
+          }
+          // For signing requests, try to focus the popup from the dApp side too.
+          if (popup && !popup.closed) {
+            try { popup.focus(); } catch(e) {}
+            setTimeout(function() { try { popup.focus(); } catch(e) {} }, 300);
+          }
+          var env = buildEnvelope(method, params);
+          var timer = setTimeout(function () {
+            delete pending[env.id];
+            reject({ code: 'TIMEOUT', message: 'Request timed out' });
+          }, TIMEOUT_MS);
+          pending[env.id] = { resolve: resolve, reject: reject, timer: timer };
+          port.postMessage(env);
+        });
+      }
+
+      // ── Handle inbound port messages ───────────────────────────────
+      function onPortMessage(ev) {
+        var data = ev.data;
+        if (!data) return;
+
+        // Envelope response (kind === 'res')
+        if (data.kind === 'res') {
+          var p = pending[data.id];
+          if (p) {
+            delete pending[data.id];
+            clearTimeout(p.timer);
+            if (data.error) {
+              p.reject({ code: data.error.code || 'ERROR', message: data.error.message || 'Unknown error' });
+            } else {
+              p.resolve(data.result);
+            }
+          }
+          return;
+        }
+
+        // Envelope event (kind === 'evt')
+        if (data.kind === 'evt' && data.event) {
+          emitEvent(data.event, data.params);
+          return;
+        }
+      }
+
+      // ── Event emitter ──────────────────────────────────────────────
+      function onEvent(name, fn) {
+        if (!eventListeners[name]) eventListeners[name] = [];
+        eventListeners[name].push(fn);
+      }
+      function emitEvent(name, payload) {
+        var fns = eventListeners[name];
+        if (fns) for (var i = 0; i < fns.length; i++) fns[i](payload);
+        log('event: ' + name, payload || {});
+      }
+
+      // ── Listen for hello from wallet popup (window-level) ──────────
+      function onHelloFromPopup(ev) {
+        if (ev.origin !== location.origin) return;
+        var data = ev.data;
+        if (!data || data.type !== 'octra-wallet:hello') return;
+
+        var receivedPort = ev.ports && ev.ports[0];
+        if (!receivedPort) return;
+
+        // Stop listening for window messages — port-only from now on
+        window.removeEventListener('message', onHelloFromPopup);
+
+        port = receivedPort;
+        port.onmessage = onPortMessage;
+        port.start();
+
+        // Send HelloAck (challenge echo) over the PORT — first message must be this
+        var ack = {
+          __ack: {
+            challenge: data.challenge,
+            dappNonce: makeId('nonce'),
+            v: PROTOCOL_VERSION,
+            origin: location.origin,
+          },
+        };
+        port.postMessage(ack);
+
+        // Now send the wallet_connect request to establish session
+        sendRequest(METHODS.CONNECT, {
+          origin: location.origin,
+          capabilities: data.capabilities || CAPABILITIES,
+        }).then(function (result) {
+          setConnected(true, result.address);
+          log('connect', result);
+        }).catch(function (e) {
+          logErr('connect', e);
+        });
+      }
+
+      window.addEventListener('message', onHelloFromPopup);
+
+      // ── Connect button ─────────────────────────────────────────────
+      document.getElementById('connect').onclick = function () {
+        var rid = makeId('rid');
+        var params = new URLSearchParams({
+          v: String(PROTOCOL_VERSION),
+          rid: rid,
+          origin: location.origin,
+          caps: CAPABILITIES.join(','),
+        });
+
+        var url = WALLET_PATH + '?' + params.toString();
+        popup = window.open(url, 'octra_wallet', 'width=420,height=680,popup=1');
+
+        if (!popup) {
+          logErr('connect', { code: 'POPUP_BLOCKED', message: 'Popup blocked by browser' });
+          return;
+        }
+
+        // Timeout if wallet doesn't respond
+        setTimeout(function () {
+          if (!connected) {
+            logErr('connect', { code: 'TIMEOUT', message: 'Wallet did not respond in 15s' });
+          }
+        }, 15000);
+      };
+
+      // ── Disconnect ─────────────────────────────────────────────────
+      document.getElementById('disconnect').onclick = function () {
+        if (port && connected) {
+          var env = buildEnvelope(METHODS.DISCONNECT, {});
+          port.postMessage(env);
+          // Wait a bit for ack, then clean up
+          setTimeout(function () {
+            port = null;
+            connected = false;
+            setConnected(false);
+            log('disconnect', { ok: true });
+          }, 300);
+        } else {
+          port = null;
+          connected = false;
+          setConnected(false);
+          log('disconnect', { ok: true });
+        }
+      };
+
+      // ── Read-only requests ─────────────────────────────────────────
+      document.getElementById('accounts').onclick = function () {
+        sendRequest(METHODS.GET_ACCOUNTS, {})
+          .then(function (r) { log('getAccounts', r); })
+          .catch(function (e) { logErr('getAccounts', e); });
+      };
+
+      document.getElementById('balance').onclick = function () {
+        sendRequest(METHODS.GET_BALANCE, {})
+          .then(function (r) { log('getBalance', r); })
+          .catch(function (e) { logErr('getBalance', e); });
+      };
+
+      document.getElementById('network').onclick = function () {
+        sendRequest(METHODS.GET_NETWORK, {})
+          .then(function (net) {
+            return sendRequest(METHODS.GET_CHAIN_ID, {}).then(function (cid) {
+              log('getNetwork', { network: net, chainId: cid });
+            });
+          })
+          .catch(function (e) { logErr('getNetwork', e); });
+      };
+
+      // ── Signing requests ───────────────────────────────────────────
+      document.getElementById('signMsg').onclick = function () {
+        var msg = document.getElementById('msg').value;
+        sendRequest(METHODS.SIGN_MESSAGE, { message: msg })
+          .then(function (r) { log('signMessage', r); })
+          .catch(function (e) { logErr('signMessage', e); });
+      };
+
+      document.getElementById('signTyped').onclick = function () {
+        sendRequest(METHODS.SIGN_TYPED_DATA, {
+          typedData: {
+            domain: { name: 'DemoDApp', version: '1', chainId: 'octra:devnet' },
+            types: {
+              Order: [
+                { name: 'item', type: 'string' },
+                { name: 'qty', type: 'number' },
+                { name: 'buyer', type: 'string' },
+              ],
+            },
+            primaryType: 'Order',
+            message: { item: 'widget', qty: 3, buyer: 'demo' },
+          },
+        }).then(function (r) { log('signTypedData', r); })
+          .catch(function (e) { logErr('signTypedData', e); });
+      };
+
+      document.getElementById('approve').onclick = function () {
+        sendRequest(METHODS.APPROVE_CONTRACT, {
+          program: 'octContractAddr...',
+          method: 'approve',
+          spender: 'octSpender...',
+          limit: '1000000',
+        }).then(function (r) { log('approveContract', r); })
+          .catch(function (e) { logErr('approveContract', e); });
+      };
+
+      document.getElementById('signContract').onclick = function () {
+        sendRequest(METHODS.SIGN_CONTRACT, {
+          program: 'octContractAddr...',
+          method: 'stake',
+          args: [42],
+        }).then(function (r) { log('signContract (signed, NOT broadcast)', r); })
+          .catch(function (e) { logErr('signContract', e); });
+      };
+
+      // ── Prohibited method (must be rejected locally) ───────────────
+      document.getElementById('forbidden').onclick = function () {
+        sendRequest('sendTransaction', { to: 'x', amount: '1' })
+          .then(function () { logErr('sendTransaction', { message: 'UNEXPECTEDLY ALLOWED' }); })
+          .catch(function (e) { log('sendTransaction correctly rejected', { code: e.code, message: e.message }); });
+      };
+
+      // ── Listen for wallet events ───────────────────────────────────
+      onEvent(EVENTS.ACCOUNT_CHANGED, function (p) { setConnected(true, p && p.address); });
+      onEvent(EVENTS.DISCONNECT, function () { setConnected(false); });
+      onEvent(EVENTS.SESSION_EXPIRED, function () { setConnected(false); });
+    })();
+    </script>
+  </body>
+</html>

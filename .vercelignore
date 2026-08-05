@@ -1,0 +1,11 @@
+node_modules
+tests
+scripts
+coverage
+playwright-report
+test-results
+.github
+.husky
+*.md
+*.tar.gz
+webcli-source

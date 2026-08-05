@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+# Pre-push hook: run autofix check (no fixes, just verify)
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "Running auto-fix check before push..."
+node scripts/autofix.mjs --check --no-test --no-build

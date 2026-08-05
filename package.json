@@ -1,0 +1,82 @@
+{
+  "name": "orion-wallet",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Orion Wallet — client-side React+Vite+WASM wallet for the Octra Network with FHE (PVAC) support",
+  "license": "GPL-2.0-only",
+  "scripts": {
+    "dev": "vite",
+    "dev:all": "node scripts/watch-dev.mjs",
+    "watch": "node scripts/watch-dev.mjs",
+    "build": "tsc -b && vite build",
+    "build:wasm": "bash scripts/build-wasm.sh",
+    "preview": "vite preview",
+    "lint": "eslint . --ext .ts,.tsx --max-warnings=0",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:retry": "vitest run --retry=3",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:all": "vitest run && playwright test",
+    "autofix": "node scripts/autofix.mjs",
+    "autofix:check": "node scripts/autofix.mjs --check",
+    "autofix:watch": "node scripts/autofix.mjs --watch",
+    "autofix:retry": "node scripts/autofix.mjs --retry",
+    "health": "node scripts/health-check.mjs",
+    "check": "node scripts/autofix.mjs --check",
+    "fix": "node scripts/autofix.mjs",
+    "prepush": "node scripts/autofix.mjs --check",
+    "preinstall": "node scripts/health-check.mjs || true",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix --max-warnings=0",
+      "prettier --write"
+    ],
+    "*.{css,json,md}": [
+      "prettier --write"
+    ]
+  },
+  "dependencies": {
+    "@noble/ciphers": "^1.3.0",
+    "@noble/curves": "^1.6.0",
+    "@noble/hashes": "^1.5.0",
+    "idb": "^8.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tweetnacl": "^1.0.3",
+    "zustand": "^4.5.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.47.0",
+    "@types/node": "^26.1.2",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.0",
+    "@typescript-eslint/eslint-plugin": "^8.8.0",
+    "@typescript-eslint/parser": "^8.8.0",
+    "@vitejs/plugin-react": "^4.3.2",
+    "@vitest/coverage-v8": "^2.1.2",
+    "eslint": "^9.11.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.12",
+    "fake-indexeddb": "^6.2.5",
+    "globals": "^17.8.0",
+    "husky": "^9.1.7",
+    "jsdom": "^25.0.1",
+    "lint-staged": "^17.2.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.2",
+    "typescript-eslint": "^8.65.0",
+    "vite": "^5.4.8",
+    "vite-plugin-wasm": "^3.3.0",
+    "vitest": "^2.1.2"
+  }
+}
