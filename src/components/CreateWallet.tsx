@@ -233,7 +233,7 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
         >
           <div style={{ textAlign: 'center', marginBottom: 'var(--sp-5)' }}>
             <img
-              src="/icons/wallet.svg"
+              src="/logo.png"
               alt="Octra"
               style={{ width: 48, height: 48, marginBottom: 'var(--sp-2)' }}
             />

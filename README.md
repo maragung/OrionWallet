@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/icons/wallet.svg" alt="Orion Wallet" width="80" />
+  <img src="public/logo.png" alt="Orion Wallet" width="80" />
 </p>
 
 <h1 align="center">Orion Wallet</h1>

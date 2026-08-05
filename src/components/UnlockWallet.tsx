@@ -142,7 +142,7 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
         >
           <div style={{ textAlign: 'center', marginBottom: 'var(--sp-6)' }}>
             <img
-              src="/icons/wallet.svg"
+              src="/logo.png"
               alt="Octra"
               style={{ width: 56, height: 56, marginBottom: 'var(--sp-3)' }}
             />

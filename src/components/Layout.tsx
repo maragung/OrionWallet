@@ -379,7 +379,7 @@ export function Layout() {
     <div className="app">
       <header className="app-header">
         <div className="brand">
-          <img src="/icons/wallet.svg" alt="Octra" />
+          <img src="/logo.png" alt="Octra" />
           <span className="wordmark">Orion Wallet</span>
           <span className="tag info">React Port</span>
           {pvacIndicator}
