@@ -9,6 +9,7 @@ import { ContractPanel } from './ContractPanel';
 import { ContractViewer } from './ContractViewer';
 import { StealthPanel } from './StealthPanel';
 import { EncryptPanel } from './EncryptPanel';
+import { DocsPanel } from './DocsPanel';
 import { SettingsPanel } from './SettingsPanel';
 import { AccountPicker } from './AccountPicker';
 import { NetworkSwitcher } from './NetworkSwitcher';
@@ -32,7 +33,8 @@ type Tab =
   | 'contract-viewer'
   | 'stealth'
   | 'circles'
-  | 'settings';
+  | 'settings'
+  | 'docs';
 
 interface NavItem {
   id: Tab;
@@ -122,6 +124,13 @@ const NAV_ITEMS: NavItem[] = [
     icon: '⚙️',
     group: 'Advanced',
     mobile: true,
+  },
+  {
+    id: 'docs',
+    labelKey: 'nav.docs',
+    shortLabelKey: 'nav.docs',
+    icon: '📖',
+    group: 'Advanced',
   },
 ];
 
@@ -307,6 +316,7 @@ export function Layout() {
         r: 'receive',
         h: 'history',
         p: 'encrypt',
+        d: 'docs',
         ',': 'settings',
       };
       const dest = map[e.key.toLowerCase()];
@@ -434,6 +444,7 @@ export function Layout() {
           {tab === 'contract-viewer' && <ContractViewer />}
           {tab === 'circles' && <CirclesPanel />}
           {tab === 'settings' && <SettingsPanel />}
+          {tab === 'docs' && <DocsPanel />}
         </ErrorBoundary>
       </main>
 

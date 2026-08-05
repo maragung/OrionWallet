@@ -243,29 +243,18 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
             • 8–64 characters
             <br />• Under 15 chars: letter + digit + symbol
           </div>
-
-          <div style={{ marginTop: 'var(--sp-4)', textAlign: 'center' }}>
-            <a
-              href="https://orionwallet.vercel.app/docs"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-xs)' }}
-            >
-              📖 Documentation
-            </a>
-          </div>
         </div>
-      </div>
 
-      <ProcessingModal
-        open={modalOpen}
-        title="Unlocking Wallet"
-        stages={modalStages}
-        error={modalError}
-        errorAction={{ label: 'Try Again', onClick: closeModal }}
-        onClose={closeModal}
-        dismissible={!!modalError}
-      />
+        <ProcessingModal
+          open={modalOpen}
+          title="Unlocking Wallet"
+          stages={modalStages}
+          error={modalError}
+          errorAction={{ label: 'Try Again', onClick: closeModal }}
+          onClose={closeModal}
+          dismissible={!!modalError}
+        />
+      </div>
     </>
   );
 }
