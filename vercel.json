@@ -6,8 +6,7 @@
   "installCommand": "npm install --legacy-peer-deps",
   "rewrites": [
     { "source": "/docs", "destination": "/docs/USER_GUIDE.md" },
-    { "source": "/docs/(.*)", "destination": "/docs/$1" },
-    { "source": "/((?!docs).*)", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
     {
