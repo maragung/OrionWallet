@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Octra Wallet SDK — Demo dApp</title>
+    <title>Orion Wallet SDK — Demo dApp</title>
     <style>
       :root {
         color-scheme: dark;
@@ -79,11 +79,12 @@
   </head>
   <body>
     <main>
-      <h1>Octra Wallet SDK — Demo dApp</h1>
-      <p class="muted">
-        Self-contained demo — no SDK import. Talks to wallet at <code>/connect</code>
-        via popup + MessageChannel using the official Octra envelope protocol.
-      </p>
+      <h1>Orion Wallet SDK — Demo dApp</h1>
+       <p class="muted">
+         Self-contained demo — no SDK import. Talks to wallet at <code>/connect</code>
+         via popup + MessageChannel using the official Octra envelope protocol.
+         Configure <code>WALLET_ORIGIN</code> for cross-origin dApps.
+       </p>
 
       <div class="card">
         <div class="row">
@@ -142,10 +143,15 @@
            - Envelope      (bidirectional, all subsequent port messages)
          ================================================================ */
 
-      // ── Protocol constants (mirrored from src/sdk/protocol.ts) ──────
-      var PROTOCOL_VERSION = 1;
-      var WALLET_PATH = '/connect';
-      var TIMEOUT_MS = 60000;
+       // ── Configuration ─────────────────────────────────────
+       // Set WALLET_ORIGIN to the Orion Wallet URL where your dApp
+       // will be deployed. For local development use '/connect'.
+       // For production dApps on other domains, use the full URL:
+       //   'https://orionwallet.vercel.app'
+       var WALLET_ORIGIN = 'https://orionwallet.vercel.app';
+       var WALLET_PATH = '/connect';
+       var WALLET_URL = WALLET_ORIGIN + WALLET_PATH;
+       var WALLET_ORIGIN_RE = new URL(WALLET_ORIGIN).origin;
 
       var METHODS = {
         CONNECT:         'wallet_connect',
@@ -299,7 +305,7 @@
 
       // ── Listen for hello from wallet popup (window-level) ──────────
       function onHelloFromPopup(ev) {
-        if (ev.origin !== location.origin) return;
+         if (ev.origin !== WALLET_ORIGIN_RE) return;
         var data = ev.data;
         if (!data || data.type !== 'octra-wallet:hello') return;
 
@@ -348,7 +354,7 @@
           caps: CAPABILITIES.join(','),
         });
 
-        var url = WALLET_PATH + '?' + params.toString();
+         var url = WALLET_URL + '?' + params.toString();
         popup = window.open(url, 'octra_wallet', 'width=420,height=680,popup=1');
 
         if (!popup) {
