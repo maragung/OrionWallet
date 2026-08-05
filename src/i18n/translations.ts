@@ -101,6 +101,14 @@ const en: Translations = {
   'tokenTx.irreversible':
     'Token transfers cannot be reversed. Check the recipient and the raw amount carefully.',
 
+  // dApp connection popup
+  'connect.disconnect': 'Disconnect',
+  'connect.disconnectTitle': 'Disconnect from dApp?',
+  'connect.disconnectMessage':
+    'This ends the current session. You will need to reconnect and approve again next time.',
+  'connect.disconnected': 'Disconnected from dApp',
+  'connect.locked': 'Wallet is locked. Please unlock and try again.',
+
   // Network switcher
   'network.label': 'Network',
   'network.switched': 'Network switched',

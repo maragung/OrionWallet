@@ -19,6 +19,8 @@ import { UnlockWallet } from '../components/UnlockWallet';
 import { CreateWallet } from '../components/CreateWallet';
 import { Toasts } from '../components/Toasts';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { useI18n } from '../i18n/useI18n';
 import { EVENTS, WALLET_CAPABILITIES, type Capability, type HelloMessage } from '../sdk/protocol';
 import { ConnectHandler, type ApprovalRequest, type WalletHost } from './rpc-handler';
 import { ApprovalPrompt, type ApprovalDecision } from './approval-ui/ApprovalPrompt';
@@ -69,11 +71,14 @@ export function ConnectApp() {
   const params = useMemo(parseParams, []);
   const store = useWalletStore();
   const { wallet, isUnlocked, rpc, initRpc, settings } = store;
+  const { t } = useI18n();
 
   const [showCreate, setShowCreate] = useState(false);
   const [pending, setPending] = useState<PendingApproval | null>(null);
   const [busy, setBusy] = useState(false);
   const [handshakeDone, setHandshakeDone] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
   const [accounts, setAccounts] = useState<
     Array<{ address: string; publicKey: string; name?: string; index?: number }>
   >([]);
@@ -270,6 +275,7 @@ export function ConnectApp() {
       origin: params.origin,
       challenge,
       requestedCapabilities: params.caps.length ? params.caps : (WALLET_CAPABILITIES as string[]),
+      onSessionChange: setSessionId,
     });
 
     const hello: HelloMessage = {
@@ -316,6 +322,21 @@ export function ConnectApp() {
     },
     [settings?.network, store],
   );
+
+  // ── Disconnect (user-initiated from the popup) ──────────────────────────
+  const handleDisconnect = useCallback(async () => {
+    setShowDisconnectConfirm(false);
+    const h = handlerRef.current;
+    if (h) await h.disconnectByUser();
+    store.pushToast('success', t('connect.disconnected'));
+    setTimeout(() => {
+      try {
+        window.close();
+      } catch {
+        /* ignore */
+      }
+    }, 500);
+  }, [store, t]);
 
   // ── Render ──────────────────────────────────────────────────────────────
 
@@ -413,6 +434,14 @@ export function ConnectApp() {
             >
               {params.origin}
             </p>
+            <button
+              onClick={() => setShowDisconnectConfirm(true)}
+              className="ghost"
+              style={{ marginTop: 12, width: '100%' }}
+              disabled={!sessionId}
+            >
+              {t('connect.disconnect')}
+            </button>
           </div>
 
           {/* Active wallet info */}
@@ -451,6 +480,16 @@ export function ConnectApp() {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={showDisconnectConfirm}
+        title={t('connect.disconnectTitle')}
+        message={t('connect.disconnectMessage')}
+        confirmLabel={t('connect.disconnect')}
+        cancelLabel={t('common.cancel')}
+        danger
+        onConfirm={handleDisconnect}
+        onCancel={() => setShowDisconnectConfirm(false)}
+      />
       <Toasts />
     </div>
   );

@@ -112,6 +112,8 @@ export class ConnectHandler {
   private outboundNonce = 1;
   private readonly replay: ReplayState = { lastNonce: 0, seen: new Set() };
   private disposed = false;
+  /** Notified whenever the live session id changes (connect/disconnect/expiry). */
+  private readonly onSessionChange?: (sid: string | null) => void;
 
   constructor(input: {
     host: WalletHost;
@@ -119,6 +121,7 @@ export class ConnectHandler {
     origin: string;
     challenge: string;
     requestedCapabilities?: string[];
+    onSessionChange?: (sid: string | null) => void;
   }) {
     this.host = input.host;
     this.port = input.port;
@@ -126,8 +129,15 @@ export class ConnectHandler {
     this.challenge = input.challenge;
     this.capabilities = negotiateCapabilities(input.requestedCapabilities);
     this.requestedCaps = this.capabilities;
+    this.onSessionChange = input.onSessionChange;
     this.port.onmessage = (e) => this.onMessage(e);
     this.port.start?.();
+  }
+
+  /** Set the live session and notify the host UI of the change. */
+  private setSession(session: SdkSessionRecord | null): void {
+    this.session = session;
+    this.onSessionChange?.(session?.sid ?? null);
   }
 
   /** Emit a wallet event to the connected dApp (bounded to this session). */
@@ -305,9 +315,9 @@ export class ConnectHandler {
         permissions: DEFAULT_PERMISSIONS,
       });
     }
-    this.session = await touchSession(session);
+    this.setSession(await touchSession(session));
 
-    const address = this.host.getAddress() ?? this.session.address;
+    const address = this.host.getAddress() ?? this.session!.address;
     const accounts = this.host.getAccounts();
     const pk = accounts.find((a) => a.address === address)?.publicKey ?? '';
     this.reply(env.id, {
@@ -317,17 +327,30 @@ export class ConnectHandler {
       network: this.host.getNetwork(),
       chainId: await this.host.getChainId(),
       capabilities: this.capabilities,
-      sessionId: this.session.sid,
+      sessionId: this.session!.sid,
     });
   }
 
   private async onDisconnect(env: Envelope): Promise<void> {
-    if (this.session) {
-      await endSession(this.session.sid);
-      this.session = null;
-    }
+    await this.endCurrentSession('dApp requested');
     this.reply(env.id, { ok: true });
-    this.emitEvent(EVENTS.DISCONNECT, { reason: 'dApp requested' });
+  }
+
+  /**
+   * End the live session and inform the dApp. Shared by the dApp-initiated
+   * disconnect and the wallet-UI disconnect button so both stay in lockstep:
+   * revoke the session, clear local state, and emit the disconnect event.
+   */
+  private async endCurrentSession(reason: string): Promise<void> {
+    if (!this.session) return;
+    await endSession(this.session.sid);
+    this.setSession(null);
+    this.emitEvent(EVENTS.DISCONNECT, { reason });
+  }
+
+  /** User pressed "Disconnect" inside the wallet popup. */
+  async disconnectByUser(): Promise<void> {
+    await this.endCurrentSession('user disconnected in wallet');
   }
 
   // ── Reads (session-silent) ───────────────────────────────────────────────────
@@ -342,7 +365,7 @@ export class ConnectHandler {
     if (this.session.absExpiresAt <= now || this.session.idleExpiresAt <= now) {
       await endSession(this.session.sid);
       this.emitEvent(EVENTS.SESSION_EXPIRED, { origin: this.origin });
-      this.session = null;
+      this.setSession(null);
       this.fail(id, { code: ERROR_CODES.SESSION_EXPIRED, message: 'Session expired' });
       return null;
     }
