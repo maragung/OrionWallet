@@ -37,6 +37,7 @@ function makeHost(
       approvals.push(req);
       return true;
     },
+    requestUnlock: async () => true,
     ...overrides,
   };
   return host;
@@ -289,11 +290,45 @@ describe('ConnectHandler: signing requires approval every time', () => {
 });
 
 describe('ConnectHandler: locked wallet', () => {
-  it('refuses connect when locked', async () => {
-    const host = makeHost({ isUnlocked: () => false });
+  it('refuses when locked and the unlock prompt is cancelled', async () => {
+    const host = makeHost({ isUnlocked: () => false, requestUnlock: async () => false });
     const { driver } = wire(host);
     driver.ack();
     const res = await driver.request(METHODS.CONNECT, { origin: ORIGIN });
     expect(res.error?.code).toBe(ERROR_CODES.WALLET_LOCKED);
+  });
+
+  it('suspends the request while locked and retries after unlock succeeds', async () => {
+    let unlocked = false;
+    const requestUnlock = vi.fn(async () => {
+      unlocked = true;
+      return true;
+    });
+    const host = makeHost({ isUnlocked: () => unlocked, requestUnlock });
+    const { driver } = wire(host);
+    driver.ack();
+    const res = await driver.request(METHODS.CONNECT, { origin: ORIGIN });
+    expect(requestUnlock).toHaveBeenCalledTimes(1);
+    expect(res.error).toBeUndefined();
+    expect(res.result).toBeDefined();
+  });
+
+  it('prompts for unlock on a read request and completes after unlock', async () => {
+    let unlocked = true;
+    const requestUnlock = vi.fn(async () => {
+      unlocked = true;
+      return true;
+    });
+    const host = makeHost({ isUnlocked: () => unlocked, requestUnlock });
+    const { driver } = wire(host);
+    driver.ack();
+    // Connect while unlocked to establish a session.
+    await driver.request(METHODS.CONNECT, { origin: ORIGIN });
+    // Now lock and issue a read; the gate should prompt for unlock.
+    unlocked = false;
+    const res = await driver.request(METHODS.GET_BALANCE, {});
+    expect(requestUnlock).toHaveBeenCalled();
+    expect(res.error).toBeUndefined();
+    expect(res.result).toBeDefined();
   });
 });

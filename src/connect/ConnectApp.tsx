@@ -217,6 +217,42 @@ export function ConnectApp() {
     [],
   );
 
+  // Requests that arrived while the wallet is locked park their resolvers here.
+  // They all resolve together on the next lock→unlock transition, so multiple
+  // concurrent requests share a single unlock prompt (coalescing).
+  const unlockResolversRef = useRef<Array<(unlocked: boolean) => void>>([]);
+  const requestUnlock = useCallback(
+    () =>
+      new Promise<boolean>((resolve) => {
+        unlockResolversRef.current.push(resolve);
+        // Alert + focus the popup so the user sees the unlock screen.
+        try {
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.value = 800;
+          gain.gain.value = 0.15;
+          osc.start();
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+          osc.stop(ctx.currentTime + 0.2);
+        } catch {
+          /* ignore */
+        }
+        [0, 200, 500].forEach((ms) =>
+          setTimeout(() => {
+            try {
+              window.focus();
+            } catch {
+              /* ignore */
+            }
+          }, ms),
+        );
+      }),
+    [],
+  );
+
   const accountsRef = useRef(accounts);
   accountsRef.current = accounts;
 
@@ -254,8 +290,9 @@ export function ConnectApp() {
         return (bi.result.pending_nonce ?? bi.result.nonce ?? 0) + 1;
       },
       requestApproval,
+      requestUnlock,
     }),
-    [requestApproval],
+    [requestApproval, requestUnlock],
   );
 
   // Send hello + wire the handler, exactly once, after unlock.
@@ -302,7 +339,13 @@ export function ConnectApp() {
       return;
     }
     if (prevUnlocked.current && !isUnlocked) h.emitEvent(EVENTS.WALLET_LOCKED, {});
-    if (!prevUnlocked.current && isUnlocked) h.emitEvent(EVENTS.WALLET_UNLOCKED, {});
+    if (!prevUnlocked.current && isUnlocked) {
+      h.emitEvent(EVENTS.WALLET_UNLOCKED, {});
+      // Resolve all suspended requests that were waiting for unlock.
+      const resolvers = unlockResolversRef.current;
+      unlockResolversRef.current = [];
+      resolvers.forEach((r) => r(true));
+    }
     prevUnlocked.current = isUnlocked;
   }, [isUnlocked]);
 

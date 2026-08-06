@@ -92,6 +92,12 @@ export interface WalletHost {
    * (rejected). Reads never call this; every sign does.
    */
   requestApproval(req: ApprovalRequest): Promise<boolean>;
+  /**
+   * Ask the wallet UI to prompt for unlock when a request arrives while locked.
+   * Resolves true if unlocked, false if cancelled/failed. Multiple concurrent
+   * requests should coalesce into one unlock prompt via the implementation.
+   */
+  requestUnlock(): Promise<boolean>;
 }
 
 interface ReplayState {
@@ -246,6 +252,21 @@ export class ConnectHandler {
     const replayErr = this.replayCheck(env);
     if (replayErr) return this.fail(env.id, replayErr);
 
+    // Locked-wallet gate: instead of failing outright, suspend the request and
+    // ask the wallet UI to prompt for unlock. When the user unlocks, the promise
+    // resolves true and we fall through to normal dispatch (approval/read/etc.).
+    // If the user never unlocks, the dApp call times out on its own. DISCONNECT
+    // is exempt so a dApp can always tear down a session without an unlock.
+    if (method !== METHODS.DISCONNECT && !this.host.isUnlocked()) {
+      const unlocked = await this.host.requestUnlock();
+      if (!unlocked) {
+        return this.fail(env.id, {
+          code: ERROR_CODES.WALLET_LOCKED,
+          message: 'Wallet is locked. Please unlock and try again.',
+        });
+      }
+    }
+
     try {
       switch (method) {
         case METHODS.CONNECT:
@@ -282,9 +303,7 @@ export class ConnectHandler {
   // ── Connect / disconnect ─────────────────────────────────────────────────────
 
   private async onConnect(env: Envelope): Promise<void> {
-    if (!this.host.isUnlocked()) {
-      return this.fail(env.id, { code: ERROR_CODES.WALLET_LOCKED, message: 'Wallet is locked' });
-    }
+    // Lock is enforced by the centralized gate in handleRequest.
 
     // Session restore: a live session for this origin reconnects silently.
     let session = await restoreSession(this.origin);
@@ -376,9 +395,7 @@ export class ConnectHandler {
   private async onRead(env: Envelope, method: string): Promise<void> {
     const session = await this.requireSession(env.id);
     if (!session) return;
-    if (!this.host.isUnlocked()) {
-      return this.fail(env.id, { code: ERROR_CODES.WALLET_LOCKED, message: 'Wallet is locked' });
-    }
+    // Lock is enforced by the centralized gate in handleRequest.
 
     switch (method) {
       case METHODS.GET_ACCOUNTS:
@@ -406,9 +423,8 @@ export class ConnectHandler {
   private async onSign(env: Envelope, method: string): Promise<void> {
     const session = await this.requireSession(env.id);
     if (!session) return;
-    if (!this.host.isUnlocked()) {
-      return this.fail(env.id, { code: ERROR_CODES.WALLET_LOCKED, message: 'Wallet is locked' });
-    }
+    // Lock is enforced by the centralized gate in handleRequest; keep the
+    // getWallet() null-guard below as defense in depth.
     const wallet = this.host.getWallet();
     if (!wallet) {
       return this.fail(env.id, { code: ERROR_CODES.WALLET_LOCKED, message: 'Wallet is locked' });
