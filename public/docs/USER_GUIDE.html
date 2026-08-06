@@ -55,7 +55,7 @@
 <p>&gt; <strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Source code, issues, and releases.</p>
 <hr />
 <h2>Contents</h2>
-<p>- <a href="#getting-started">Getting started</a><br />- <a href="#creating-a-wallet">Creating a wallet</a><br />- <a href="#importing-an-existing-wallet">Importing an existing wallet</a><br />- <a href="#everyday-use">Everyday use</a><br />- <a href="#encrypted-balance-fhe">Encrypted balance (FHE)</a><br />- <a href="#stealth-transfers">Stealth transfers</a><br />- <a href="#connecting-to-a-dapp">Connecting to a dApp</a><br />- <a href="#backup-and-recovery">Backup and recovery</a><br />- <a href="#troubleshooting">Troubleshooting</a><br />- <a href="#keeping-your-funds-safe">Keeping your funds safe</a></p>
+<p>- <a href="#getting-started">Getting started</a><br />- <a href="#creating-a-wallet">Creating a wallet</a><br />- <a href="#importing-an-existing-wallet">Importing an existing wallet</a><br />- <a href="#everyday-use">Everyday use</a><br />- <a href="#encrypted-balance-fhe">Encrypted balance (FHE)</a><br />- <a href="#stealth-transfers">Stealth transfers</a><br />- <a href="#connecting-to-a-dapp">Connecting to a dApp</a><br />- <a href="#session-expiry">Session expiry</a><br />- <a href="#backup-and-recovery">Backup and recovery</a><br />- <a href="#troubleshooting">Troubleshooting</a><br />- <a href="#keeping-your-funds-safe">Keeping your funds safe</a></p>
 <hr />
 <h2>Getting started</h2>
 <h3>Requirements</h3>
@@ -115,6 +115,27 @@ are shown and marked <code>⚠ Cached</code>.
 <p>- <strong>Check the origin carefully.</strong> Confirm the domain is exactly the site you intended.<br />- Approve only the permissions you expect.<br />- "Trust this site" skips future prompts for read-only requests — use it sparingly.</p>
 <p>Review and revoke connections at any time under <strong>Settings → Connected Sites</strong>.</p>
 <hr />
+<h2>Session expiry</h2>
+<p>Orion Wallet sessions expire automatically:</p>
+<ul>
+<li><strong>Idle timeout:</strong> 30 minutes of inactivity</li>
+<li><strong>Absolute timeout:</strong> 8 hours from connection</li>
+</ul>
+<p>When a session expires, the wallet closes the connection and the dApp is notified. The dApp should then prompt you to reconnect.</p>
+<h3>What happens when your session expires</h3>
+<ol>
+<li>The wallet emits a <code>sessionExpired</code> event to the dApp.</li>
+<li>The dApp detects the expired session and shows a "Reconnect" prompt.</li>
+<li>You click <strong>Connect</strong> to open the wallet popup again.</li>
+<li>The wallet restores your session and the dApp resumes.</li>
+</ol>
+<h3>If a dApp doesn't reconnect automatically</h3>
+<ul>
+<li>Click the <strong>Connect</strong> button in the dApp.</li>
+<li>The wallet popup opens — approve the connection.</li>
+<li>Your previous session data is preserved, so you don't need to re-import your wallet.</li>
+</ul>
+<hr />
 <h2>Backup and recovery</h2>
 <h3>Exporting</h3>
 <strong>Settings → Backup → Export</strong> downloads an encrypted <code>.oct</code> file. It is protected by
@@ -138,12 +159,14 @@ phrase restores all of them.
 <p>Reinstall the wallet using your recovery phrase and set a new PIN. Without the phrase,<br />the funds cannot be recovered — by anyone.</p>
 <h3>My wallet vanished after an update</h3>
 <p>Data is migrated automatically from older builds on first launch. If your accounts are<br />missing, <strong>do not create a new wallet</strong> — that could overwrite the old data. Report the<br />issue, and restore from your recovery phrase in the meantime.</p>
+<h3>dApp says "Session expired"</h3>
+<p>This means the wallet session timed out (30 min idle / 8h absolute). Reconnect by<br />clicking <strong>Connect</strong> in the dApp. Your wallet data is preserved — you only need to<br />re-approve the connection.</p>
 <hr />
 <h2>Keeping your funds safe</h2>
 <strong>Do</strong>
 <p>- Keep your recovery phrase offline, on paper, ideally in more than one location<br />- Verify recipient addresses before sending<br />- Verify the origin shown in dApp connection prompts<br />- Start with a small test transaction when sending to a new address</p>
 <strong>Never</strong>
 <p>- Enter your recovery phrase on any website. Orion Wallet will never ask for it after setup<br />- Store the phrase in a screenshot, password manager note, cloud drive, or chat<br />- Share your private key or <code>.oct</code> file<br />- Use a wallet holding real funds on a shared or untrusted computer</p>
-<p>Orion Wallet has <strong>not been independently audited</strong>. Please review the<br /><a href="SECURITY.md">Security document</a> before storing significant value.</p>
+<p>Orion Wallet has <strong>not been independently audited</strong>. Please review the<br /><a href="SECURITY.html">Security document</a> before storing significant value.</p>
 </body>
 </html>

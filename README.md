@@ -13,6 +13,7 @@
 <p align="center">
   <a href="https://orionwallet.vercel.app">Live App</a> &middot;
   <a href="https://orionwallet.vercel.app/docs">Documentation</a> &middot;
+  <a href="https://orionwallet.vercel.app/demo">Demo dApp</a> &middot;
   <a href="CHANGELOG.md">Changelog</a> &middot;
   <a href="docs/SECURITY.md">Security</a>
 </p>
@@ -38,7 +39,8 @@ The wallet also integrates **PVAC** (Privacy-preserving Verified Authenticated C
 - **Stealth transfers** — one-time addresses for recipient privacy
 - **Encrypted balance (FHE)** — verify balances without decryption via PVAC/WebAssembly
 - **Smart contract interaction** — read state and send transactions with ABI encoding
-- **dApp SDK** — connect dApps via `orion_wallet_connect` or `wallet_connect`
+- **dApp SDK** — connect dApps via `wallet_connect` or `orion_wallet_connect`
+- **Session management** — automatic session expiry detection, refresh, and reconnect
 - **Multi-language** — English, Indonesian, Arabic, Chinese, Korean, Japanese
 - **Dark / light theme**
 - **Zero tracking** — no analytics, no telemetry, no cookies
@@ -78,6 +80,11 @@ src/
   utils/          # Clipboard, progress helpers
   wallet/         # Wallet creation, import, PIN, storage
 
+public/
+  demo/           # Standalone dApp integration demo (dapp.html)
+  docs/           # Static HTML documentation pages
+  wasm/           # Compiled PVAC module
+
 tests/
   e2e/            # Playwright end-to-end specs
   unit/           # Vitest unit tests (350+)
@@ -88,31 +95,111 @@ docs/
   SECURITY.md     # Threat model and vulnerability reporting
 ```
 
-## Testing
-
-```bash
-npm test              # Run all unit tests
-npm run test:e2e      # Run Playwright end-to-end tests
-npm run autofix       # Full pipeline: typecheck → format → lint → test → build
-```
-
-## SDK
+## SDK — dApp Integration
 
 Orion Wallet exposes a JavaScript SDK for dApps to connect and interact with the wallet. It supports both `wallet_*` and `orion_wallet_*` method namespaces.
 
+### Installation
+
+```bash
+npm install @orion-wallet/sdk
+```
+
+### Basic usage
+
 ```html
 <script type="module">
-  import { OrionWalletProvider } from './src/sdk/index.ts';
+  import { WalletProvider } from '@orion-wallet/sdk';
 
-  const provider = new OrionWalletProvider({ walletUrl: '/connect' });
+  const provider = new WalletProvider({
+    walletUrl: 'https://orionwallet.example/connect',
+    capabilities: ['signMessage', 'signContract', 'viewAccounts', 'viewBalance'],
+  });
+
+  // Connect — opens the wallet popup
   const result = await provider.connect();
   console.log(result.address); // Connected address
 
-  const signature = await provider.request({ method: 'wallet_signMessage', params: { message: 'Hello' } });
+  // Check session health before signing
+  if (!provider.isSessionAlive()) {
+    await provider.refreshSession(); // Reopens popup, re-establishes channel
+  }
+
+  // Sign a message
+  const signature = await provider.signMessage('Hello from my dApp');
+
+  // Sign a contract call (returns signed tx, does NOT broadcast)
+  const tx = await provider.signContract({
+    program: 'MyContract',
+    method: 'transfer',
+    args: [recipient, amount],
+    ou: '200000',
+  });
 </script>
 ```
 
-See [docs/DEVELOPER.md](docs/DEVELOPER.md) for the full SDK reference.
+### Session management
+
+Orion sessions expire after **30 minutes idle** or **8 hours absolute**. The SDK provides built-in session health checks and auto-reconnect:
+
+```javascript
+// Check if the session is still alive
+if (!provider.isSessionAlive()) {
+  // Session expired — refresh to reopen the popup
+  await provider.refreshSession();
+}
+
+// Listen for session expiry events
+provider.on('sessionExpired', () => {
+  // Prompt the user to reconnect
+  setConnected(false);
+});
+```
+
+### Event API
+
+| Event | Payload | Description |
+|---|---|---|
+| `connect` | `ConnectResult` | Fired after successful connection |
+| `disconnect` | `{ reason }` | Fired when the connection closes |
+| `accountChanged` | `{ address }` | Fired when the active account changes |
+| `networkChanged` | `{ network, chainId }` | Fired when the network changes |
+| `sessionExpired` | `{ origin }` | Fired when the session expires on the wallet side |
+
+### Method namespaces
+
+The wallet answers to two equivalent namespaces:
+
+| Generic | Orion-branded | Operation |
+|---|---|---|
+| `wallet_connect` | `orion_wallet_connect` | Initiate connection |
+| `wallet_signMessage` | `orion_wallet_signMessage` | Sign a plain message |
+| `wallet_signTypedData` | `orion_wallet_signTypedData` | Sign structured data |
+| `wallet_approveContract` | `orion_wallet_approveContract` | Pre-approve a contract call |
+| `wallet_signContract` | `orion_wallet_signContract` | Sign a contract transaction |
+| `wallet_getAccounts` | `orion_wallet_getAccounts` | List accounts |
+| `wallet_getBalance` | `orion_wallet_getBalance` | Read balance |
+
+Both namespaces are accepted and execute identically. The `orion_wallet_*` names exist for dApps that want to explicitly target Orion Wallet.
+
+### Prohibited methods
+
+The following methods are blocked locally by the SDK — they can never be used to execute transactions without explicit user approval:
+
+- `wallet_sendTransaction` / `sendTransaction`
+- `wallet_broadcastTransaction` / `broadcastTransaction`
+- `wallet_transfer` / `transfer`
+- `wallet_swap` / `swap`
+- `wallet_bridge` / `bridge`
+
+### Security invariants
+
+- **Origin validation** on every inbound `postMessage`
+- **Anti-replay:** CSPRNG challenge + dApp nonce + per-session monotonic nonce
+- **Permissions** are per-origin, persisted in `sdk-sessions`, and granted/revoked explicitly
+- **MessagePort independence:** The port outlives the popup. Once transferred, the wallet can close the approval window without breaking the connection
+- **Prohibited methods** are rejected both client-side and wallet-side
+- **`localStorage`** holds only a session-restore hint (address, network) — never secrets
 
 ## Security
 

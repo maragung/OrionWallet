@@ -16,6 +16,7 @@ with your PIN, and stored only on your own device. Nothing is sent to a server.
 - [Encrypted balance (FHE)](#encrypted-balance-fhe)
 - [Stealth transfers](#stealth-transfers)
 - [Connecting to a dApp](#connecting-to-a-dapp)
+- [Session expiry](#session-expiry)
 - [Backup and recovery](#backup-and-recovery)
 - [Troubleshooting](#troubleshooting)
 - [Keeping your funds safe](#keeping-your-funds-safe)
@@ -151,6 +152,31 @@ Review and revoke connections at any time under **Settings → Connected Sites**
 
 ---
 
+## Session expiry
+
+Orion Wallet sessions expire automatically:
+
+- **Idle timeout:** 30 minutes of inactivity
+- **Absolute timeout:** 8 hours from connection
+
+When a session expires, the wallet closes the connection and the dApp is notified.
+The dApp should then prompt you to reconnect.
+
+### What happens when your session expires
+
+1. The wallet emits a `sessionExpired` event to the dApp.
+2. The dApp detects the expired session and shows a "Reconnect" prompt.
+3. You click **Connect** to open the wallet popup again.
+4. The wallet restores your session and the dApp resumes.
+
+### If a dApp doesn't reconnect automatically
+
+- Click the **Connect** button in the dApp.
+- The wallet popup opens — approve the connection.
+- Your previous session data is preserved, so you don't need to re-import your wallet.
+
+---
+
 ## Backup and recovery
 
 ### Exporting
@@ -204,6 +230,12 @@ the funds cannot be recovered — by anyone.
 Data is migrated automatically from older builds on first launch. If your accounts are
 missing, **do not create a new wallet** — that could overwrite the old data. Report the
 issue, and restore from your recovery phrase in the meantime.
+
+### dApp says "Session expired"
+
+This means the wallet session timed out (30 min idle / 8h absolute). Reconnect by
+clicking **Connect** in the dApp. Your wallet data is preserved — you only need to
+re-approve the connection.
 
 ---
 

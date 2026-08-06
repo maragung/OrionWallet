@@ -14,6 +14,8 @@
 - [Loading states](#loading-states)
 - [Storage and migrations](#storage-and-migrations)
 - [Wallet SDK](#wallet-sdk)
+- [dApp Integration](#dapp-integration)
+- [Session management](#session-management)
 - [Testing](#testing)
 - [Release checklist](#release-checklist)
 - [Known issues](#known-issues)
@@ -53,8 +55,11 @@ src/
 ├── utils/        Clipboard, progress reporting
 └── wallet/       Keystore, IndexedDB storage, PIN
 
-public/wasm/      Compiled PVAC module (pvac.js + pvac.wasm)
-scripts/          build-wasm.sh, patch-pvac-aes.py, autofix.mjs, health-check.mjs
+public/
+  demo/           Standalone dApp integration demo (dapp.html)
+  docs/           Static HTML documentation pages
+  wasm/           Compiled PVAC module (pvac.js + pvac.wasm)
+
 tests/unit/       Vitest
 tests/e2e/        Playwright
 docs/             This documentation
@@ -68,20 +73,20 @@ Pure client-side; there is no backend. Data flows in one direction:
 
 ```
 React components  (src/components/)
-      │  read state, dispatch actions
-      ▼
+       │  read state, dispatch actions
+       ▼
 Zustand store  (src/store/wallet-store.ts)
-      │
-      ▼
+       │
+       ▼
 API layer  (src/api/)          ← orchestrates crypto + RPC
-      │
-      ├──► Crypto core  (src/crypto/)   WebCrypto, tweetnacl, @noble
-      ├──► PVAC FHE     (src/pvac/)     WebAssembly
-      ├──► Transaction  (src/tx/)       canonical JSON + signing
-      └──► RPC client   (src/rpc/)      fetch
-                                          │ HTTPS
-                                          ▼
-                                   Octra RPC node
+       │
+       ├──► Crypto core  (src/crypto/)   WebCrypto, tweetnacl, @noble
+       ├──► PVAC FHE     (src/pvac/)     WebAssembly
+       ├──► Transaction  (src/tx/)       canonical JSON + signing
+       └──► RPC client   (src/rpc/)      fetch
+                                           │ HTTPS
+                                           ▼
+                                    Octra RPC node
 ```
 
 ### Design constraints
@@ -330,6 +335,113 @@ Do not weaken these:
   (`rpc-handler`), so transaction execution can never escape to the SDK even via the
   low-level `request()` escape hatch
 - **`localStorage`** holds only a session-restore hint (address, network) — never secrets
+
+---
+
+## dApp Integration
+
+### Quick start
+
+```javascript
+import { WalletProvider } from '@orion-wallet/sdk';
+
+const provider = new WalletProvider({
+  walletUrl: 'https://orionwallet.example/connect',
+  capabilities: ['signMessage', 'signContract', 'viewAccounts', 'viewBalance'],
+});
+
+const result = await provider.connect();
+```
+
+### Session management
+
+Orion sessions expire after **30 minutes idle** or **8 hours absolute**. The SDK provides
+built-in session health checks and auto-reconnect:
+
+```javascript
+// Check session health before every signing operation
+if (!provider.isSessionAlive()) {
+  await provider.refreshSession();
+}
+
+// Listen for session expiry events
+provider.on('sessionExpired', () => {
+  setConnected(false);
+});
+```
+
+### Connection flow diagram
+
+```
+dApp                          Orion Wallet
+  │                              │
+  │  provider.connect()          │
+  │  ──────────────────────────► │
+  │  │  opens popup ───────────► │  User approves
+  │  │  hello + MessagePort ◄── │  ──────────────────►
+  │  │  challenge echo ────────► │
+  │  │  CONNECT RPC ──────────► │  Returns address
+  │  │  ◄────────────────────── │
+  │  ◄────────────────────────── │
+  │                              │
+  │  provider.signContract()     │
+  │  ──────────────────────────► │  Opens approval prompt
+  │  │  signContract RPC ──────► │  User approves
+  │  │  ◄────────────────────── │  Returns signed tx
+  │  ◄────────────────────────── │
+  │                              │
+  │  (session expires after      │
+  │   30 min idle / 8h absolute) │
+  │                              │
+  │  provider.isSessionAlive()   │  Returns false
+  │  ──────────────────────────► │
+  │                              │
+  │  provider.refreshSession()   │
+  │  ──────────────────────────► │  Reopens popup
+  │  │  (reconnects) ◄───────── │
+  │  ◄────────────────────────── │
+```
+
+### Prohibited methods
+
+The SDK blocks these methods locally before they reach the transport. The wallet also
+re-checks server-side, so transaction execution can never escape:
+
+- `wallet_sendTransaction` / `sendTransaction`
+- `wallet_broadcastTransaction` / `broadcastTransaction`
+- `wallet_transfer` / `transfer`
+- `wallet_swap` / `swap`
+- `wallet_bridge` / `bridge`
+
+---
+
+## Session management
+
+Orion Wallet sessions are managed automatically by the SDK. Sessions expire after:
+
+- **Idle timeout:** 30 minutes of inactivity
+- **Absolute timeout:** 8 hours from connection
+
+The dApp can check session health at any time:
+
+```javascript
+if (!provider.isSessionAlive()) {
+  await provider.refreshSession();
+}
+```
+
+When a session expires, the wallet emits a `sessionExpired` event. The dApp should
+listen for this event and prompt the user to reconnect:
+
+```javascript
+provider.on('sessionExpired', () => {
+  // Prompt user to reconnect
+  setConnected(false);
+});
+```
+
+Session restore is handled automatically — the wallet preserves the session hint in
+IndexedDB, so reconnecting after expiry does not require the user to re-import their wallet.
 
 ---
 

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Orion Wallet SDK — Demo dApp</title>
+    <title>Orion Wallet — dApp Integration Demo</title>
     <style>
       :root {
         color-scheme: dark;
@@ -15,6 +15,7 @@
         --accent: #6d6dff;
         --ok: #35c67a;
         --err: #ff5c6c;
+        --warn: #ffb84d;
       }
       * { box-sizing: border-box; }
       body {
@@ -24,8 +25,11 @@
         font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         padding: 24px;
       }
-      main { max-width: 720px; margin: 0 auto; }
-      h1 { font-size: 20px; }
+      main { max-width: 780px; margin: 0 auto; }
+      h1 { font-size: 22px; margin-bottom: 4px; }
+      h2 { font-size: 17px; margin: 28px 0 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+      h3 { font-size: 14px; margin: 16px 0 8px; color: var(--muted); }
+      p { margin: 6px 0; }
       .card {
         background: var(--card);
         border: 1px solid var(--border);
@@ -44,7 +48,9 @@
         margin: 4px 4px 4px 0;
       }
       button.secondary { background: #2a2a3d; }
+      button.danger { background: #cc3344; }
       button:disabled { opacity: 0.5; cursor: not-allowed; }
+      button.success { background: #2a7a4a; }
       input {
         background: #0e0e16;
         color: var(--fg);
@@ -60,10 +66,10 @@
         border-radius: 8px;
         padding: 12px;
         overflow: auto;
-        max-height: 260px;
+        max-height: 300px;
         font-size: 12px;
       }
-      .row { display: flex; gap: 8px; align-items: center; }
+      .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
       .muted { color: var(--muted); font-size: 12px; }
       .pill {
         display: inline-block;
@@ -74,405 +80,434 @@
       }
       .pill.ok { background: rgba(53, 198, 122, 0.15); color: var(--ok); }
       .pill.err { background: rgba(255, 92, 108, 0.15); color: var(--err); }
-      code { font-family: ui-monospace, monospace; }
+      .pill.warn { background: rgba(255, 184, 77, 0.15); color: var(--warn); }
+      code { font-family: ui-monospace, monospace; background: #1a1a2e; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+      label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+      .hint { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
+      .integration-step { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+      .integration-step:last-child { border-bottom: none; }
+      .integration-step code { font-size: 11px; }
+      .trade-card { border-left: 3px solid var(--accent); padding-left: 12px; margin: 8px 0; }
+      .trade-card.buy { border-left-color: var(--ok); }
+      .trade-card.sell { border-left-color: var(--err); }
+      .trade-card.swap { border-left-color: var(--warn); }
+      select {
+        background: #0e0e16;
+        color: var(--fg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px;
+        font-size: 13px;
+      }
     </style>
   </head>
   <body>
     <main>
-      <h1>Orion Wallet SDK — Demo dApp</h1>
-       <p class="muted">
-         Self-contained demo — no SDK import. Talks to wallet at <code>/connect</code>
-         via popup + MessageChannel using the official Octra envelope protocol.
-         Configure <code>WALLET_ORIGIN</code> for cross-origin dApps.
-       </p>
+      <h1>Orion Wallet — dApp Integration Demo</h1>
+      <p class="muted">
+        Self-contained demo showing how a dApp integrates with Orion Wallet via the SDK.
+        Demonstrates connection, session health checks, refresh on expiry, and simulated buy/sell/swap operations.
+      </p>
 
+      <!-- ── Connection ── -->
       <div class="card">
+        <h2>Connection</h2>
         <div class="row">
-          <strong>Status:</strong>
-          <span id="status" class="pill">disconnected</span>
+          <span class="muted">Status:</span>
+          <span id="status" class="pill idle">disconnected</span>
           <span id="addr" class="muted"></span>
+          <span id="sessionBadge" class="pill" style="display:none"></span>
         </div>
-        <div style="margin-top: 12px">
-          <button id="connect">Connect</button>
+        <div style="margin-top: 12px" class="row">
+          <button id="connect">Connect Wallet</button>
           <button id="disconnect" class="secondary" disabled>Disconnect</button>
-          <button id="accounts" class="secondary" disabled>getAccounts</button>
-          <button id="balance" class="secondary" disabled>getBalance</button>
-          <button id="network" class="secondary" disabled>getNetwork</button>
+          <button id="checkSession" class="secondary" disabled>Check Session</button>
+          <button id="refreshSession" class="secondary" disabled>Refresh Session</button>
+        </div>
+        <div class="hint">
+          <strong>Integration pattern:</strong> dApps call <code>provider.connect()</code> to open the wallet popup.
+          After connect, use <code>provider.isSessionAlive()</code> before every signing operation.
+          If the session has expired, call <code>provider.refreshSession()</code> to reopen the popup and re-establish the channel.
         </div>
       </div>
 
+      <!-- ── Read-only ── -->
       <div class="card">
-        <strong>Sign message</strong>
+        <h2>Read-only Queries</h2>
+        <div class="row">
+          <button id="getAccounts" disabled>getAccounts</button>
+          <button id="getBalance" disabled>getBalance</button>
+          <button id="getNetwork" disabled>getNetwork</button>
+        </div>
+      </div>
+
+      <!-- ── Session expiry demo ── -->
+      <div class="card">
+        <h2>Session Expiry Handling</h2>
+        <p class="muted" style="margin-bottom: 8px">
+          Orion sessions expire after 30 min idle or 8 hours absolute. When expired, the wallet emits a
+          <code>sessionExpired</code> event and the dApp should prompt the user to reconnect.
+        </p>
+        <div class="row">
+          <button id="simulateExpiry" class="secondary" disabled>Simulate Session Expiry</button>
+          <button id="recoverFromExpiry" class="secondary" disabled>Recover from Expiry</button>
+        </div>
+        <pre id="sessionLog" style="margin-top: 8px; max-height: 120px; display: none;">—</pre>
+      </div>
+
+      <!-- ── Trading demo ── -->
+      <div class="card">
+        <h2>Trading Operations (Demo)</h2>
+        <p class="muted" style="margin-bottom: 8px">
+          Simulated buy/sell/swap operations that demonstrate the full signing flow with session checks.
+          These do not execute real transactions — they show how a dApp like Octora would integrate.
+        </p>
+        <div class="grid">
+          <div>
+            <label>Operation</label>
+            <select id="tradeOp">
+              <option value="buy">Buy Token (signContract)</option>
+              <option value="sell">Sell Token (signContract)</option>
+              <option value="swap_oct_to_token">Swap OCT → Token (signContract)</option>
+              <option value="swap_token_to_oct">Swap Token → OCT (signContract)</option>
+            </select>
+          </div>
+          <div>
+            <label>Amount (OU)</label>
+            <input id="tradeAmount" value="10000" />
+          </div>
+        </div>
         <div class="row" style="margin-top: 8px">
-          <input id="msg" value="gm from the demo dApp" />
-          <button id="signMsg" disabled>signMessage</button>
+          <button id="executeTrade" disabled>Execute Trade</button>
+          <button id="executeTradeFail" class="secondary" disabled>Execute (Simulated Failure)</button>
         </div>
+        <div id="tradeResults" style="margin-top: 8px"></div>
       </div>
 
+      <!-- ── Prohibited method demo ── -->
       <div class="card">
-        <strong>Sign typed data / contract</strong>
-        <div style="margin-top: 8px">
-          <button id="signTyped" disabled>signTypedData</button>
-          <button id="approve" disabled>approveContract</button>
-          <button id="signContract" disabled>signContract</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <strong>Prohibited (must be rejected locally)</strong>
-        <div style="margin-top: 8px">
+        <h2>Prohibited Methods (Must Be Rejected Locally)</h2>
+        <div class="row">
           <button id="forbidden" class="secondary" disabled>request("sendTransaction")</button>
         </div>
       </div>
 
+      <!-- ── Integration Guide ── -->
       <div class="card">
-        <strong>Output</strong>
+        <h2>Integration Guide</h2>
+        <div class="integration-step">
+          <strong>1. Import the SDK</strong>
+          <pre><code>import { WalletProvider } from '@orion-wallet/sdk';</code></pre>
+        </div>
+        <div class="integration-step">
+          <strong>2. Create the provider</strong>
+          <pre><code>const provider = new WalletProvider({
+  walletUrl: 'https://orionwallet.example/connect',
+  capabilities: ['signMessage', 'signContract'],
+});</code></pre>
+        </div>
+        <div class="integration-step">
+          <strong>3. Connect</strong>
+          <pre><code>const result = await provider.connect();
+console.log(result.address); // Connected address</code></pre>
+        </div>
+        <div class="integration-step">
+          <strong>4. Check session before signing</strong>
+          <pre><code>if (!provider.isSessionAlive()) {
+  await provider.refreshSession();
+}
+const sig = await provider.signContract({...});</code></pre>
+        </div>
+        <div class="integration-step">
+          <strong>5. Listen for session expiry</strong>
+          <pre><code>provider.on('sessionExpired', () => {
+  // Prompt user to reconnect
+  setConnected(false);
+});</code></pre>
+        </div>
+      </div>
+
+      <!-- ── Output ── -->
+      <div class="card">
+        <h2>Output</h2>
         <pre id="out">—</pre>
       </div>
     </main>
 
-    <script>
-    (function () {
-      'use strict';
-
+    <script type="module">
       /* ================================================================
-         Octra Wallet SDK — self-contained vanilla JS demo.
-         Uses the EXACT wire protocol from src/sdk/protocol.ts:
-           - HelloMessage  (wallet → dApp, window-level, transfers port)
-           - HelloAck      (dApp → wallet, first port message)
-           - Envelope      (bidirectional, all subsequent port messages)
+         Orion Wallet SDK — dApp Integration Demo.
+         Uses the actual WalletProvider SDK from @orion-wallet/sdk.
          ================================================================ */
 
-       // ── Protocol constants (mirrored from src/sdk/protocol.ts) ──────
-       var PROTOCOL_VERSION = 1;
-       var TIMEOUT_MS = 60000;
+      const WALLET_ORIGIN = 'https://orionwallet.vercel.app';
+      const WALLET_URL = WALLET_ORIGIN + '/connect';
+      const WALLET_ORIGIN_RE = new URL(WALLET_ORIGIN).origin;
 
-       // ── Configuration ─────────────────────────────────────
-       // Set WALLET_ORIGIN to the Orion Wallet deployment your dApp talks to.
-       // Same-origin demo:  location.origin
-       // Cross-origin dApp: 'https://orionwallet.vercel.app'
-       var WALLET_ORIGIN = 'https://orionwallet.vercel.app';
-       var WALLET_PATH = '/connect';
-       var WALLET_URL = WALLET_ORIGIN + WALLET_PATH;
-       var WALLET_ORIGIN_RE = new URL(WALLET_ORIGIN).origin;
+      const out = document.getElementById('out');
+      const statusEl = document.getElementById('status');
+      const addrEl = document.getElementById('addr');
+      const sessionBadge = document.getElementById('sessionBadge');
+      const sessionLog = document.getElementById('sessionLog');
 
-      var METHODS = {
-        CONNECT:         'wallet_connect',
-        DISCONNECT:      'wallet_disconnect',
-        GET_ACCOUNTS:    'wallet_getAccounts',
-        GET_ADDRESS:     'wallet_getAddress',
-        GET_PUBLIC_KEY:  'wallet_getPublicKey',
-        GET_BALANCE:     'wallet_getBalance',
-        GET_NETWORK:     'wallet_getNetwork',
-        GET_CHAIN_ID:    'wallet_getChainId',
-        GET_PERMISSIONS: 'wallet_getPermissions',
-        SIGN_MESSAGE:    'wallet_signMessage',
-        SIGN_TYPED_DATA: 'wallet_signTypedData',
-        APPROVE_CONTRACT:'wallet_approveContract',
-        SIGN_CONTRACT:   'wallet_signContract',
-      };
-
-      var PROHIBITED = [
-        'wallet_sendTransaction', 'sendTransaction',
-        'wallet_broadcastTransaction', 'broadcastTransaction',
-        'wallet_transfer', 'transfer',
-        'wallet_swap', 'swap',
-        'wallet_bridge', 'bridge',
-      ];
-
-      var CAPABILITIES = [
-        'signMessage', 'signTypedData', 'approveContract',
-        'signContract', 'multiAccount', 'events', 'sessionRestore',
-      ];
-
-      var EVENTS = {
-        CONNECT: 'connect',
-        DISCONNECT: 'disconnect',
-        ACCOUNT_CHANGED: 'accountChanged',
-        NETWORK_CHANGED: 'networkChanged',
-        SESSION_EXPIRED: 'sessionExpired',
-      };
-
-      // ── State ──────────────────────────────────────────────────────
-      var port = null;
-      var popup = null;
-      var pending = {};
-      var nonceCounter = 0;
-      var connected = false;
-      var eventListeners = {};
-
-      var out = document.getElementById('out');
-      var statusEl = document.getElementById('status');
-      var addrEl = document.getElementById('addr');
-
-      // ── Helpers ────────────────────────────────────────────────────
       function log(label, data) {
         out.textContent = label + '\n\n' + JSON.stringify(data, null, 2);
       }
       function logErr(label, e) {
         out.textContent = label + ' — ERROR\n\ncode: ' + (e && e.code || '?') + '\nmessage: ' + (e && e.message || e);
       }
-      function makeId(prefix) {
-        var r = crypto.getRandomValues(new Uint32Array(2));
-        return (prefix || 'req') + '_' + Date.now().toString(36) + '_' +
-               r[0].toString(36) + r[1].toString(36) + '_' + (++nonceCounter).toString(36);
-      }
-      function nextNonce() { return nonceCounter + 1; }
-
       function setConnected(state, address) {
-        connected = state;
         statusEl.textContent = state ? 'connected' : 'disconnected';
-        statusEl.className = 'pill' + (state ? ' ok' : '');
+        statusEl.className = 'pill' + (state ? ' ok' : ' idle');
         addrEl.textContent = address || '';
-        var ids = ['disconnect','accounts','balance','network','signMsg','signTyped','approve','signContract','forbidden'];
-        for (var i = 0; i < ids.length; i++) {
-          document.getElementById(ids[i]).disabled = !state;
+        const ids = ['disconnect','getAccounts','getBalance','getNetwork','checkSession','refreshSession','executeTrade','executeTradeFail','forbidden','simulateExpiry','recoverFromExpiry'];
+        for (const id of ids) {
+          const el = document.getElementById(id);
+          if (el) el.disabled = !state;
         }
         document.getElementById('connect').disabled = state;
+        document.getElementById('disconnect').disabled = !state;
       }
 
-      // ── Build an Envelope (matches src/sdk/protocol.ts makeRequest) ─
-      function buildEnvelope(method, params) {
-        return {
-          v: PROTOCOL_VERSION,
-          id: makeId('req'),
-          kind: 'req',
-          method: method,
-          params: params || {},
-          nonce: nextNonce(),
-          ts: Date.now(),
-        };
+      function updateSessionBadge(alive) {
+        sessionBadge.style.display = 'inline-block';
+        sessionBadge.textContent = alive ? 'session alive' : 'session expired';
+        sessionBadge.className = 'pill ' + (alive ? 'ok' : 'err');
       }
 
-      // ── Send request over port, return promise ─────────────────────
-      function sendRequest(method, params) {
-        return new Promise(function (resolve, reject) {
-          if (!port) return reject({ code: 'NOT_CONNECTED', message: 'No port' });
-          for (var i = 0; i < PROHIBITED.length; i++) {
-            if (PROHIBITED[i] === method) {
-              return reject({ code: 'METHOD_FORBIDDEN', message: method + ' is prohibited' });
-            }
-          }
-          // For signing requests, try to focus the popup from the dApp side too.
-          if (popup && !popup.closed) {
-            try { popup.focus(); } catch(e) {}
-            setTimeout(function() { try { popup.focus(); } catch(e) {} }, 300);
-          }
-          var env = buildEnvelope(method, params);
-          var timer = setTimeout(function () {
-            delete pending[env.id];
-            reject({ code: 'TIMEOUT', message: 'Request timed out' });
-          }, TIMEOUT_MS);
-          pending[env.id] = { resolve: resolve, reject: reject, timer: timer };
-          port.postMessage(env);
+      // ── Import the SDK ──────────────────────────────────
+      let WalletProvider = null;
+      let provider = null;
+
+      try {
+        const mod = await import('/src/sdk/index.ts');
+        WalletProvider = mod.WalletProvider;
+      } catch (e) {
+        logErr('SDK import', e);
+      }
+
+      if (WalletProvider) {
+        provider = new WalletProvider({
+          walletUrl: WALLET_URL,
+          capabilities: ['signMessage', 'signContract', 'viewAccounts', 'viewBalance', 'viewNetwork'],
+          requestTimeoutMs: 60000,
         });
       }
 
-      // ── Handle inbound port messages ───────────────────────────────
-      function onPortMessage(ev) {
-        var data = ev.data;
-        if (!data) return;
-
-        // Envelope response (kind === 'res')
-        if (data.kind === 'res') {
-          var p = pending[data.id];
-          if (p) {
-            delete pending[data.id];
-            clearTimeout(p.timer);
-            if (data.error) {
-              p.reject({ code: data.error.code || 'ERROR', message: data.error.message || 'Unknown error' });
-            } else {
-              p.resolve(data.result);
-            }
-          }
-          return;
-        }
-
-        // Envelope event (kind === 'evt')
-        if (data.kind === 'evt' && data.event) {
-          emitEvent(data.event, data.params);
-          return;
-        }
-      }
-
-      // ── Event emitter ──────────────────────────────────────────────
-      function onEvent(name, fn) {
-        if (!eventListeners[name]) eventListeners[name] = [];
-        eventListeners[name].push(fn);
-      }
-      function emitEvent(name, payload) {
-        var fns = eventListeners[name];
-        if (fns) for (var i = 0; i < fns.length; i++) fns[i](payload);
-        log('event: ' + name, payload || {});
-      }
-
-      // ── Listen for hello from wallet popup (window-level) ──────────
-      function onHelloFromPopup(ev) {
-         if (ev.origin !== WALLET_ORIGIN_RE) return;
-        var data = ev.data;
-        if (!data || data.type !== 'octra-wallet:hello') return;
-
-        var receivedPort = ev.ports && ev.ports[0];
-        if (!receivedPort) return;
-
-        // Stop listening for window messages — port-only from now on
-        window.removeEventListener('message', onHelloFromPopup);
-
-        port = receivedPort;
-        port.onmessage = onPortMessage;
-        port.start();
-
-        // Send HelloAck (challenge echo) over the PORT — first message must be this
-        var ack = {
-          __ack: {
-            challenge: data.challenge,
-            dappNonce: makeId('nonce'),
-            v: PROTOCOL_VERSION,
-            origin: location.origin,
-          },
-        };
-        port.postMessage(ack);
-
-        // Now send the wallet_connect request to establish session
-        sendRequest(METHODS.CONNECT, {
-          origin: location.origin,
-          capabilities: data.capabilities || CAPABILITIES,
-        }).then(function (result) {
+      // ── Event listeners ─────────────────────────────────
+      if (provider) {
+        provider.on('connect', (result) => {
           setConnected(true, result.address);
+          updateSessionBadge(true);
           log('connect', result);
-        }).catch(function (e) {
-          logErr('connect', e);
+        });
+
+        provider.on('disconnect', (reason) => {
+          setConnected(false);
+          updateSessionBadge(false);
+          log('disconnect', { reason });
+        });
+
+        provider.on('sessionExpired', (payload) => {
+          setConnected(false);
+          updateSessionBadge(false);
+          log('sessionExpired', payload || {});
+          sessionLog.style.display = 'block';
+          sessionLog.textContent = 'Session expired! User must reconnect.';
+        });
+
+        provider.on('accountChanged', (payload) => {
+          if (payload && payload.address) {
+            addrEl.textContent = payload.address;
+          }
         });
       }
 
-      window.addEventListener('message', onHelloFromPopup);
+      // ── Connect ─────────────────────────────────────────
+      document.getElementById('connect').onclick = async () => {
+        if (!provider) return logErr('connect', new Error('SDK not loaded'));
+        try {
+          const result = await provider.connect();
+          setConnected(true, result.address);
+          updateSessionBadge(true);
+          log('connect', result);
+        } catch (e) {
+          logErr('connect', e);
+        }
+      };
 
-      // ── Connect button ─────────────────────────────────────────────
-      document.getElementById('connect').onclick = function () {
-        var rid = makeId('rid');
-        var params = new URLSearchParams({
-          v: String(PROTOCOL_VERSION),
-          rid: rid,
-          origin: location.origin,
-          caps: CAPABILITIES.join(','),
-        });
+      // ── Disconnect ──────────────────────────────────────
+      document.getElementById('disconnect').onclick = async () => {
+        if (!provider) return;
+        await provider.disconnect();
+        setConnected(false);
+        updateSessionBadge(false);
+        log('disconnect', { ok: true });
+      };
 
-         var url = WALLET_URL + '?' + params.toString();
-        popup = window.open(url, 'octra_wallet', 'width=420,height=680,popup=1');
+      // ── Check session ───────────────────────────────────
+      document.getElementById('checkSession').onclick = () => {
+        if (!provider) return;
+        const alive = provider.isSessionAlive();
+        updateSessionBadge(alive);
+        log('isSessionAlive', { alive });
+      };
 
-        if (!popup) {
-          logErr('connect', { code: 'POPUP_BLOCKED', message: 'Popup blocked by browser' });
+      // ── Refresh session ─────────────────────────────────
+      document.getElementById('refreshSession').onclick = async () => {
+        if (!provider) return;
+        try {
+          const result = await provider.refreshSession();
+          setConnected(true, result.address);
+          updateSessionBadge(true);
+          log('refreshSession', result);
+        } catch (e) {
+          logErr('refreshSession', e);
+        }
+      };
+
+      // ── Read-only queries ───────────────────────────────
+      document.getElementById('getAccounts').onclick = async () => {
+        if (!provider) return;
+        try {
+          const r = await provider.getAccounts();
+          log('getAccounts', r);
+        } catch (e) { logErr('getAccounts', e); }
+      };
+
+      document.getElementById('getBalance').onclick = async () => {
+        if (!provider) return;
+        try {
+          const r = await provider.getBalance();
+          log('getBalance', r);
+        } catch (e) { logErr('getBalance', e); }
+      };
+
+      document.getElementById('getNetwork').onclick = async () => {
+        if (!provider) return;
+        try {
+          const net = await provider.getNetwork();
+          const cid = await provider.getChainId();
+          log('getNetwork', { network: net, chainId: cid });
+        } catch (e) { logErr('getNetwork', e); }
+      };
+
+      // ── Simulate session expiry ─────────────────────────
+      document.getElementById('simulateExpiry').onclick = () => {
+        if (!provider) return;
+        provider.clearSession?.('simulated expiry') || (() => {
+          provider.connected = false;
+          provider.emit?.('sessionExpired', { reason: 'simulated' });
+        })();
+        setConnected(false);
+        updateSessionBadge(false);
+        sessionLog.style.display = 'block';
+        sessionLog.textContent = 'Simulated session expiry. Click "Recover from Expiry" to reconnect.';
+        log('sessionExpired (simulated)', { reason: 'simulated' });
+      };
+
+      // ── Recover from expiry ─────────────────────────────
+      document.getElementById('recoverFromExpiry').onclick = async () => {
+        if (!provider) return;
+        try {
+          const result = await provider.refreshSession();
+          setConnected(true, result.address);
+          updateSessionBadge(true);
+          sessionLog.style.display = 'none';
+          log('recoverFromExpiry', result);
+        } catch (e) {
+          logErr('recoverFromExpiry', e);
+        }
+      };
+
+      // ── Trading operations ──────────────────────────────
+      const tradeConfigs = {
+        buy: {
+          program: 'OctoraLaunchFactory',
+          method: 'buy',
+          args: ['TOKEN_ADDR', '1000000'],
+          ou: '200000',
+          description: 'Buy tokens via bonding curve',
+        },
+        sell: {
+          program: 'OctoraLaunchFactory',
+          method: 'sell',
+          args: ['TOKEN_ADDR', '500000'],
+          ou: '200000',
+          description: 'Sell tokens back to bonding curve',
+        },
+        swap_oct_to_token: {
+          program: 'EverestSwapRouter',
+          method: 'swap_oct_to_token',
+          args: ['TOKEN_ADDR', '1000000'],
+          ou: '200000',
+          description: 'Swap OCT for token',
+        },
+        swap_token_to_oct: {
+          program: 'EverestSwapRouter',
+          method: 'swap_token_to_oct',
+          args: ['TOKEN_ADDR', '500000'],
+          ou: '200000',
+          description: 'Swap token for OCT',
+        },
+      };
+
+      document.getElementById('executeTrade').onclick = async () => {
+        if (!provider) return;
+        const op = document.getElementById('tradeOp').value;
+        const amount = document.getElementById('tradeAmount').value;
+        const config = tradeConfigs[op];
+        if (!config) return logErr('trade', new Error('Unknown operation'));
+
+        // Check session before signing
+        if (!provider.isSessionAlive()) {
+          log('trade', { status: 'session_expired', action: 'refreshSession required' });
           return;
         }
 
-        // Timeout if wallet doesn't respond
-        setTimeout(function () {
-          if (!connected) {
-            logErr('connect', { code: 'TIMEOUT', message: 'Wallet did not respond in 15s' });
-          }
-        }, 15000);
-      };
-
-      // ── Disconnect ─────────────────────────────────────────────────
-      document.getElementById('disconnect').onclick = function () {
-        if (port && connected) {
-          var env = buildEnvelope(METHODS.DISCONNECT, {});
-          port.postMessage(env);
-          // Wait a bit for ack, then clean up
-          setTimeout(function () {
-            port = null;
-            connected = false;
-            setConnected(false);
-            log('disconnect', { ok: true });
-          }, 300);
-        } else {
-          port = null;
-          connected = false;
-          setConnected(false);
-          log('disconnect', { ok: true });
+        try {
+          const result = await provider.signContract({
+            program: config.program,
+            method: config.method,
+            args: config.args,
+            amount: amount,
+            ou: config.ou,
+          });
+          log('trade (' + op + ')', { status: 'signed', result });
+          const resultsDiv = document.getElementById('tradeResults');
+          resultsDiv.innerHTML = '<div class="trade-card ' + op.split('_')[0] + '"><span class="pill ok">SIGNED</span> ' + config.description + ' — ' + amount + ' OU</div>';
+        } catch (e) {
+          logErr('trade (' + op + ')', e);
         }
       };
 
-      // ── Read-only requests ─────────────────────────────────────────
-      document.getElementById('accounts').onclick = function () {
-        sendRequest(METHODS.GET_ACCOUNTS, {})
-          .then(function (r) { log('getAccounts', r); })
-          .catch(function (e) { logErr('getAccounts', e); });
+      document.getElementById('executeTradeFail').onclick = async () => {
+        if (!provider) return;
+        const op = document.getElementById('tradeOp').value;
+        const config = tradeConfigs[op];
+        if (!config) return;
+
+        // Simulate a session-expired error
+        log('trade (' + op + ') — simulated failure', {
+          status: 'session_expired',
+          error: { code: 'SESSION_EXPIRED', message: 'Session expired — please reconnect your wallet and try again' },
+        });
+        const resultsDiv = document.getElementById('tradeResults');
+        resultsDiv.innerHTML = '<div class="trade-card ' + op.split('_')[0] + '"><span class="pill err">SESSION EXPIRED</span> ' + config.description + ' — reconnect and retry</div>';
       };
 
-      document.getElementById('balance').onclick = function () {
-        sendRequest(METHODS.GET_BALANCE, {})
-          .then(function (r) { log('getBalance', r); })
-          .catch(function (e) { logErr('getBalance', e); });
+      // ── Prohibited method ───────────────────────────────
+      document.getElementById('forbidden').onclick = async () => {
+        if (!provider) return;
+        try {
+          await provider.request('sendTransaction', { to: 'x', amount: '1' });
+          logErr('sendTransaction', { message: 'UNEXPECTLY ALLOWED' });
+        } catch (e) {
+          log('sendTransaction correctly rejected', { code: e.code, message: e.message });
+        }
       };
-
-      document.getElementById('network').onclick = function () {
-        sendRequest(METHODS.GET_NETWORK, {})
-          .then(function (net) {
-            return sendRequest(METHODS.GET_CHAIN_ID, {}).then(function (cid) {
-              log('getNetwork', { network: net, chainId: cid });
-            });
-          })
-          .catch(function (e) { logErr('getNetwork', e); });
-      };
-
-      // ── Signing requests ───────────────────────────────────────────
-      document.getElementById('signMsg').onclick = function () {
-        var msg = document.getElementById('msg').value;
-        sendRequest(METHODS.SIGN_MESSAGE, { message: msg })
-          .then(function (r) { log('signMessage', r); })
-          .catch(function (e) { logErr('signMessage', e); });
-      };
-
-      document.getElementById('signTyped').onclick = function () {
-        sendRequest(METHODS.SIGN_TYPED_DATA, {
-          typedData: {
-            domain: { name: 'DemoDApp', version: '1', chainId: 'octra:devnet' },
-            types: {
-              Order: [
-                { name: 'item', type: 'string' },
-                { name: 'qty', type: 'number' },
-                { name: 'buyer', type: 'string' },
-              ],
-            },
-            primaryType: 'Order',
-            message: { item: 'widget', qty: 3, buyer: 'demo' },
-          },
-        }).then(function (r) { log('signTypedData', r); })
-          .catch(function (e) { logErr('signTypedData', e); });
-      };
-
-      document.getElementById('approve').onclick = function () {
-        sendRequest(METHODS.APPROVE_CONTRACT, {
-          program: 'octContractAddr...',
-          method: 'approve',
-          spender: 'octSpender...',
-          limit: '1000000',
-        }).then(function (r) { log('approveContract', r); })
-          .catch(function (e) { logErr('approveContract', e); });
-      };
-
-      document.getElementById('signContract').onclick = function () {
-        sendRequest(METHODS.SIGN_CONTRACT, {
-          program: 'octContractAddr...',
-          method: 'stake',
-          args: [42],
-        }).then(function (r) { log('signContract (signed, NOT broadcast)', r); })
-          .catch(function (e) { logErr('signContract', e); });
-      };
-
-      // ── Prohibited method (must be rejected locally) ───────────────
-      document.getElementById('forbidden').onclick = function () {
-        sendRequest('sendTransaction', { to: 'x', amount: '1' })
-          .then(function () { logErr('sendTransaction', { message: 'UNEXPECTEDLY ALLOWED' }); })
-          .catch(function (e) { log('sendTransaction correctly rejected', { code: e.code, message: e.message }); });
-      };
-
-      // ── Listen for wallet events ───────────────────────────────────
-      onEvent(EVENTS.ACCOUNT_CHANGED, function (p) { setConnected(true, p && p.address); });
-      onEvent(EVENTS.DISCONNECT, function () { setConnected(false); });
-      onEvent(EVENTS.SESSION_EXPIRED, function () { setConnected(false); });
-    })();
     </script>
   </body>
 </html>
