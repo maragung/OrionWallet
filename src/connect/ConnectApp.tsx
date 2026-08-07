@@ -540,6 +540,9 @@ export function ConnectApp() {
 
 const pageStyle: React.CSSProperties = {
   minHeight: '100vh',
+  // dvh fallback: iOS Safari's 100vh includes the dynamic toolbar, so the
+  // connect popup could overflow. Matches UnlockWallet / CreateWallet.
+  ...({ minHeight: '100dvh' } as React.CSSProperties),
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',

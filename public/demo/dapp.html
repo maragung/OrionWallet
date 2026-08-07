@@ -84,6 +84,33 @@
       code { font-family: ui-monospace, monospace; background: #1a1a2e; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
       .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
       @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+      /* Hero header */
+      .hero {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 20px;
+        padding-bottom: 18px;
+        border-bottom: 1px solid var(--border);
+      }
+      .hero-badge {
+        flex: 0 0 auto;
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        font-size: 26px;
+        background: linear-gradient(135deg, rgba(109,109,255,0.25), rgba(109,109,255,0.05));
+        border: 1px solid rgba(109,109,255,0.35);
+        box-shadow: 0 6px 20px rgba(109,109,255,0.15);
+      }
+      /* Touch-friendly controls on phones (>=44px tap targets) */
+      @media (max-width: 600px) {
+        button { padding: 11px 16px; font-size: 14px; }
+        .hero-badge { width: 44px; height: 44px; font-size: 22px; }
+        h1 { font-size: 19px; }
+      }
       label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
       .hint { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
       .integration-step { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
@@ -105,11 +132,16 @@
   </head>
   <body>
     <main>
-      <h1>Orion Wallet — dApp Integration Demo</h1>
-      <p class="muted">
-        Self-contained demo showing how a dApp integrates with Orion Wallet via the SDK.
-        Demonstrates connection, session health checks, refresh on expiry, and simulated buy/sell/swap operations.
-      </p>
+      <header class="hero">
+        <div class="hero-badge">🪐</div>
+        <div>
+          <h1>Orion Wallet — dApp Integration Demo</h1>
+          <p class="muted" style="margin-top: 2px">
+            A live, self-contained reference for integrating Orion Wallet via the SDK —
+            connection, session health checks, refresh-on-expiry, and simulated buy/sell/swap.
+          </p>
+        </div>
+      </header>
 
       <!-- ── Connection ── -->
       <div class="card">
