@@ -286,9 +286,56 @@ export class RpcClient {
     return { ok: true, status: r.status, result: contracts };
   }
 
-  /** Get transaction history for an address (paginated). */
-  async getHistory(addr: string, limit: number = 50): Promise<RpcResult<HistoryEntry[]>> {
-    return this.rpcCall<HistoryEntry[]>('octra_account', [addr, limit]);
+  /**
+   * Get transaction history for an address (paginated).
+   *
+   * Primary method is the official `octra_transactionsByAddress(addr, limit,
+   * offset)` (per octrascan.io/docs), which returns a paginated envelope:
+   *   { address, total, count, offset, limit, has_more, transactions[], rejected[] }
+   *
+   * Older/alternate providers instead expose `octra_account(addr, limit)`,
+   * which returns a bare array (or an object with a `transactions` array) and
+   * has no pagination metadata. We try the official method first and fall back,
+   * normalising every shape into one `HistoryPage`.
+   *
+   * `rejected[]` entries are merged in with `status: 'failed'` so the history
+   * stays a complete audit trail (pending / confirmed / rejected), as the
+   * Octra docs describe the History tab.
+   */
+  async getHistory(
+    addr: string,
+    limit: number = 50,
+    offset: number = 0,
+  ): Promise<RpcResult<HistoryPage>> {
+    const primary = await this.rpcCall<unknown>('octra_transactionsByAddress', [
+      addr,
+      limit,
+      offset,
+    ]);
+    if (primary.ok) {
+      return {
+        ok: true,
+        status: primary.status,
+        result: normalizeHistoryPage(primary.result, limit, offset),
+      };
+    }
+
+    // Fall back to the legacy method (bare array, no pagination metadata).
+    // `octra_account` has no offset parameter, so it can only ever return the
+    // first page. Force `hasMore: false` so the UI never offers a "Load More"
+    // that would just re-fetch page 0 in a loop.
+    const legacy = await this.rpcCall<unknown>('octra_account', [addr, limit]);
+    if (legacy.ok) {
+      const page = normalizeHistoryPage(legacy.result, limit, offset);
+      return {
+        ok: true,
+        status: legacy.status,
+        result: { ...page, hasMore: false },
+      };
+    }
+
+    // Surface the primary error — it is the more informative one.
+    return { ok: false, status: primary.status, error: primary.error ?? legacy.error };
   }
 
   /** Look up a single transaction by hash. */
@@ -458,6 +505,84 @@ export interface HistoryEntry {
   encrypted_data?: string;
   status?: 'pending' | 'confirmed' | 'failed';
   block_height?: number;
+}
+
+/**
+ * One page of transaction history, normalised across every response shape the
+ * node might return. `total` and `hasMore` drive the "Load More" UI; when the
+ * provider gives no pagination metadata (legacy bare-array shape) `total`
+ * falls back to the number of rows and `hasMore` is inferred from the page
+ * being full.
+ */
+export interface HistoryPage {
+  transactions: HistoryEntry[];
+  total: number;
+  offset: number;
+  limit: number;
+  hasMore: boolean;
+}
+
+/** Coerce one raw row into a HistoryEntry, tagging its status. */
+function coerceHistoryRow(raw: unknown, status?: HistoryEntry['status']): HistoryEntry | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const tx = raw as Record<string, unknown>;
+  const hash = typeof tx.hash === 'string' ? tx.hash : typeof tx.tx_hash === 'string' ? tx.tx_hash : '';
+  const entry = { ...(tx as Partial<HistoryEntry>) } as HistoryEntry;
+  entry.hash = hash;
+  // The node uses `to_`; keep a `to` alias too so downstream code that reads
+  // either field keeps working.
+  if (typeof tx.to_ === 'string') entry.to_ = tx.to_;
+  else if (typeof tx.to === 'string') entry.to_ = tx.to;
+  if (status && !entry.status) entry.status = status;
+  return entry;
+}
+
+/**
+ * Normalise any history response into a HistoryPage. Accepts:
+ *   - the official envelope { transactions[], rejected[], total, has_more, ... }
+ *   - a `{ transactions: [...] }` object with no pagination metadata
+ *   - a bare array (oldest providers)
+ */
+export function normalizeHistoryPage(raw: unknown, limit: number, offset: number): HistoryPage {
+  // Bare array — no metadata available.
+  if (Array.isArray(raw)) {
+    const txs = raw.map((r) => coerceHistoryRow(r)).filter((e): e is HistoryEntry => e !== null);
+    return {
+      transactions: txs,
+      total: offset + txs.length,
+      offset,
+      limit,
+      hasMore: txs.length >= limit,
+    };
+  }
+
+  if (!raw || typeof raw !== 'object') {
+    return { transactions: [], total: offset, offset, limit, hasMore: false };
+  }
+
+  const obj = raw as Record<string, unknown>;
+  const confirmedRaw = Array.isArray(obj.transactions) ? obj.transactions : [];
+  const rejectedRaw = Array.isArray(obj.rejected) ? obj.rejected : [];
+
+  const confirmed = confirmedRaw
+    .map((r) => coerceHistoryRow(r))
+    .filter((e): e is HistoryEntry => e !== null);
+  const rejected = rejectedRaw
+    .map((r) => coerceHistoryRow(r, 'failed'))
+    .filter((e): e is HistoryEntry => e !== null);
+
+  // Rejected entries belong at the top of the first page only (they have no
+  // stable ordering key), so they are not duplicated as more pages load.
+  const transactions = offset === 0 ? [...rejected, ...confirmed] : confirmed;
+
+  const total =
+    typeof obj.total === 'number' && Number.isFinite(obj.total)
+      ? obj.total
+      : offset + confirmed.length;
+  const hasMore =
+    typeof obj.has_more === 'boolean' ? obj.has_more : offset + confirmed.length < total;
+
+  return { transactions, total, offset, limit, hasMore };
 }
 
 export interface NodeStatus {

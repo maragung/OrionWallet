@@ -13,6 +13,7 @@ import {
   addTokenByAddress,
   removeToken,
   scanForTokens,
+  compareHoldings,
   ScanCancelledError,
   type TokenHolding,
   type ScanProgress,
@@ -125,6 +126,15 @@ export function TokensView() {
         signal: ac.signal,
         onProgress: (p) => {
           if (mounted.current) setProgress(p);
+        },
+        onHit: (holding) => {
+          if (mounted.current) {
+            setHoldings((prev) => {
+              // De-dupe: a refresh might have already added this token.
+              if (prev.some((h) => h.contract === holding.contract)) return prev;
+              return [...prev, holding].sort(compareHoldings);
+            });
+          }
         },
       });
       if (!mounted.current) return;

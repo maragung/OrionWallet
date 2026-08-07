@@ -132,7 +132,7 @@ export async function loadCachedHoldings(rpcUrl: string, owner: string): Promise
 }
 
 /** Non-zero balances first, then by symbol, then by address for stability. */
-function compareHoldings(a: TokenHolding, b: TokenHolding): number {
+export function compareHoldings(a: TokenHolding, b: TokenHolding): number {
   if (a.raw > 0n !== b.raw > 0n) return a.raw > 0n ? -1 : 1;
   const sa = a.symbol ?? '';
   const sb = b.symbol ?? '';
@@ -323,10 +323,12 @@ export async function scanForTokens(
   opts: {
     signal?: AbortSignal;
     onProgress?: (p: ScanProgress) => void;
+    /** Fired as each token's metadata resolves, so the UI can render hits live. */
+    onHit?: (holding: TokenHolding) => void;
     force?: boolean;
   } = {},
 ): Promise<TokenHolding[]> {
-  const { signal, onProgress } = opts;
+  const { signal, onProgress, onHit } = opts;
   throwIfAborted(signal);
 
   const contracts = await getContractList(rpc, { force: opts.force });
@@ -365,7 +367,7 @@ export async function scanForTokens(
     throwIfAborted(signal);
     const data = await readTokenAt(rpc, hit.contract, owner);
     if (data === null) continue;
-    await saveTokenHolding({
+    const entry: TokenHoldingEntry = {
       key: tokenKey(rpc.url, owner, hit.contract),
       rpcUrl: rpc.url,
       owner,
@@ -379,7 +381,12 @@ export async function scanForTokens(
       decimals: data.decimals,
       totalSupply: data.totalSupply,
       updatedAt: Date.now(),
-    });
+    };
+    await saveTokenHolding(entry);
+    // Surface the confirmed holding immediately so the list fills in during the
+    // scan rather than snapping in all at once when it finishes. Scan hits are
+    // never custom (those are added by hand), so `custom: false`.
+    onHit?.(toHolding(entry, false));
   }
 
   return loadCachedHoldings(rpc.url, owner);

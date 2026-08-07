@@ -6,6 +6,7 @@ import type {
   RpcClient,
   BalanceInfo,
   HistoryEntry,
+  HistoryPage,
   FeeSchedule,
   SubmitTxResult,
 } from '../rpc/client';
@@ -140,14 +141,21 @@ export async function getFeeSchedule(rpc: RpcClient): Promise<FeeSchedule> {
 export async function getHistory(
   rpc: RpcClient,
   addr: string,
-  opts: { limit?: number; useCache?: boolean } = {},
-): Promise<HistoryEntry[]> {
-  const r = await rpc.getHistory(addr, opts.limit ?? 50);
+  opts: { limit?: number; offset?: number; useCache?: boolean } = {},
+): Promise<HistoryPage> {
+  const r = await rpc.getHistory(addr, opts.limit ?? 50, opts.offset ?? 0);
   if (r.ok && r.result) return r.result;
-  // Fallback to local cache
+  // Fallback to local cache when the network fails
   if (opts.useCache !== false) {
     const cached = await listTxCache(addr, opts.limit ?? 100);
-    return cached.map((c) => c.tx as HistoryEntry);
+    const transactions = cached.map((c) => c.tx as HistoryEntry);
+    return {
+      transactions,
+      total: transactions.length,
+      offset: opts.offset ?? 0,
+      limit: opts.limit ?? 50,
+      hasMore: false,
+    };
   }
   throw new Error(`getHistory failed: ${r.error ?? 'unknown'}`);
 }

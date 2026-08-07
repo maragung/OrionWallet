@@ -74,6 +74,9 @@ function formatTimestamp(ts: number | null): string {
   });
 }
 
+/** How many rows to request per page. */
+const PAGE_SIZE = 50;
+
 export function HistoryView() {
   const { wallet, rpc, pushToast } = useWalletStore();
   const [entries, setEntries] = useState<SafeEntry[]>([]);
@@ -81,6 +84,9 @@ export function HistoryView() {
   const [usingCache, setUsingCache] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const panelLoading = usePanelLoading();
   const { run, isMounted } = panelLoading;
 
@@ -93,20 +99,28 @@ export function HistoryView() {
         'Loading history',
         async () => {
           try {
-            const list = await getHistory(rpc, wallet.addr, { limit: 50, useCache: true });
+            const page = await getHistory(rpc, wallet.addr, {
+              limit: PAGE_SIZE,
+              offset: 0,
+              useCache: true,
+            });
             if (!isMounted()) return;
-            setEntries(list.map(normalizeEntry));
+            setEntries(page.transactions.map(normalizeEntry));
+            setTotal(page.total);
+            setHasMore(page.hasMore);
             setLastUpdated(new Date());
           } catch (e) {
             const msg = (e as Error).message;
             if (!isMounted()) return;
             setError(msg);
+            setHasMore(false);
             try {
               const { listTxCache } = await import('../wallet/storage');
-              const cached = await listTxCache(wallet.addr, 50);
+              const cached = await listTxCache(wallet.addr, PAGE_SIZE);
               if (!isMounted()) return;
               if (cached.length > 0) {
                 setEntries(cached.map((c, i) => normalizeEntry(c.tx, i)));
+                setTotal(cached.length);
                 setUsingCache(true);
                 pushToast('warning', 'Showing cached transactions (network unavailable)');
               }
@@ -119,6 +133,34 @@ export function HistoryView() {
       );
     } finally {
       if (isMounted()) setHasLoadedOnce(true);
+    }
+  };
+
+  const loadMore = async () => {
+    if (!wallet || !rpc || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const page = await getHistory(rpc, wallet.addr, {
+        limit: PAGE_SIZE,
+        offset: entries.length,
+        useCache: false,
+      });
+      if (!isMounted()) return;
+      // De-dupe by hash: a new tx arriving between pages can shift the window
+      // and re-surface a row we already show.
+      setEntries((prev) => {
+        const seen = new Set(prev.map((e) => e.key));
+        const next = page.transactions
+          .map(normalizeEntry)
+          .filter((e) => !seen.has(e.key));
+        return [...prev, ...next];
+      });
+      setTotal(page.total);
+      setHasMore(page.hasMore);
+    } catch (e) {
+      if (isMounted()) pushToast('error', `Failed to load more: ${(e as Error).message}`);
+    } finally {
+      if (isMounted()) setLoadingMore(false);
     }
   };
 
@@ -277,12 +319,33 @@ export function HistoryView() {
             <div
               style={{
                 marginTop: 'var(--sp-3)',
-                fontSize: 'var(--fs-xs)',
-                color: 'var(--text-muted)',
-                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 'var(--sp-2)',
               }}
             >
-              Showing {entries.length} of {entries.length} transactions
+              {hasMore && !usingCache && (
+                <button
+                  className="ghost"
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  style={{ minWidth: 140 }}
+                >
+                  {loadingMore ? <span className="spinner" /> : '↓ Load more'}
+                </button>
+              )}
+              <span
+                style={{
+                  fontSize: 'var(--fs-xs)',
+                  color: 'var(--text-muted)',
+                  textAlign: 'center',
+                }}
+              >
+                Showing {entries.length}
+                {total > entries.length ? ` of ${total}` : ''} transaction
+                {entries.length === 1 ? '' : 's'}
+              </span>
             </div>
           </>
         )}
