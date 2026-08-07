@@ -14,6 +14,13 @@ import { ProcessingModal } from './ProcessingModal';
 import { useI18n } from '../i18n/useI18n';
 import { LANGUAGES } from '../i18n/types';
 import type { LanguageCode } from '../i18n/types';
+import {
+  allNetworks,
+  getNetworkDef,
+  isValidHttpUrl,
+  networkIdFromName,
+  type CustomNetworkDef,
+} from '../wallet/networks';
 
 export function SettingsPanel() {
   const {
@@ -37,6 +44,12 @@ export function SettingsPanel() {
   const [section, setSection] = useState<
     'general' | 'accounts' | 'connections' | 'backup' | 'security'
   >('general');
+
+  // Custom-network add form.
+  const [cnName, setCnName] = useState('');
+  const [cnRpc, setCnRpc] = useState('');
+  const [cnExplorer, setCnExplorer] = useState('');
+  const [cnRelayer, setCnRelayer] = useState('');
 
   useEffect(() => {
     loadSettings().then(setLocalSettings);
@@ -221,35 +234,40 @@ export function SettingsPanel() {
             <div className="card-title">Network Settings</div>
           </div>
           <div className="form-row">
-            <label htmlFor="network">Network</label>
+            <label htmlFor="network">{t('settings.network')}</label>
             <select
               id="network"
               value={settings.network}
               onChange={async (e) => {
-                const network = e.target.value as 'devnet' | 'mainnet';
-                const rpcUrl =
-                  network === 'devnet'
-                    ? 'https://devnet.octrascan.io/rpc'
-                    : 'https://octra.network/rpc';
-                const explorerUrl =
-                  network === 'devnet' ? 'https://devnet.octrascan.io' : 'https://octrascan.io';
-                const next = { ...settings, network, rpcUrl, explorerUrl };
+                const id = e.target.value;
+                const def = getNetworkDef(id, settings.customNetworks);
+                if (!def) return;
+                const next = {
+                  ...settings,
+                  network: def.id,
+                  rpcUrl: def.rpcUrl,
+                  explorerUrl: def.explorerUrl,
+                  relayerUrl: def.relayerUrl ?? '',
+                };
                 setLocalSettings(next);
                 // Apply immediately — persists and rebuilds the RPC client.
                 try {
                   await setSettings(next);
-                  pushToast('success', `Switched to ${network.toUpperCase()}`);
+                  pushToast('success', `${t('network.switched')}: ${def.name}`);
                 } catch (err) {
-                  pushToast('error', `Network switch failed: ${(err as Error).message}`);
+                  pushToast('error', `${t('network.switchFailed')}: ${(err as Error).message}`);
                 }
               }}
             >
-              <option value="devnet">🧪 Devnet (https://devnet.octrascan.io/rpc)</option>
-              <option value="mainnet">🚀 Mainnet (https://octra.network/rpc)</option>
+              {allNetworks(settings.customNetworks).map((net) => (
+                <option key={net.id} value={net.id}>
+                  {net.icon ?? '🌐'} {net.name} ({net.rpcUrl})
+                </option>
+              ))}
             </select>
           </div>
           <div className="form-row">
-            <label htmlFor="rpc-url">RPC URL (JSON-RPC endpoint)</label>
+            <label htmlFor="rpc-url">{t('settings.rpcUrl')}</label>
             <input
               id="rpc-url"
               className="mono"
@@ -258,7 +276,7 @@ export function SettingsPanel() {
             />
           </div>
           <div className="form-row">
-            <label htmlFor="explorer-url">Explorer URL</label>
+            <label htmlFor="explorer-url">{t('settings.explorerUrl')}</label>
             <input
               id="explorer-url"
               className="mono"
@@ -278,14 +296,48 @@ export function SettingsPanel() {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  View wallet on explorer →
+                  {t('settings.viewOnExplorer')} →
                 </a>
               )}
             </div>
           </div>
+          <div className="form-row">
+            <label htmlFor="relayer-url">{t('settings.relayerUrl')}</label>
+            <input
+              id="relayer-url"
+              className="mono"
+              placeholder="http://127.0.0.1:9494"
+              value={settings.relayerUrl ?? ''}
+              onChange={(e) => setLocalSettings({ ...settings, relayerUrl: e.target.value })}
+            />
+            <div
+              style={{
+                fontSize: 'var(--fs-xs)',
+                color: 'var(--text-muted)',
+                marginTop: 'var(--sp-1)',
+              }}
+            >
+              {t('settings.relayerHint')}
+            </div>
+          </div>
           <div className="form-actions">
-            <button className="primary" onClick={handleSave}>
-              Save custom URLs
+            <button
+              className="primary"
+              onClick={() => {
+                for (const [val, label] of [
+                  [settings.rpcUrl, t('settings.rpcUrl')],
+                  [settings.explorerUrl, t('settings.explorerUrl')],
+                  [settings.relayerUrl, t('settings.relayerUrl')],
+                ] as const) {
+                  if (val && !isValidHttpUrl(val)) {
+                    pushToast('error', `${t('settings.invalidUrl')}: ${label}`);
+                    return;
+                  }
+                }
+                handleSave();
+              }}
+            >
+              {t('settings.saveUrls')}
             </button>
             <div
               style={{
@@ -294,8 +346,160 @@ export function SettingsPanel() {
                 marginTop: 'var(--sp-2)',
               }}
             >
-              Network selection applies immediately. Only manual URL edits need saving.
+              {t('settings.networkApplyNote')}
             </div>
+          </div>
+        </div>
+      )}
+
+      {section === 'general' && (
+        <div className="card">
+          <div className="card-header">
+            <div className="card-title">{t('settings.customNetworks')}</div>
+          </div>
+          {(settings.customNetworks?.length ?? 0) > 0 && (
+            <div style={{ marginBottom: 'var(--sp-3)' }}>
+              {(settings.customNetworks ?? []).map((cn) => (
+                <div
+                  key={cn.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--sp-2)',
+                    padding: 'var(--sp-2) 0',
+                    borderBottom: '1px solid var(--border-subtle)',
+                  }}
+                >
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block' }}>
+                      {cn.icon ?? '🌐'} {cn.name}
+                    </span>
+                    <span
+                      className="mono"
+                      style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}
+                    >
+                      {cn.rpcUrl}
+                    </span>
+                  </span>
+                  <button
+                    className="ghost danger"
+                    onClick={async () => {
+                      const remaining = (settings.customNetworks ?? []).filter(
+                        (n) => n.id !== cn.id,
+                      );
+                      // If the deleted network is active, fall back to devnet.
+                      const fallback =
+                        settings.network === cn.id
+                          ? getNetworkDef('devnet')!
+                          : null;
+                      const next: Settings = fallback
+                        ? {
+                            ...settings,
+                            customNetworks: remaining,
+                            network: fallback.id,
+                            rpcUrl: fallback.rpcUrl,
+                            explorerUrl: fallback.explorerUrl,
+                            relayerUrl: fallback.relayerUrl ?? '',
+                          }
+                        : { ...settings, customNetworks: remaining };
+                      setLocalSettings(next);
+                      try {
+                        await setSettings(next);
+                        pushToast('success', `${t('settings.networkRemoved')}: ${cn.name}`);
+                      } catch (err) {
+                        pushToast('error', (err as Error).message);
+                      }
+                    }}
+                  >
+                    {t('common.delete')}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="form-row">
+            <label htmlFor="cn-name">{t('settings.networkName')}</label>
+            <input id="cn-name" value={cnName} onChange={(e) => setCnName(e.target.value)} />
+          </div>
+          <div className="form-row">
+            <label htmlFor="cn-rpc">{t('settings.rpcUrl')}</label>
+            <input
+              id="cn-rpc"
+              className="mono"
+              placeholder="https://…/rpc"
+              value={cnRpc}
+              onChange={(e) => setCnRpc(e.target.value)}
+            />
+          </div>
+          <div className="form-row">
+            <label htmlFor="cn-explorer">{t('settings.explorerUrl')}</label>
+            <input
+              id="cn-explorer"
+              className="mono"
+              placeholder="https://…"
+              value={cnExplorer}
+              onChange={(e) => setCnExplorer(e.target.value)}
+            />
+          </div>
+          <div className="form-row">
+            <label htmlFor="cn-relayer">{t('settings.relayerUrl')}</label>
+            <input
+              id="cn-relayer"
+              className="mono"
+              placeholder="http://127.0.0.1:9494"
+              value={cnRelayer}
+              onChange={(e) => setCnRelayer(e.target.value)}
+            />
+          </div>
+          <div className="form-actions">
+            <button
+              className="primary"
+              onClick={async () => {
+                const name = cnName.trim();
+                if (!name) {
+                  pushToast('error', t('settings.networkNameRequired'));
+                  return;
+                }
+                if (!isValidHttpUrl(cnRpc)) {
+                  pushToast('error', `${t('settings.invalidUrl')}: ${t('settings.rpcUrl')}`);
+                  return;
+                }
+                if (cnExplorer && !isValidHttpUrl(cnExplorer)) {
+                  pushToast('error', `${t('settings.invalidUrl')}: ${t('settings.explorerUrl')}`);
+                  return;
+                }
+                if (cnRelayer && !isValidHttpUrl(cnRelayer)) {
+                  pushToast('error', `${t('settings.invalidUrl')}: ${t('settings.relayerUrl')}`);
+                  return;
+                }
+                const existing = allNetworks(settings.customNetworks).map((n) => n.id);
+                const def: CustomNetworkDef = {
+                  id: networkIdFromName(name, existing),
+                  name,
+                  rpcUrl: cnRpc.trim(),
+                  explorerUrl: cnExplorer.trim() || cnRpc.trim(),
+                  relayerUrl: cnRelayer.trim() || undefined,
+                  icon: '🌐',
+                };
+                const next: Settings = {
+                  ...settings,
+                  customNetworks: [...(settings.customNetworks ?? []), def],
+                };
+                setLocalSettings(next);
+                try {
+                  await setSettings(next);
+                  pushToast('success', `${t('settings.networkAdded')}: ${name}`);
+                  setCnName('');
+                  setCnRpc('');
+                  setCnExplorer('');
+                  setCnRelayer('');
+                } catch (err) {
+                  pushToast('error', (err as Error).message);
+                }
+              }}
+            >
+              {t('settings.addNetwork')}
+            </button>
           </div>
         </div>
       )}

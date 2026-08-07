@@ -11,11 +11,12 @@
  *     - settings:   { id: "settings", rpcUrl, network, ... }
  */
 import { openDB, type IDBPDatabase } from 'idb';
+import type { NetworkId, CustomNetworkDef } from './networks';
 
 const DB_NAME = 'orion-wallet';
 /** Pre-rebrand database name. Data is copied forward on first launch. */
 const LEGACY_DB_NAME = 'webcli-react';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 /** Every object store, in the order they are created and migrated. */
 const OBJECT_STORES: { name: string; keyPath: string }[] = [
@@ -31,6 +32,8 @@ const OBJECT_STORES: { name: string; keyPath: string }[] = [
   { name: 'token-registry', keyPath: 'id' },
   { name: 'token-holdings', keyPath: 'key' },
   { name: 'token-custom', keyPath: 'key' },
+  // v4: oct:// browser bookmarks (additive migration).
+  { name: 'browser-bookmarks', keyPath: 'uri' },
 ];
 
 export interface StoredWalletEntry {
@@ -59,11 +62,16 @@ export interface Manifest {
 export interface Settings {
   id: string; // always "settings"
   rpcUrl: string;
-  network: 'devnet' | 'mainnet';
+  /** 'devnet' | 'mainnet' | <custom network id>. */
+  network: NetworkId;
   theme: 'dark' | 'light' | 'system';
   lastUsedAddress?: string;
   explorerUrl?: string;
   language?: string; // LanguageCode
+  /** Circle relayer URL for the active network (oct:// compute bridge). */
+  relayerUrl?: string;
+  /** User-added networks (presets are not stored here). */
+  customNetworks?: CustomNetworkDef[];
 }
 
 let dbPromise: Promise<IDBPDatabase> | null = null;

@@ -15,6 +15,7 @@ import { AccountPicker } from './AccountPicker';
 import { NetworkSwitcher } from './NetworkSwitcher';
 import { ReceiveView } from './ReceiveView';
 import { CirclesPanel } from './CirclesPanel';
+import { BrowserPanel } from './BrowserPanel';
 import { TokensView } from './TokensView';
 import { Toasts } from './Toasts';
 import { LoadingOverlay } from './LoadingOverlay';
@@ -34,6 +35,7 @@ type Tab =
   | 'contract'
   | 'contract-viewer'
   | 'stealth'
+  | 'browser'
   | 'circles'
   | 'settings'
   | 'docs';
@@ -121,6 +123,13 @@ const NAV_ITEMS: NavItem[] = [
     group: 'Contracts',
   },
   // ─── Advanced ───
+  {
+    id: 'browser',
+    labelKey: 'nav.browser',
+    shortLabelKey: 'nav.browser',
+    icon: '🌐',
+    group: 'Advanced',
+  },
   {
     id: 'circles',
     labelKey: 'nav.circles',
@@ -454,6 +463,7 @@ export function Layout() {
           {tab === 'stealth' && <StealthPanel />}
           {tab === 'contract' && <ContractPanel />}
           {tab === 'contract-viewer' && <ContractViewer />}
+          {tab === 'browser' && <BrowserPanel />}
           {tab === 'circles' && <CirclesPanel />}
           {tab === 'settings' && <SettingsPanel />}
           {tab === 'docs' && <DocsPanel />}

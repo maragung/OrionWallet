@@ -1,26 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { useWalletStore } from '../store/wallet-store';
 import { useI18n } from '../i18n/useI18n';
-
-type Network = 'devnet' | 'mainnet';
-
-const PRESETS: Record<Network, { rpcUrl: string; explorerUrl: string; icon: string }> = {
-  devnet: {
-    rpcUrl: 'https://devnet.octrascan.io/rpc',
-    explorerUrl: 'https://devnet.octrascan.io',
-    icon: '🧪',
-  },
-  mainnet: {
-    rpcUrl: 'https://octra.network/rpc',
-    explorerUrl: 'https://octrascan.io',
-    icon: '🚀',
-  },
-};
+import { allNetworks, getNetworkDef, type NetworkDef, type NetworkId } from '../wallet/networks';
 
 /**
  * Clickable network pill in the top bar.
  * Selecting a network applies it immediately — settings are persisted and the
  * RPC client is rebuilt by the store, so no save/refresh step is needed.
+ * Lists both built-in presets and user-added custom networks.
  */
 export function NetworkSwitcher() {
   const { settings, setSettings, pushToast } = useWalletStore();
@@ -37,21 +24,24 @@ export function NetworkSwitcher() {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  const current: Network = settings?.network === 'mainnet' ? 'mainnet' : 'devnet';
+  const networks = allNetworks(settings?.customNetworks);
+  const currentId: NetworkId = settings?.network ?? 'devnet';
+  const currentDef =
+    getNetworkDef(currentId, settings?.customNetworks) ?? networks[0]!;
 
-  const select = async (network: Network) => {
+  const select = async (net: NetworkDef) => {
     setOpen(false);
-    if (!settings || network === current) return;
-    const preset = PRESETS[network];
+    if (!settings || net.id === currentId) return;
     try {
       // Persists + rebuilds the RPC client immediately.
       await setSettings({
         ...settings,
-        network,
-        rpcUrl: preset.rpcUrl,
-        explorerUrl: preset.explorerUrl,
+        network: net.id,
+        rpcUrl: net.rpcUrl,
+        explorerUrl: net.explorerUrl,
+        relayerUrl: net.relayerUrl ?? '',
       });
-      pushToast('success', `${t('network.switched')}: ${network.toUpperCase()}`);
+      pushToast('success', `${t('network.switched')}: ${net.name}`);
     } catch (e) {
       pushToast('error', `${t('network.switchFailed')}: ${(e as Error).message}`);
     }
@@ -63,7 +53,7 @@ export function NetworkSwitcher() {
         className="network-pill"
         onClick={() => setOpen(!open)}
         title={settings?.rpcUrl ?? ''}
-        aria-label={`${t('network.label')}: ${current}`}
+        aria-label={`${t('network.label')}: ${currentDef.name}`}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -72,8 +62,8 @@ export function NetworkSwitcher() {
           border: '1px solid var(--border-subtle)',
         }}
       >
-        <span>{PRESETS[current].icon}</span>
-        <span>{current.toUpperCase()}</span>
+        <span>{currentDef.icon ?? '🌐'}</span>
+        <span>{currentDef.name.toUpperCase()}</span>
         <span style={{ fontSize: 10, opacity: 0.7 }}>▾</span>
       </button>
 
@@ -107,11 +97,11 @@ export function NetworkSwitcher() {
             {t('network.label')}
           </div>
 
-          {(Object.keys(PRESETS) as Network[]).map((net) => {
-            const isActive = net === current;
+          {networks.map((net) => {
+            const isActive = net.id === currentId;
             return (
               <button
-                key={net}
+                key={net.id}
                 className="ghost"
                 onClick={() => select(net)}
                 style={{
@@ -128,14 +118,14 @@ export function NetworkSwitcher() {
                   textAlign: 'left',
                 }}
               >
-                <span style={{ fontSize: 16 }}>{PRESETS[net].icon}</span>
+                <span style={{ fontSize: 16 }}>{net.icon ?? '🌐'}</span>
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block' }}>{net.toUpperCase()}</span>
+                  <span style={{ display: 'block' }}>{net.name.toUpperCase()}</span>
                   <span
                     className="mono"
                     style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}
                   >
-                    {PRESETS[net].rpcUrl.replace(/^https?:\/\//, '')}
+                    {net.rpcUrl.replace(/^https?:\/\//, '')}
                   </span>
                 </span>
                 {isActive && <span style={{ color: 'var(--accent)' }}>✓</span>}
