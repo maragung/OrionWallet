@@ -8,9 +8,17 @@
  *   - `circle_asset(circle_id, path)`                  → public asset bytes (body_b64)
  *   - `octra_circleAssetCiphertextByResourceKeyAuth`   → sealed ciphertext (Ed25519 read-auth)
  *
- * The sealed read is authorized by an Ed25519 signature over
- *   `octra_circle_asset_ciphertext_by_resource_key|<circle_id>|<addr>|resource_key|<key>`
- * signed by the wallet secret key (webcli main.cpp:5185 + lib/tx_builder.hpp:154-165).
+ * The sealed read is authorized by an Ed25519 signature over a length-framed
+ * message (webcli lib/tx_builder.hpp `frame_v2` + `sign_circle_read_request`):
+ *
+ *   octra_circle_auth_v2|<len>:<op>|<len>:<circle_id>|<len>:<addr>|<len>:<subject>
+ *
+ * Each `<len>` is the field's length in BYTES (the C++ side uses
+ * `std::string::size()`), so multi-byte UTF-8 fields must be measured after
+ * encoding. The subject is always framed, even when empty (`|0:`), which is
+ * what distinguishes this from the older `op|circle|addr[|subject]` format —
+ * length prefixes remove the delimiter ambiguity that format allowed.
+ *
  * This is a READ authorization only — it never moves funds. The signature is
  * built here by the wallet, never by page content.
  */
@@ -49,11 +57,43 @@ export interface CircleAsset {
   sealed: boolean;
 }
 
+/** Hard ceiling for any single circle asset (webcli: 32 MiB). */
+export const MAX_ASSET_BYTES = 33_554_432;
+/** Per-subresource ceiling when materializing a page (webcli: 1 MiB). */
+export const MAX_SUBRESOURCE_BYTES = 1024 * 1024;
+
 function b64ToBytes(b64: string): Uint8Array {
   const bin = atob(b64);
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
+}
+
+function bytesToB64(bytes: Uint8Array): string {
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]!);
+  return btoa(bin);
+}
+
+/**
+ * Decode a node-supplied base64 body, rejecting anything malformed or oversized.
+ * The re-encode check catches non-canonical base64 (padding tricks, stray
+ * whitespace) that would otherwise decode to bytes we never verified.
+ */
+function decodeAssetBody(b64: string, label: string, maxBytes: number): Uint8Array {
+  let bytes: Uint8Array;
+  try {
+    bytes = b64ToBytes(b64);
+  } catch {
+    throw new Error(`circle asset body invalid: ${label}`);
+  }
+  if (bytes.length > maxBytes) {
+    throw new Error(`circle asset exceeds limit: ${label}`);
+  }
+  if (bytesToB64(bytes) !== b64) {
+    throw new Error(`circle asset body invalid: ${label}`);
+  }
+  return bytes;
 }
 
 /** Read a circle's metadata. Throws with the node's error message on failure. */
@@ -78,22 +118,38 @@ interface PublicAssetResult {
   body_b64?: string;
 }
 
-/** Fetch a PUBLIC circle asset (no auth). */
+/**
+ * Fetch a PUBLIC circle asset (no auth).
+ *
+ * `maxBytes` defaults to the top-level asset ceiling; the materializer passes
+ * the smaller subresource ceiling. The node's echoed `circle_id` /
+ * `canonical_path` must match what we asked for, so a node cannot answer a
+ * request for `/index.html` with some other circle's document
+ * (webcli circles.js:1276-1293).
+ */
 export async function fetchPublicAsset(
   rpc: RpcClient,
   circleId: string,
   path: string,
+  maxBytes: number = MAX_ASSET_BYTES,
 ): Promise<CircleAsset> {
   const norm = normalizeAssetPath(path);
   const r = await rpc.rpcCall<PublicAssetResult>('circle_asset', [circleId, norm]);
   if (!r.ok || !r.result) {
     throw new Error(r.error ?? `asset not found: ${norm}`);
   }
-  const contentType = r.result.content_type ?? 'application/octet-stream';
-  const bytes = r.result.body_b64 ? b64ToBytes(r.result.body_b64) : new Uint8Array(0);
+  const res = r.result;
+  if (
+    (res.circle_id && res.circle_id !== circleId) ||
+    (res.canonical_path && res.canonical_path !== norm)
+  ) {
+    throw new Error(`circle asset response invalid: ${norm}`);
+  }
+  const contentType = res.content_type ?? 'application/octet-stream';
+  const bytes = res.body_b64 ? decodeAssetBody(res.body_b64, norm, maxBytes) : new Uint8Array(0);
   return {
     circleId,
-    path: r.result.canonical_path ?? norm,
+    path: res.canonical_path ?? norm,
     contentType,
     bytes,
     text: isTextContent(contentType) ? new TextDecoder().decode(bytes) : '',
@@ -102,14 +158,38 @@ export async function fetchPublicAsset(
 }
 
 /**
+ * Length-prefix framing shared by circle read authorizations.
+ * Mirrors webcli `frame_v2` (lib/tx_builder.hpp): `domain|<len>:<field>|...`
+ * where `<len>` counts UTF-8 BYTES, and every field is framed unconditionally.
+ *
+ * Exported for the vector tests, which pin the exact bytes signed.
+ */
+export function frameV2(domain: string, fields: string[]): Uint8Array {
+  const parts: Uint8Array[] = [enc.encode(domain)];
+  for (const field of fields) {
+    const body = enc.encode(field);
+    parts.push(enc.encode(`|${body.length}:`), body);
+  }
+  const total = parts.reduce((n, p) => n + p.length, 0);
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const p of parts) {
+    out.set(p, off);
+    off += p.length;
+  }
+  return out;
+}
+
+/** Domain separator for circle read-authorization signatures. */
+export const CIRCLE_AUTH_DOMAIN = 'octra_circle_auth_v2';
+
+/**
  * Build the Ed25519 read-authorization signature for a sealed ciphertext read.
- * Signs `op|circle_id|addr|subject` with the wallet secret key.
+ * Signs the `octra_circle_auth_v2` framing of (op, circle_id, addr, subject).
  */
 function signCircleRead(wallet: Wallet, op: string, circleId: string, subject: string): string {
-  const msg = subject
-    ? `${op}|${circleId}|${wallet.addr}|${subject}`
-    : `${op}|${circleId}|${wallet.addr}`;
-  return base64Encode(sign(enc.encode(msg), wallet.sk));
+  const msg = frameV2(CIRCLE_AUTH_DOMAIN, [op, circleId, wallet.addr, subject]);
+  return base64Encode(sign(msg, wallet.sk));
 }
 
 /**
@@ -125,6 +205,7 @@ export async function fetchSealedAsset(
   circleId: string,
   path: string,
   passphrase: string,
+  maxBytes: number = MAX_ASSET_BYTES,
 ): Promise<CircleAsset> {
   const norm = normalizeAssetPath(path);
   const resourceKey = resourceKeyOfPath(circleId, norm);
@@ -145,7 +226,20 @@ export async function fetchSealedAsset(
     throw new Error(r.error ?? `sealed asset not found: ${norm}`);
   }
   const asset = r.result;
+  // The lookup key is derived from `norm`, so any identity the node echoes back
+  // must match what we asked for — otherwise it substituted a different asset.
+  if (
+    (asset.circle_id && asset.circle_id !== circleId) ||
+    (asset.canonical_path && asset.canonical_path !== norm)
+  ) {
+    throw new Error(`sealed asset response invalid: ${norm}`);
+  }
+  // Decryption verifies the plaintext hash, so oversize is checked on the
+  // decrypted result rather than the (padded, encrypted) wire body.
   const bytes = await decryptSealedBytes(circleId, asset, passphrase);
+  if (bytes.length > maxBytes) {
+    throw new Error(`circle asset exceeds limit: ${norm}`);
+  }
   const contentType = asset.content_type ?? 'application/octet-stream';
   return {
     circleId,

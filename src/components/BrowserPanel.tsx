@@ -12,6 +12,8 @@ import {
   fetchPublicAsset,
   fetchSealedAsset,
   isSealedMode,
+  MAX_ASSET_BYTES,
+  MAX_SUBRESOURCE_BYTES,
   type CircleAsset,
   type CircleInfo,
 } from '../browser/circleClient';
@@ -117,12 +119,17 @@ export function BrowserPanel() {
           }
         }
 
-        const load = async (path: string): Promise<CircleAsset> =>
+        const fetchAsset = async (path: string, maxBytes: number): Promise<CircleAsset> =>
           sealed
-            ? fetchSealedAsset(rpc, wallet!, target.circleId, path, passphrase)
-            : fetchPublicAsset(rpc, target.circleId, path);
+            ? fetchSealedAsset(rpc, wallet!, target.circleId, path, passphrase, maxBytes)
+            : fetchPublicAsset(rpc, target.circleId, path, maxBytes);
 
-        const entry = await load(target.path);
+        // Sub-resources get a tighter ceiling than the entry document: a page
+        // pulls many of them, so the per-asset cap bounds total frame size.
+        const load = async (path: string): Promise<CircleAsset> =>
+          fetchAsset(path, MAX_SUBRESOURCE_BYTES);
+
+        const entry = await fetchAsset(target.path, MAX_ASSET_BYTES);
         const bridgeToken = randomToken();
         bridgeTokenRef.current = bridgeToken;
 

@@ -1,17 +1,32 @@
 /**
  * `oct://<circle_id>/<path>` URI parsing/building for the circle browser.
  *
- * Ported verbatim from the webcli reference (static/circles.js:149-207) so the
- * scheme semantics match the official client exactly:
+ * Mirrors the webcli reference (static/circle_bridge_policy.js) so the scheme
+ * semantics match the official client exactly:
  *   - an empty path defaults to `/index.html`
- *   - paths are always rooted with a single leading `/`
- *   - `circle_id` is the on-chain circle contract address ("oct" + base58)
+ *   - `circle_id` must be a well-formed circle address ("oct" + 44 base58)
+ *   - paths are canonicalised: `.` segments dropped, `..` rejected outright,
+ *     and the result is capped at 1024 characters
  */
 
 export interface CircleTarget {
   circleId: string;
   path: string;
   uri: string;
+}
+
+/** Maximum canonical asset path length (webcli circle_bridge_policy.js). */
+export const MAX_PATH_LENGTH = 1024;
+
+/**
+ * A circle id is `oct` followed by 44 base58 characters (no 0, O, I, l).
+ * Validating this keeps malformed ids from ever reaching the RPC layer.
+ */
+const CIRCLE_ID_PATTERN = /^oct[1-9A-HJ-NP-Za-km-z]{44}$/;
+
+/** True when `circleId` is a syntactically valid circle address. */
+export function isValidCircleId(circleId: unknown): circleId is string {
+  return typeof circleId === 'string' && CIRCLE_ID_PATTERN.test(circleId);
 }
 
 /** Normalize an asset path: empty → `/index.html`, else ensure a leading `/`. */
@@ -21,59 +36,70 @@ export function normalizeAssetPath(rawPath: string | null | undefined): string {
   return path.startsWith('/') ? path : `/${path}`;
 }
 
+/**
+ * Canonicalise an asset path, or return `''` when it is unusable.
+ *
+ * Drops empty and `.` segments, rejects any `..` (no traversal outside the
+ * circle), and enforces the length cap. Percent-encoding is decoded first so
+ * `%2e%2e` cannot smuggle a traversal past the check.
+ */
+export function canonicalAssetPath(rawPath: unknown): string {
+  if (typeof rawPath !== 'string') return '';
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(rawPath.trim());
+  } catch {
+    return '';
+  }
+  const path = decoded.startsWith('/') ? decoded : `/${decoded}`;
+  const segments = path.split('/').filter((s) => s && s !== '.');
+  if (segments.includes('..')) return '';
+  const canonical = segments.length ? `/${segments.join('/')}` : '/';
+  return canonical.length <= MAX_PATH_LENGTH ? canonical : '';
+}
+
 /** Build a canonical `oct://` URI from a circle id + path. */
 export function circleUriOf(circleId: string, path: string): string {
   return `oct://${circleId}${normalizeAssetPath(path)}`;
 }
 
-function decodeUriPart(value: string): string {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-}
-
 /**
- * Parse an `oct://` URI. Returns null when the string is not a valid circle URI
- * (missing scheme or empty circle id). Query/hash fragments are stripped.
+ * Parse an `oct://` URI. Returns null unless the circle id is well-formed and
+ * the path canonicalises. Query/hash fragments are stripped.
  */
 export function parseCircleUri(uri: string | null | undefined): CircleTarget | null {
-  const raw = (uri || '').trim();
-  const decodedRaw = decodeUriPart(raw).trim();
-  if (!decodedRaw.toLowerCase().startsWith('oct://')) {
+  if (typeof uri !== 'string') return null;
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(uri.trim());
+  } catch {
     return null;
   }
-  const rest = decodeUriPart(decodedRaw.slice(6)).split(/[?#]/, 1)[0] ?? '';
-  if (!rest) {
-    return null;
-  }
-  const slashIndex = rest.indexOf('/');
-  if (slashIndex === -1) {
-    return {
-      circleId: rest,
-      path: '/index.html',
-      uri: circleUriOf(rest, '/index.html'),
-    };
-  }
-  const circleId = rest.slice(0, slashIndex);
-  const path = normalizeAssetPath(rest.slice(slashIndex));
-  if (!circleId) {
-    return null;
-  }
-  return { circleId, path, uri: circleUriOf(circleId, path) };
+  if (!decoded.toLowerCase().startsWith('oct://')) return null;
+  const rest = decoded.slice(6).split(/[?#]/, 1)[0] ?? '';
+  const slash = rest.indexOf('/');
+  const circleId = slash < 0 ? rest : rest.slice(0, slash);
+  if (!isValidCircleId(circleId)) return null;
+  const path = canonicalAssetPath(slash < 0 ? '/index.html' : rest.slice(slash));
+  if (!path) return null;
+  return { circleId, path, uri: `oct://${circleId}${path}` };
 }
 
 /**
  * Resolve a target from either an `oct://` URI or a bare circle id (+ optional
- * path). Mirrors webcli `parseCircleTarget` (circles.js:195-207).
+ * path). When the circle id is not usable the `uri` comes back empty, which the
+ * caller treats as "nothing to navigate to".
  */
 export function parseCircleTarget(rawCircle: string, rawPath?: string): CircleTarget {
   const parsedUri = parseCircleUri(rawCircle);
   if (parsedUri) return parsedUri;
   const circleId = (rawCircle || '').trim();
-  const path = normalizeAssetPath(rawPath);
-  return { circleId, path, uri: circleUriOf(circleId, path) };
+  const path = canonicalAssetPath(rawPath ?? '/index.html') || '/index.html';
+  return {
+    circleId,
+    path,
+    uri: isValidCircleId(circleId) ? `oct://${circleId}${path}` : '',
+  };
 }
 
 /**

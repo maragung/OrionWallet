@@ -114,6 +114,8 @@ export interface SealedAsset {
   plaintext_hash?: string;
   content_type?: string;
   canonical_path?: string;
+  /** Echoed by the node; verified against the requested circle by the caller. */
+  circle_id?: string;
 }
 
 /**

@@ -5,9 +5,11 @@
  * unlike webcli — Orion has no local `/oct/` gateway server to stream them.
  *
  * Adapted from webcli `materializeSealedHtml` / `rewritePublicAssetRefs`
- * (static/circles.js:1216-1699). Two security postures:
- *   - sealed  : strict injected CSP + hardening prelude (no fetch/storage/etc.)
- *   - public  : looser (scripts + forms allowed), page JS may do its own network
+ * (static/circles.js). Both modes now get the same strict CSP: scripts may only
+ * come from `data:` URLs, which is why every inline script is re-encoded into
+ * one by `encodeFrameScripts` — `'unsafe-inline'` would otherwise let injected
+ * markup execute. The modes differ only in the iframe `sandbox` (public keeps
+ * form submission).
  *
  * Intra-page `oct://` links are rewritten and click-intercepted to a
  * `postMessage({type:'octra.circle.navigate'})` so the host panel drives
@@ -16,6 +18,7 @@
 import {
   normalizeAssetPath,
   circleUriOf,
+  parseCircleUri,
   resolveCirclePath,
   isBlockedRemoteSpec,
   isDataSpec,
@@ -26,6 +29,32 @@ import type { CircleAsset } from './circleClient';
 export type AssetLoader = (path: string) => Promise<CircleAsset>;
 
 export type RenderMode = 'public' | 'sealed';
+
+/** Max executable scripts in one materialized document (webcli: 64). */
+export const MAX_FRAME_SCRIPTS = 64;
+/** Max total script bytes in one materialized document (webcli: 4 MiB). */
+export const MAX_FRAME_SCRIPT_BYTES = 4 * 1024 * 1024;
+
+const SCRIPT_MEDIA_TYPES = [
+  'application/javascript',
+  'text/javascript',
+  'application/ecmascript',
+  'text/ecmascript',
+  'application/x-javascript',
+  'module',
+];
+
+function mediaTypeOf(contentType: string): string {
+  return (contentType || '').split(';')[0]!.trim().toLowerCase();
+}
+
+function isStylesheetContentType(contentType: string): boolean {
+  return mediaTypeOf(contentType) === 'text/css';
+}
+
+function isScriptContentType(contentType: string): boolean {
+  return SCRIPT_MEDIA_TYPES.includes(mediaTypeOf(contentType));
+}
 
 function bytesToBase64(bytes: Uint8Array): string {
   let bin = '';
@@ -52,14 +81,30 @@ function prependHeadMeta(doc: Document, name: string, value: string, attrName: s
   head.prepend(meta);
 }
 
-/** Strict CSP + no-referrer for sealed content (webcli circles.js:1259-1268). */
-function injectSealedPolicy(doc: Document): void {
+/** Remove any page-authored CSP so ours is the only policy in effect. */
+function removeDocumentCsp(doc: Document): void {
+  doc.querySelectorAll('meta[http-equiv]').forEach((node) => {
+    if ((node.getAttribute('http-equiv') || '').trim().toLowerCase() === 'content-security-policy') {
+      node.remove();
+    }
+  });
+}
+
+/**
+ * Strict CSP + no-referrer, applied to BOTH render modes.
+ *
+ * `script-src data:` (not `'unsafe-inline'`) means only the scripts we
+ * deliberately re-encoded into data: URLs can run; markup injected into the
+ * page later cannot execute. `connect-src 'none'` keeps the document offline.
+ */
+function injectFramePolicy(doc: Document): void {
+  removeDocumentCsp(doc);
   doc.querySelectorAll('base').forEach((n) => n.remove());
   prependHeadMeta(
     doc,
     'Content-Security-Policy',
-    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; " +
-      'img-src data: blob:; font-src data:; media-src data: blob:; ' +
+    "default-src 'none'; script-src data:; style-src 'unsafe-inline'; " +
+      'img-src data:; font-src data:; media-src data:; ' +
       "connect-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; " +
       "object-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'none'",
     'http-equiv',
@@ -67,10 +112,47 @@ function injectSealedPolicy(doc: Document): void {
   prependHeadMeta(doc, 'referrer', 'no-referrer', 'name');
 }
 
+/** Script types the browser would actually execute. */
+function isExecutableScript(node: Element): boolean {
+  const type = (node.getAttribute('type') || '').trim().toLowerCase();
+  return type === '' || SCRIPT_MEDIA_TYPES.includes(type);
+}
+
+/**
+ * Re-encode every executable inline script as a `data:` URL so the document
+ * satisfies `script-src data:`, enforcing count/byte ceilings on the way.
+ * Any `src` still present here was never materialized, which would be a hole in
+ * the inlining pass — treat it as fatal rather than shipping a live fetch.
+ */
+function encodeFrameScripts(doc: Document): void {
+  const scripts = Array.from(doc.querySelectorAll('script')).filter(isExecutableScript);
+  if (scripts.length > MAX_FRAME_SCRIPTS) {
+    throw new Error('circle script count exceeds limit');
+  }
+  let totalBytes = 0;
+  for (const node of scripts) {
+    if (node.hasAttribute('src')) {
+      throw new Error('circle script source was not materialized');
+    }
+    const sourceBytes = new TextEncoder().encode(node.textContent || '');
+    totalBytes += sourceBytes.length;
+    if (totalBytes > MAX_FRAME_SCRIPT_BYTES) {
+      throw new Error('circle script bytes exceed limit');
+    }
+    node.textContent = '';
+    node.removeAttribute('integrity');
+    node.removeAttribute('crossorigin');
+    node.setAttribute('src', `data:application/javascript;base64,${bytesToBase64(sourceBytes)}`);
+  }
+}
+
 /** Rewrite an intra-page anchor to a canonical `oct://` URI (or `#`/data). */
 function rewriteInternalAnchor(circleId: string, basePath: string, href: string): string {
   if (!href || href.startsWith('#') || isDataSpec(href)) return href;
   if (isBlockedRemoteSpec(href)) return '#';
+  // An absolute oct:// link may target another circle — keep it verbatim.
+  const parsed = parseCircleUri(href);
+  if (parsed) return parsed.uri;
   const resolved = resolveCirclePath(basePath, href);
   if (!resolved || isBlockedRemoteSpec(resolved)) return '#';
   return circleUriOf(circleId, resolved);
@@ -182,21 +264,10 @@ export interface MaterializeOptions {
  */
 export async function materializeHtml(opts: MaterializeOptions): Promise<string> {
   const { circleId, htmlPath, htmlText, mode, bridgeToken, load } = opts;
+  void mode; // both modes share the same document policy; only sandbox differs
   const doc = new DOMParser().parseFromString(htmlText, 'text/html');
 
-  // Always strip any page-authored <base> so relative resolution stays ours.
-  doc.querySelectorAll('base').forEach((n) => n.remove());
-  // Strip page-authored CSP metas — they reference `'self'` which is a null
-  // origin under srcdoc and would break inlined data: resources.
-  doc
-    .querySelectorAll('meta[http-equiv]')
-    .forEach((n) => {
-      if ((n.getAttribute('http-equiv') || '').toLowerCase() === 'content-security-policy') {
-        n.remove();
-      }
-    });
-
-  if (mode === 'sealed') injectSealedPolicy(doc);
+  injectFramePolicy(doc);
   installPrelude(doc, circleId, htmlPath, bridgeToken);
 
   // Inline <style> blocks.
@@ -217,6 +288,11 @@ export async function materializeHtml(opts: MaterializeOptions): Promise<string>
           node.remove();
         } else {
           const asset = await load(resolved);
+          // A stylesheet slot must hold CSS; anything else is the node
+          // mislabelling content we would then inline with style semantics.
+          if (!isStylesheetContentType(asset.contentType)) {
+            throw new Error(`circle stylesheet content type refused: ${resolved}`);
+          }
           const style = doc.createElement('style');
           style.textContent = await materializeCss(resolved, asset.text, load);
           node.replaceWith(style);
@@ -233,7 +309,7 @@ export async function materializeHtml(opts: MaterializeOptions): Promise<string>
     }
   }
 
-  // <script src> → inline text (so it runs under the sandbox with no network).
+  // <script src> → inline text (re-encoded to data: by encodeFrameScripts).
   for (const node of Array.from(doc.querySelectorAll('script[src]'))) {
     const src = node.getAttribute('src') || '';
     if (isBlockedRemoteSpec(src)) {
@@ -246,6 +322,9 @@ export async function materializeHtml(opts: MaterializeOptions): Promise<string>
       continue;
     }
     const asset = await load(resolved);
+    if (!isScriptContentType(asset.contentType)) {
+      throw new Error(`circle script content type refused: ${resolved}`);
+    }
     const inline = doc.createElement('script');
     const typeAttr = node.getAttribute('type');
     if (typeAttr) inline.setAttribute('type', typeAttr);
@@ -292,6 +371,11 @@ export async function materializeHtml(opts: MaterializeOptions): Promise<string>
   for (const node of Array.from(doc.querySelectorAll('form[action]'))) {
     node.setAttribute('action', '#');
   }
+
+  // Last step: every remaining executable script becomes a data: URL, which is
+  // what the injected `script-src data:` policy admits. Must run after all
+  // inlining so no live `src` survives.
+  encodeFrameScripts(doc);
 
   return `<!DOCTYPE html>\n${doc.documentElement.outerHTML}`;
 }
