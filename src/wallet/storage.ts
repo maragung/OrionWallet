@@ -17,6 +17,8 @@ const DB_NAME = 'orion-wallet';
 /** Pre-rebrand database name. Data is copied forward on first launch. */
 const LEGACY_DB_NAME = 'webcli-react';
 const DB_VERSION = 4;
+/** How long an IndexedDB open/upgrade may take before we fail loudly. */
+const DB_OPEN_TIMEOUT_MS = 8_000;
 
 /** Every object store, in the order they are created and migrated. */
 const OBJECT_STORES: { name: string; keyPath: string }[] = [
@@ -170,15 +172,64 @@ async function migrateLegacyDatabase(target: IDBPDatabase): Promise<void> {
   }
 }
 
+/**
+ * Open the database with a fail-safe: an upgrade (version bump) pending on an
+ * old connection — e.g. the app still open in another tab — blocks forever by
+ * default, which would wedge every storage call including wallet unlock.
+ * Instead, surface a clear error via `blocked` or a timeout, and let later
+ * calls retry from scratch.
+ */
+export function openDbWithTimeout(timeoutMs: number = DB_OPEN_TIMEOUT_MS): Promise<IDBPDatabase> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(
+        new Error(
+          'IndexedDB open timed out. If the wallet is open in another tab, close it and try again.',
+        ),
+      );
+    }, timeoutMs);
+
+    openDB(DB_NAME, DB_VERSION, {
+      upgrade(database) {
+        ensureStores(database);
+      },
+      blocked() {
+        // Another connection (older version, e.g. an old tab) refuses to close:
+        // the upgrade cannot proceed. Surface it now instead of hanging.
+        if (settled) return;
+        settled = true;
+        reject(
+          new Error(
+            'Database upgrade is blocked by another open tab. Close other wallet tabs and try again.',
+          ),
+        );
+      },
+    })
+      .then((db) => {
+        if (settled) {
+          db.close();
+          return;
+        }
+        settled = true;
+        resolve(db);
+      })
+      .catch((err: unknown) => {
+        if (settled) return;
+        settled = true;
+        reject(err instanceof Error ? err : new Error(String(err)));
+      })
+      .finally(() => clearTimeout(timer));
+  });
+}
+
 /** Get (or open) the IndexedDB connection. */
 export function getDb(): Promise<IDBPDatabase> {
   if (!dbPromise) {
     dbPromise = (async () => {
-      const db = await openDB(DB_NAME, DB_VERSION, {
-        upgrade(database) {
-          ensureStores(database);
-        },
-      });
+      const db = await openDbWithTimeout();
       await migrateLegacyDatabase(db);
       return db;
     })().catch((err) => {

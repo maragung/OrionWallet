@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useWalletStore } from '../store/wallet-store';
 import { unlockWallet, listStoredWallets } from '../api/wallet-api';
 import { recordPinAttempt, resetPinAttempts } from '../wallet/pin';
+import { withTimeout } from '../utils/withTimeout';
 import { ThemeToggle } from './ThemeToggle';
 import { ProcessingModal, type ProcessingStage } from './ProcessingModal';
 import { Tooltip } from './Tooltip';
@@ -73,7 +74,12 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
       // Stage 1: Decrypt
       updateStage('decrypt', 'active');
       await new Promise((r) => setTimeout(r, 200));
-      const wallet = await unlockWallet(pin);
+      // Bounded so a blocked IndexedDB upgrade can never freeze this modal.
+      const wallet = await withTimeout(
+        unlockWallet(pin),
+        8_000,
+        'Unlock timed out. If the wallet is open in another tab, close it and try again.',
+      );
       updateStage('decrypt', 'done', 'Wallet decrypted successfully');
 
       // Stage 2: Load
