@@ -2,11 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWalletStore } from '../store/wallet-store';
 import { useI18n } from '../i18n/useI18n';
 import { PanelSkeleton } from './PanelSkeleton';
-import {
-  parseCircleTarget,
-  parseCircleUri,
-  type CircleTarget,
-} from '../browser/octUri';
+import { parseCircleTarget, parseCircleUri, type CircleTarget } from '../browser/octUri';
 import {
   fetchCircleInfo,
   fetchPublicAsset,
@@ -18,12 +14,7 @@ import {
   type CircleInfo,
 } from '../browser/circleClient';
 import { materializeHtml, sandboxFor, type RenderMode } from '../browser/materialize';
-import {
-  addBookmark,
-  listBookmarks,
-  removeBookmark,
-  type Bookmark,
-} from '../browser/bookmarks';
+import { addBookmark, listBookmarks, removeBookmark, type Bookmark } from '../browser/bookmarks';
 
 interface NavState {
   history: string[]; // stack of oct:// uris

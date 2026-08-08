@@ -26,8 +26,7 @@ export function NetworkSwitcher() {
 
   const networks = allNetworks(settings?.customNetworks);
   const currentId: NetworkId = settings?.network ?? 'devnet';
-  const currentDef =
-    getNetworkDef(currentId, settings?.customNetworks) ?? networks[0]!;
+  const currentDef = getNetworkDef(currentId, settings?.customNetworks) ?? networks[0]!;
 
   const select = async (net: NetworkDef) => {
     setOpen(false);

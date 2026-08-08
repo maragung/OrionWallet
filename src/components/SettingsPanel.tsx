@@ -388,10 +388,7 @@ export function SettingsPanel() {
                         (n) => n.id !== cn.id,
                       );
                       // If the deleted network is active, fall back to devnet.
-                      const fallback =
-                        settings.network === cn.id
-                          ? getNetworkDef('devnet')!
-                          : null;
+                      const fallback = settings.network === cn.id ? getNetworkDef('devnet')! : null;
                       const next: Settings = fallback
                         ? {
                             ...settings,

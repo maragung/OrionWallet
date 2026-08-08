@@ -526,7 +526,8 @@ export interface HistoryPage {
 function coerceHistoryRow(raw: unknown, status?: HistoryEntry['status']): HistoryEntry | null {
   if (!raw || typeof raw !== 'object') return null;
   const tx = raw as Record<string, unknown>;
-  const hash = typeof tx.hash === 'string' ? tx.hash : typeof tx.tx_hash === 'string' ? tx.tx_hash : '';
+  const hash =
+    typeof tx.hash === 'string' ? tx.hash : typeof tx.tx_hash === 'string' ? tx.tx_hash : '';
   const entry = { ...(tx as Partial<HistoryEntry>) } as HistoryEntry;
   entry.hash = hash;
   // The node uses `to_`; keep a `to` alias too so downstream code that reads

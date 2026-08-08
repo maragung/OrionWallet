@@ -60,12 +60,15 @@ describe('wallet store — PVAC auto-load', () => {
     const wallet = makeTestWallet();
     useWalletStore.getState().setWallet(wallet);
 
-    // Give the async load a moment to start
-    await new Promise((r) => setTimeout(r, 50));
-
-    // Status should have moved from 'idle' to something else
-    // (loading → ready / unavailable / failed depending on whether pvac.wasm exists)
-    const state = useWalletStore.getState();
+    // Status should leave 'idle' — poll rather than wait a fixed 50ms so
+    // fast paths (load completes within the window) don't flake under load.
+    let state = useWalletStore.getState();
+    const deadline = Date.now() + 1000;
+    while (state.pvacStatus === 'idle' && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 25));
+      state = useWalletStore.getState();
+    }
+    // loading → ready / unavailable / failed depending on whether pvac.wasm exists
     expect(['loading', 'ready', 'unavailable', 'failed']).toContain(state.pvacStatus);
 
     // Wait for the load to complete (or fail)

@@ -150,9 +150,7 @@ export function HistoryView() {
       // and re-surface a row we already show.
       setEntries((prev) => {
         const seen = new Set(prev.map((e) => e.key));
-        const next = page.transactions
-          .map(normalizeEntry)
-          .filter((e) => !seen.has(e.key));
+        const next = page.transactions.map(normalizeEntry).filter((e) => !seen.has(e.key));
         return [...prev, ...next];
       });
       setTotal(page.total);

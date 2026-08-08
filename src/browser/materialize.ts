@@ -84,7 +84,9 @@ function prependHeadMeta(doc: Document, name: string, value: string, attrName: s
 /** Remove any page-authored CSP so ours is the only policy in effect. */
 function removeDocumentCsp(doc: Document): void {
   doc.querySelectorAll('meta[http-equiv]').forEach((node) => {
-    if ((node.getAttribute('http-equiv') || '').trim().toLowerCase() === 'content-security-policy') {
+    if (
+      (node.getAttribute('http-equiv') || '').trim().toLowerCase() === 'content-security-policy'
+    ) {
       node.remove();
     }
   });

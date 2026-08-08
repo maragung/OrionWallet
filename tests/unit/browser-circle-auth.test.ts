@@ -34,9 +34,7 @@ describe('circle read-auth framing (frame_v2)', () => {
       'oct99BWHFpV5r54DXKc2FhsBmZEaS6Q8zvCQrHRgXUcK4Fk',
       'resource_key:abc123',
     ];
-    expect(frameV2(CIRCLE_AUTH_DOMAIN, fields)).toEqual(
-      expected(CIRCLE_AUTH_DOMAIN, fields),
-    );
+    expect(frameV2(CIRCLE_AUTH_DOMAIN, fields)).toEqual(expected(CIRCLE_AUTH_DOMAIN, fields));
   });
 
   it('pins the exact byte string for a small vector', () => {

@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { resourceKeyOfPath, deriveReadKeyBytes, decryptSealedBytes } from '../../src/browser/sealed';
+import {
+  resourceKeyOfPath,
+  deriveReadKeyBytes,
+  decryptSealedBytes,
+} from '../../src/browser/sealed';
 import { aesGcmEncrypt } from '../../src/crypto/aes';
 import { sha256 } from '../../src/crypto/sha256';
 import { hexEncode } from '../../src/crypto/hex';
@@ -96,15 +100,19 @@ describe('sealed circle crypto', () => {
     await expect(
       decryptSealedBytes(
         'octABC',
-        { ciphertext_b64: base64Encode(enc.encode('XXXXX........')), key_id: 'k', plaintext_hash: 'x' },
+        {
+          ciphertext_b64: base64Encode(enc.encode('XXXXX........')),
+          key_id: 'k',
+          plaintext_hash: 'x',
+        },
         'pw',
       ),
     ).rejects.toThrow(/invalid sealed envelope/);
   });
 
   it('rejects incomplete metadata', async () => {
-    await expect(
-      decryptSealedBytes('octABC', { ciphertext_b64: 'AAAA' }, 'pw'),
-    ).rejects.toThrow(/incomplete/);
+    await expect(decryptSealedBytes('octABC', { ciphertext_b64: 'AAAA' }, 'pw')).rejects.toThrow(
+      /incomplete/,
+    );
   });
 });

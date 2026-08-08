@@ -147,9 +147,9 @@ describe('path resolution + spec guards', () => {
       '/style.css',
     );
     expect(resolveCirclePath('/index.html', 'app.js?v=circle-repeat-bounded')).toBe('/app.js');
-    expect(
-      resolveCirclePath('/index.html', 'tokenizer/gpt2_bpe.js?v=circle-repeat-bounded'),
-    ).toBe('/tokenizer/gpt2_bpe.js');
+    expect(resolveCirclePath('/index.html', 'tokenizer/gpt2_bpe.js?v=circle-repeat-bounded')).toBe(
+      '/tokenizer/gpt2_bpe.js',
+    );
   });
 
   it('strips hash fragments from sub-resource specs', () => {
