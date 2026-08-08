@@ -7,148 +7,304 @@ const root = join(__dirname, '..');
 const docsDir = join(root, 'docs');
 const publicDocsDir = join(root, 'public', 'docs');
 
-function mdToHtml(md) {
-  let html = md;
+const CODE_MARK = '\u0000CODE';
 
-  // Escape HTML
-  html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
-  // Code blocks (backticks)
-  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, function (_, lang, code) {
-    return '<pre><code class="language-' + lang + '">' + code.trim() + '</code></pre>';
+/** Inline formatting: code, links, bold, italic. Input must already be escaped. */
+function inline(text) {
+  const codes = [];
+  let out = text.replace(/`([^`]+)`/g, (_, code) => {
+    codes.push(code);
+    return `${CODE_MARK}${codes.length - 1}\u0000`;
   });
 
-  // Inline code
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  out = out.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2">$1</a>');
+  out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  out = out.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
 
-  // Headers
-  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  return out.replace(
+    new RegExp(`${CODE_MARK}(\\d+)\\u0000`, 'g'),
+    (_, i) => `<code>${codes[Number(i)]}</code>`,
+  );
+}
 
-  // Bold
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+/** A GFM pipe-table separator, e.g. |---|:--:|---:| */
+function isTableSeparator(line) {
+  return /^\|[\s:|-]+\|$/.test(line.trim()) && line.includes('-');
+}
 
-  // Italic
-  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+function splitRow(line) {
+  const trimmed = line.trim().replace(/^\|/, '').replace(/\|$/, '');
+  return trimmed.split('|').map((c) => c.trim());
+}
 
-  // Horizontal rules
-  html = html.replace(/^---$/gm, '<hr />');
+function alignmentsFrom(separator) {
+  return splitRow(separator).map((cell) => {
+    const left = cell.startsWith(':');
+    const right = cell.endsWith(':');
+    if (left && right) return 'center';
+    if (right) return 'right';
+    if (left) return 'left';
+    return null;
+  });
+}
 
-  // Links [text](url)
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+function cellAttr(alignments, index) {
+  const align = alignments[index];
+  return align ? ` style="text-align:${align}"` : '';
+}
 
-  // Unordered lists
-  html = html.replace(/^• (.+)$/gm, '<li>$1</li>');
-  html = html.replace(/^(?=<li>)/gm, '<ul>');
-  html = html.replace(/(?<=<\/li>)\n?(?=<li>)/gm, '');
-  html = html.replace(/(?<=<\/li>)\n?(?!\s*<(?:ul|li|h[1-6]|hr|<))/gm, '</ul>');
+/**
+ * Markdown → HTML.
+ *
+ * A line-oriented block parser rather than a pile of global regexes: pipe
+ * tables, blockquotes and dash lists all need block context, and the previous
+ * regex-only version emitted raw "| cell | cell |" text inside <p>.
+ */
+export function mdToHtml(md) {
+  const fences = [];
+  // Pull fenced code out first so no inline rule can touch its contents.
+  const withoutFences = md.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    fences.push(
+      `<pre><code class="language-${lang}">${escapeHtml(code.replace(/\n+$/, ''))}</code></pre>`,
+    );
+    return `${CODE_MARK}FENCE${fences.length - 1}\u0000`;
+  });
 
-  // Ordered lists
-  html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+  const lines = escapeHtml(withoutFences).split('\n');
+  const out = [];
+  let i = 0;
 
-  // Paragraphs (wrap remaining text in <p>)
-  html = html.split('\n\n').map(function (block) {
-    block = block.trim();
-    if (!block) return '';
-    if (block.startsWith('<')) return block;
-    return '<p>' + block.replace(/\n/g, '<br />') + '</p>';
-  }).join('\n');
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
 
-  return html;
+    if (!trimmed) {
+      i++;
+      continue;
+    }
+
+    // Restored verbatim (fenced code placeholder).
+    if (trimmed.startsWith(`${CODE_MARK}FENCE`)) {
+      out.push(trimmed);
+      i++;
+      continue;
+    }
+
+    // Horizontal rule
+    if (/^(-{3,}|\*{3,})$/.test(trimmed)) {
+      out.push('<hr />');
+      i++;
+      continue;
+    }
+
+    // Heading
+    const heading = /^(#{1,4})\s+(.*)$/.exec(trimmed);
+    if (heading) {
+      const level = heading[1].length;
+      out.push(`<h${level}>${inline(heading[2])}</h${level}>`);
+      i++;
+      continue;
+    }
+
+    // Table: a pipe row followed by a separator row
+    if (trimmed.startsWith('|') && i + 1 < lines.length && isTableSeparator(lines[i + 1])) {
+      const alignments = alignmentsFrom(lines[i + 1]);
+      const header = splitRow(trimmed);
+      i += 2;
+
+      const body = [];
+      while (i < lines.length && lines[i].trim().startsWith('|')) {
+        body.push(splitRow(lines[i]));
+        i++;
+      }
+
+      const head = header
+        .map((cell, idx) => `<th${cellAttr(alignments, idx)}>${inline(cell)}</th>`)
+        .join('');
+      const rows = body
+        .map(
+          (row) =>
+            `<tr>${row
+              .map((cell, idx) => `<td${cellAttr(alignments, idx)}>${inline(cell)}</td>`)
+              .join('')}</tr>`,
+        )
+        .join('\n');
+
+      out.push(
+        `<div class="table-wrap">\n<table>\n<thead><tr>${head}</tr></thead>\n<tbody>\n${rows}\n</tbody>\n</table>\n</div>`,
+      );
+      continue;
+    }
+
+    // Blockquote
+    if (trimmed.startsWith('&gt;')) {
+      const quoted = [];
+      while (i < lines.length && lines[i].trim().startsWith('&gt;')) {
+        quoted.push(inline(lines[i].trim().replace(/^&gt;\s?/, '')));
+        i++;
+      }
+      out.push(`<blockquote>${quoted.join('<br />')}</blockquote>`);
+      continue;
+    }
+
+    // Unordered list
+    if (/^([-*•])\s+/.test(trimmed)) {
+      const items = [];
+      while (i < lines.length && /^([-*•])\s+/.test(lines[i].trim())) {
+        items.push(`<li>${inline(lines[i].trim().replace(/^([-*•])\s+/, ''))}</li>`);
+        i++;
+      }
+      out.push(`<ul>\n${items.join('\n')}\n</ul>`);
+      continue;
+    }
+
+    // Ordered list
+    if (/^\d+\.\s+/.test(trimmed)) {
+      const items = [];
+      while (i < lines.length && /^\d+\.\s+/.test(lines[i].trim())) {
+        items.push(`<li>${inline(lines[i].trim().replace(/^\d+\.\s+/, ''))}</li>`);
+        i++;
+      }
+      out.push(`<ol>\n${items.join('\n')}\n</ol>`);
+      continue;
+    }
+
+    // Paragraph: consecutive plain lines
+    const paragraph = [];
+    while (i < lines.length) {
+      const current = lines[i].trim();
+      if (
+        !current ||
+        current.startsWith('|') ||
+        current.startsWith('&gt;') ||
+        current.startsWith(`${CODE_MARK}FENCE`) ||
+        /^(#{1,4})\s+/.test(current) ||
+        /^([-*•])\s+/.test(current) ||
+        /^\d+\.\s+/.test(current) ||
+        /^(-{3,}|\*{3,})$/.test(current)
+      ) {
+        break;
+      }
+      paragraph.push(inline(current));
+      i++;
+    }
+    if (paragraph.length) out.push(`<p>${paragraph.join('<br />')}</p>`);
+  }
+
+  return out
+    .join('\n')
+    .replace(new RegExp(`${CODE_MARK}FENCE(\\d+)\\u0000`, 'g'), (_, idx) => fences[Number(idx)]);
+}
+
+const PAGE_STYLE = `
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #6d6dff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #6d6dff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #2a5db0;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+`;
+
+const THEME_SYNC = `
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+`;
+
+function page(title, body) {
+  return (
+    '<!doctype html>\n<html lang="en">\n<head>\n' +
+    '  <meta charset="UTF-8" />\n' +
+    '  <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n' +
+    '  <title>' +
+    title +
+    ' — Orion Wallet Docs</title>\n' +
+    '  <style>' +
+    PAGE_STYLE +
+    '  </style>\n' +
+    '  <script>' +
+    THEME_SYNC +
+    '  </script>\n' +
+    '</head>\n<body>\n' +
+    body +
+    '\n</body>\n</html>\n'
+  );
 }
 
 function processDocs() {
   mkdirSync(publicDocsDir, { recursive: true });
 
-  const files = readdirSync(docsDir).filter(function (f) {
-    return f.endsWith('.md');
-  });
+  const files = readdirSync(docsDir).filter((f) => f.endsWith('.md'));
 
-  files.forEach(function (file) {
+  files.forEach((file) => {
     const md = readFileSync(join(docsDir, file), 'utf-8');
     const name = file.replace(/\.md$/, '');
-    const body = mdToHtml(md);
-
-    const html = '<!doctype html>\n' +
-      '<html lang="en">\n' +
-      '<head>\n' +
-      '  <meta charset="UTF-8" />\n' +
-      '  <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n' +
-      '  <title>' + name + ' — Orion Wallet Docs</title>\n' +
-      '  <style>\n' +
-      '    :root {\n' +
-      '      --bg: #0a0a0f;\n' +
-      '      --text: #e7e7ef;\n' +
-      '      --text-muted: #8a8aa0;\n' +
-      '      --accent: #6d6dff;\n' +
-      '      --code-bg: #1a1a2e;\n' +
-      '      --border: #26263a;\n' +
-      '      --blockquote-border: #6d6dff;\n' +
-      '      --th-bg: #15151f;\n' +
-      '    }\n' +
-      '    [data-theme="light"] {\n' +
-      '      --bg: #fafafa;\n' +
-      '      --text: #1a1a2e;\n' +
-      '      --text-muted: #666;\n' +
-      '      --accent: #2a5db0;\n' +
-      '      --code-bg: #f0f0f0;\n' +
-      '      --border: #ddd;\n' +
-      '      --blockquote-border: #999;\n' +
-      '      --th-bg: #e8e8e8;\n' +
-      '    }\n' +
-      '    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }\n' +
-      '    a { color: var(--accent); }\n' +
-      '    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }\n' +
-      '    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }\n' +
-      '    pre code { background: none; padding: 0; }\n' +
-      '    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }\n' +
-      '    h2 { margin-top: 2rem; }\n' +
-      '    h3 { margin-top: 1.5rem; }\n' +
-      '    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }\n' +
-      '    ul { padding-left: 1.5rem; }\n' +
-      '    li { margin: 0.25rem 0; }\n' +
-      '    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }\n' +
-      '    table { border-collapse: collapse; margin: 1rem 0; }\n' +
-      '    th, td { border: 1px solid var(--border); padding: 0.5rem 1rem; text-align: left; }\n' +
-      '    th { background: var(--th-bg); }\n' +
-      '  </style>\n' +
-      '  <script>\n' +
-      '    (function() {\n' +
-      '      function apply(t) { document.documentElement.setAttribute("data-theme", t); }\n' +
-      '      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}\n' +
-      '      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}\n' +
-      '    })();\n' +
-      '  </script>\n' +
-      '</head>\n' +
-      '<body>\n' +
-      body + '\n' +
-      '</body>\n' +
-      '</html>\n';
-
-    writeFileSync(join(publicDocsDir, name + '.html'), html);
+    writeFileSync(join(publicDocsDir, name + '.html'), page(name, mdToHtml(md)));
   });
 
   // Landing page for /docs. Generated rather than checked-for: the previous
   // version called statSync() on a file that does not exist on a clean
   // checkout, which threw and aborted the whole build.
-  const landing = files.includes('USER_GUIDE.md') ? 'USER_GUIDE.html' : files[0].replace(/\.md$/, '.html');
+  const landing = files.includes('USER_GUIDE.md')
+    ? 'USER_GUIDE.html'
+    : files[0].replace(/\.md$/, '.html');
   writeFileSync(
     join(publicDocsDir, 'index.html'),
-    '<!doctype html>\n' +
-      '<html lang="en">\n' +
-      '<head>\n' +
+    '<!doctype html>\n<html lang="en">\n<head>\n' +
       '  <meta charset="UTF-8" />\n' +
-      '  <meta http-equiv="refresh" content="0; url=' + landing + '" />\n' +
+      '  <meta http-equiv="refresh" content="0; url=' +
+      landing +
+      '" />\n' +
       '  <title>Docs — Orion Wallet</title>\n' +
-      '</head>\n' +
-      '<body>\n' +
-      '  <p>Redirecting to <a href="' + landing + '">the documentation</a>…</p>\n' +
-      '</body>\n' +
-      '</html>\n',
+      '</head>\n<body>\n' +
+      '  <p>Redirecting to <a href="' +
+      landing +
+      '">the documentation</a>…</p>\n' +
+      '</body>\n</html>\n',
   );
 
   console.log('Built ' + files.length + ' doc pages + index to public/docs/');
 }
 
-processDocs();
+// Only build when run directly, so the converter can be imported by tests.
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  processDocs();
+}

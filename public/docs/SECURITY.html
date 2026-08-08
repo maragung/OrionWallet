@@ -25,7 +25,7 @@
       --blockquote-border: #999;
       --th-bg: #e8e8e8;
     }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
     a { color: var(--accent); }
     code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
     pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
@@ -33,13 +33,16 @@
     h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
     h2 { margin-top: 2rem; }
     h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
     hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
-    ul { padding-left: 1.5rem; }
+    ul, ol { padding-left: 1.5rem; }
     li { margin: 0.25rem 0; }
     blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
-    table { border-collapse: collapse; margin: 1rem 0; }
-    th, td { border: 1px solid var(--border); padding: 0.5rem 1rem; text-align: left; }
-    th { background: var(--th-bg); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
   </style>
   <script>
     (function() {
@@ -51,35 +54,80 @@
 </head>
 <body>
 <h1>Security</h1>
-<p>&gt; <strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Source code, issues, and releases.<br />&gt; <strong>Report vulnerabilities:</strong> <a href="https://github.com/maragung/OrionWallet/security/advisories/new">GitHub Security Advisories</a></p>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Source code, issues, and releases.<br /><strong>Report vulnerabilities:</strong> <a href="https://github.com/maragung/OrionWallet/security/advisories/new">GitHub Security Advisories</a></blockquote>
 <h2>Audit status</h2>
-<strong>Orion Wallet has not undergone an independent third-party security audit.</strong>
+<p><strong>Orion Wallet has not undergone an independent third-party security audit.</strong></p>
 <p>The cryptographic design follows the reference <code>octra-labs/webcli</code> implementation, and the<br />primitives come from well-reviewed libraries. But the integration itself is unaudited.<br />Please weigh that before storing significant value.</p>
 <hr />
 <h2>Reporting a vulnerability</h2>
-<strong>Do not open a public issue for a security problem.</strong>
+<p><strong>Do not open a public issue for a security problem.</strong></p>
 <p>Report privately to the maintainers, including:</p>
-<p>- A description of the issue and its impact<br />- Steps to reproduce<br />- Affected version or commit<br />- Any suggested remediation</p>
+<ul>
+<li>A description of the issue and its impact</li>
+<li>Steps to reproduce</li>
+<li>Affected version or commit</li>
+<li>Any suggested remediation</li>
+</ul>
 <p>Please allow a reasonable window for a fix before public disclosure. Reports are welcome<br />and credited unless you prefer otherwise.</p>
 <hr />
 <h2>Threat model</h2>
 <h3>What Orion Wallet protects against</h3>
-<p>| Threat | Mitigation |<br />|---|---|<br />| Keys leaking to a server | No backend. Keys never leave the browser |<br />| Keystore theft at rest | AES-256-GCM, key derived from the PIN via PBKDF2 |<br />| Malicious dApp requests | Per-origin permissions with explicit approval prompts |<br />| Cross-origin message forgery | Origin validated on every inbound message |<br />| Message replay | CSPRNG challenge and nonce per session |<br />| XSS via injected markup | No <code>innerHTML</code> / <code>dangerouslySetInnerHTML</code>; CSP restricts sources |<br />| Malformed RPC data crashing the app | Defensive normalisation plus error boundaries |</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Threat</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>Keys leaking to a server</td><td>No backend. Keys never leave the browser</td></tr>
+<tr><td>Keystore theft at rest</td><td>AES-256-GCM, key derived from the PIN via PBKDF2</td></tr>
+<tr><td>Malicious dApp requests</td><td>Per-origin permissions with explicit approval prompts</td></tr>
+<tr><td>Cross-origin message forgery</td><td>Origin validated on every inbound message</td></tr>
+<tr><td>Message replay</td><td>CSPRNG challenge and nonce per session</td></tr>
+<tr><td>XSS via injected markup</td><td>No <code>innerHTML</code> / <code>dangerouslySetInnerHTML</code>; CSP restricts sources</td></tr>
+<tr><td>Malformed RPC data crashing the app</td><td>Defensive normalisation plus error boundaries</td></tr>
+</tbody>
+</table>
+</div>
 <h3>What it cannot protect against</h3>
 <p>Be explicit with yourself about these:</p>
-<p>- <strong>A compromised device.</strong> Malware, a keylogger, or a hostile browser extension can read<br />  the PIN as you type it and extract decrypted keys from memory.<br />- <strong>A lost recovery phrase.</strong> There is no recovery mechanism. No one can restore it.<br />- <strong>Phishing.</strong> If you enter your recovery phrase on a fake site, funds are gone. Orion<br />  Wallet never asks for your phrase after setup.<br />- <strong>A compromised RPC node.</strong> A malicious node can serve false balances or withhold<br />  transactions. It cannot forge signatures or steal keys.<br />- <strong>Supply-chain compromise</strong> of npm dependencies or the hosting provider.<br />- <strong>Physical access</strong> to an unlocked device with the wallet unlocked.</p>
+<ul>
+<li><strong>A compromised device.</strong> Malware, a keylogger, or a hostile browser extension can read</li>
+</ul>
+<p>the PIN as you type it and extract decrypted keys from memory.</p>
+<ul>
+<li><strong>A lost recovery phrase.</strong> There is no recovery mechanism. No one can restore it.</li>
+<li><strong>Phishing.</strong> If you enter your recovery phrase on a fake site, funds are gone. Orion</li>
+</ul>
+<p>Wallet never asks for your phrase after setup.</p>
+<ul>
+<li><strong>A compromised RPC node.</strong> A malicious node can serve false balances or withhold</li>
+</ul>
+<p>transactions. It cannot forge signatures or steal keys.</p>
+<ul>
+<li><strong>Supply-chain compromise</strong> of npm dependencies or the hosting provider.</li>
+<li><strong>Physical access</strong> to an unlocked device with the wallet unlocked.</li>
+</ul>
 <hr />
 <h2>Cryptographic design</h2>
 <h3>Key derivation and storage</h3>
-<p>| Purpose | Algorithm |<br />|---|---|<br />| Mnemonic | BIP39 |<br />| HD derivation | Ed25519, SLIP-0010 style |<br />| Signing | Ed25519 (tweetnacl) |<br />| ECDH (stealth) | X25519 (@noble/curves) |<br />| Keystore encryption | AES-256-GCM (WebCrypto) |<br />| PIN → key | PBKDF2-HMAC-SHA256 |<br />| Randomness | <code>crypto.getRandomValues</code> |</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Purpose</th><th>Algorithm</th></tr></thead>
+<tbody>
+<tr><td>Mnemonic</td><td>BIP39</td></tr>
+<tr><td>HD derivation</td><td>Ed25519, SLIP-0010 style</td></tr>
+<tr><td>Signing</td><td>Ed25519 (tweetnacl)</td></tr>
+<tr><td>ECDH (stealth)</td><td>X25519 (@noble/curves)</td></tr>
+<tr><td>Keystore encryption</td><td>AES-256-GCM (WebCrypto)</td></tr>
+<tr><td>PIN → key</td><td>PBKDF2-HMAC-SHA256</td></tr>
+<tr><td>Randomness</td><td><code>crypto.getRandomValues</code></td></tr>
+</tbody>
+</table>
+</div>
 <p>The keystore format matches the C++ original: <code>OCT1</code> magic, version, PBKDF2 iteration<br />count, salt, nonce, then AES-GCM ciphertext with its authentication tag.</p>
 <h3>PIN handling</h3>
 <p>The PIN is <strong>never persisted</strong>, in any form. It derives the decryption key at unlock time<br />and is then discarded. There is no "remember my PIN" — by design. Consequently, a forgotten<br />PIN can only be resolved by restoring from the recovery phrase.</p>
 <h3>Randomness</h3>
 <p>All security-relevant values use <code>crypto.getRandomValues</code> via <code>src/crypto/random.ts</code>.</p>
-<code>makeId</code> in <code>src/sdk/protocol.ts</code> has a <code>Math.random</code> fallback. It is used <strong>only</strong> for
-message correlation IDs, never for security values, and is annotated as such. Do not reuse
-it for challenges, nonces, keys, or salts.
+<p><code>makeId</code> in <code>src/sdk/protocol.ts</code> has a <code>Math.random</code> fallback. It is used <strong>only</strong> for<br />message correlation IDs, never for security values, and is annotated as such. Do not reuse<br />it for challenges, nonces, keys, or salts.</p>
 <hr />
 <h2>Browser security posture</h2>
 <h3>Content-Security-Policy</h3>
@@ -89,16 +137,25 @@ img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https:;
 frame-src 'self' https:; worker-src 'self' blob:; object-src 'none';
 base-uri 'self'; form-action 'self';</code></pre>
 <p>Two entries deserve explanation:</p>
-<p>- <strong><code>'wasm-unsafe-eval'</code></strong> is required for the PVAC FHE module. Chromium blocks<br />  <code>WebAssembly.instantiate()</code> without it. It permits WebAssembly compilation only — it does<br />  <strong>not</strong> re-enable JavaScript <code>eval()</code>.<br />- <strong><code>'unsafe-inline'</code> for styles</strong> is needed for the pre-paint critical CSS that avoids a<br />  flash of unstyled content. It applies to styles only, never to scripts.</p>
+<ul>
+<li><strong><code>'wasm-unsafe-eval'</code></strong> is required for the PVAC FHE module. Chromium blocks</li>
+</ul>
+<p><code>WebAssembly.instantiate()</code> without it. It permits WebAssembly compilation only — it does<br /><strong>not</strong> re-enable JavaScript <code>eval()</code>.</p>
+<ul>
+<li><strong><code>'unsafe-inline'</code> for styles</strong> is needed for the pre-paint critical CSS that avoids a</li>
+</ul>
+<p>flash of unstyled content. It applies to styles only, never to scripts.</p>
 <h3>Cross-origin isolation</h3>
 <p>COOP/COEP are <code>same-origin</code> / <code>require-corp</code> application-wide, with <code>unsafe-none</code><br />overrides on <code>/connect</code> so the approval popup can exchange a MessagePort with the opener.<br />This narrowing is deliberate and limited to that single route.</p>
 <hr />
 <h2>dApp connection security</h2>
 <p>When a site requests a connection:</p>
+<ol>
 <li>The popup shows the requesting origin prominently.</li>
 <li>The user must explicitly approve; there is no silent connection for a new origin.</li>
 <li>Approval is scoped to that origin and persisted per-origin.</li>
 <li>Signing operations always require confirmation, even for trusted sites.</li>
+</ol>
 <p>"Trust this site" suppresses prompts for <strong>read-only</strong> requests (balance, accounts,<br />network) only. It never grants silent signing.</p>
 <p>Connections can be reviewed and revoked under <strong>Settings → Connected Sites</strong>.</p>
 <hr />
@@ -108,14 +165,32 @@ base-uri 'self'; form-action 'self';</code></pre>
 <p>This is a deliberate trade-off, revisited at each release. Run <code>npm audit --omit=dev</code> to<br />confirm the shipped surface stays clean.</p>
 <hr />
 <h2>Guidance for users</h2>
-<strong>Do</strong>
-<p>- Keep your recovery phrase offline, on paper, in more than one location<br />- Verify recipient addresses character by character before sending<br />- Verify the origin in every dApp connection prompt<br />- Send a small test amount first when using a new address<br />- Keep your browser and OS updated</p>
-<strong>Never</strong>
-<p>- Enter your recovery phrase on any website after setup<br />- Store the phrase digitally — no screenshots, cloud notes, or chat messages<br />- Share your private key or <code>.oct</code> backup file<br />- Use a wallet holding real funds on a shared or untrusted computer</p>
+<p><strong>Do</strong></p>
+<ul>
+<li>Keep your recovery phrase offline, on paper, in more than one location</li>
+<li>Verify recipient addresses character by character before sending</li>
+<li>Verify the origin in every dApp connection prompt</li>
+<li>Send a small test amount first when using a new address</li>
+<li>Keep your browser and OS updated</li>
+</ul>
+<p><strong>Never</strong></p>
+<ul>
+<li>Enter your recovery phrase on any website after setup</li>
+<li>Store the phrase digitally — no screenshots, cloud notes, or chat messages</li>
+<li>Share your private key or <code>.oct</code> backup file</li>
+<li>Use a wallet holding real funds on a shared or untrusted computer</li>
+</ul>
 <hr />
 <h2>For contributors</h2>
 <p>Security-sensitive invariants that must not be weakened:</p>
-<p>- Origin validation on every inbound <code>postMessage</code><br />- CSPRNG for all security values; <code>makeId</code> is not one<br />- No secrets in <code>localStorage</code>, <code>sessionStorage</code>, logs, or error messages<br />- No <code>innerHTML</code> or <code>dangerouslySetInnerHTML</code><br />- The PIN is never persisted<br />- Canonical JSON stays byte-exact — signatures depend on it</p>
+<ul>
+<li>Origin validation on every inbound <code>postMessage</code></li>
+<li>CSPRNG for all security values; <code>makeId</code> is not one</li>
+<li>No secrets in <code>localStorage</code>, <code>sessionStorage</code>, logs, or error messages</li>
+<li>No <code>innerHTML</code> or <code>dangerouslySetInnerHTML</code></li>
+<li>The PIN is never persisted</li>
+<li>Canonical JSON stays byte-exact — signatures depend on it</li>
+</ul>
 <p>Any change touching crypto, key handling, storage, or the connect flow should say so<br />explicitly in the pull request.</p>
 </body>
 </html>

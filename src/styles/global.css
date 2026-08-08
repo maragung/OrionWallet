@@ -927,7 +927,7 @@ button.icon {
     flex: 0 0 auto;
   }
   .app-header .brand .tag {
-    display: none; /* hide "React Port" tag on mobile */
+    display: none; /* hide the PVAC status tag on mobile — the header is cramped */
   }
   .app-header .brand .wordmark {
     display: none;

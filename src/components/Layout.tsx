@@ -411,7 +411,6 @@ export function Layout() {
         <div className="brand">
           <img src="/logo.png" alt="Octra" />
           <span className="wordmark">Orion Wallet</span>
-          <span className="tag info">React Port</span>
           {pvacIndicator}
         </div>
         <div className="actions">
