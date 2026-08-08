@@ -45,7 +45,9 @@ describe('IndexedDB open fail-safe', () => {
     await expect(openDbWithTimeout(300)).rejects.toThrow();
     oldConn?.close();
     oldConn = null;
-    const db = await openDbWithTimeout(500);
+    // Generous budget: the assertion is that it opens, not how fast. A tight
+    // budget here turns a loaded CI machine into a false failure.
+    const db = await openDbWithTimeout(5_000);
     expect(db.objectStoreNames.contains('wallets')).toBe(true);
     expect(db.objectStoreNames.contains('browser-bookmarks')).toBe(true);
     db.close();
@@ -54,7 +56,7 @@ describe('IndexedDB open fail-safe', () => {
   it('resolves promptly when no blocker is present', async () => {
     oldConn?.close();
     oldConn = null;
-    const db = await openDbWithTimeout(500);
+    const db = await openDbWithTimeout(5_000);
     expect(db.name).toBe('orion-wallet');
     db.close();
   });

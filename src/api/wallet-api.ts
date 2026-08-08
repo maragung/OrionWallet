@@ -31,6 +31,13 @@ import {
   type Manifest,
 } from '../wallet/storage';
 import { assertValidPin } from '../wallet/pin';
+import { withTimeout } from '../utils/withTimeout';
+
+/**
+ * Budget for reading the encrypted blob out of IndexedDB. Generous enough for a
+ * cold database, short enough that a blocked upgrade surfaces quickly.
+ */
+export const WALLET_READ_TIMEOUT_MS = 10_000;
 import { isValidAddress } from '../crypto/address';
 import { base64Decode } from '../crypto/base64';
 
@@ -117,8 +124,20 @@ export async function importSeed(seed: Uint8Array, name: string, pin: string): P
 }
 
 /** Unlock (decrypt) the persisted wallet with PIN. */
-export async function unlockWallet(pin: string, id: string = 'default'): Promise<Wallet> {
-  const entry = await loadWalletEntry(id);
+export async function unlockWallet(
+  pin: string,
+  id: string = 'default',
+  readTimeoutMs: number = WALLET_READ_TIMEOUT_MS,
+): Promise<Wallet> {
+  // Only the storage read is bounded: it is the step that can wedge forever
+  // (e.g. an IndexedDB upgrade blocked by another tab). Decryption is CPU-bound
+  // — PBKDF2 at 600k iterations takes seconds on the pure-JS fallback path used
+  // when crypto.subtle is unavailable — so it must never be cut short.
+  const entry = await withTimeout(
+    loadWalletEntry(id),
+    readTimeoutMs,
+    'Reading the stored wallet timed out. If the wallet is open in another tab, close it and try again.',
+  );
   if (!entry) throw new Error(`No stored wallet with id '${id}'`);
   const wallet = await loadWalletEncrypted(entry.blob, pin);
   return wallet;

@@ -232,6 +232,18 @@ function toBufferSource(b: Uint8Array): ArrayBuffer {
   return copy;
 }
 
+/**
+ * True when WebCrypto is available for key derivation.
+ *
+ * When false (insecure context: plain http:// on anything other than
+ * localhost), the pure-JS PBKDF2 fallback runs on the main thread and is
+ * roughly an order of magnitude slower — seconds on desktop, longer on mobile.
+ * Callers can use this to warn the user before a slow unlock.
+ */
+export function isWebCryptoAvailable(): boolean {
+  return hasSubtle();
+}
+
 export {
   WALLET_MAGIC,
   WALLET_VERSION,

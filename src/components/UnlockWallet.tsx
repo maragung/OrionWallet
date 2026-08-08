@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useWalletStore } from '../store/wallet-store';
 import { unlockWallet, listStoredWallets } from '../api/wallet-api';
 import { recordPinAttempt, resetPinAttempts } from '../wallet/pin';
-import { withTimeout } from '../utils/withTimeout';
+import { isWebCryptoAvailable } from '../crypto/aes';
 import { ThemeToggle } from './ThemeToggle';
 import { ProcessingModal, type ProcessingStage } from './ProcessingModal';
 import { Tooltip } from './Tooltip';
@@ -12,6 +12,8 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
   const [pin, setPin] = useState('');
   const [hasStored, setHasStored] = useState<boolean | null>(null);
   const [showPin, setShowPin] = useState(false);
+  // Insecure contexts have no crypto.subtle: PBKDF2 runs in JS and unlock is slow.
+  const webCryptoOk = isWebCryptoAvailable();
 
   // Processing modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -74,12 +76,10 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
       // Stage 1: Decrypt
       updateStage('decrypt', 'active');
       await new Promise((r) => setTimeout(r, 200));
-      // Bounded so a blocked IndexedDB upgrade can never freeze this modal.
-      const wallet = await withTimeout(
-        unlockWallet(pin),
-        8_000,
-        'Unlock timed out. If the wallet is open in another tab, close it and try again.',
-      );
+      // No blanket timeout here: unlockWallet bounds its own storage read, and
+      // PBKDF2 (600k iterations) legitimately takes seconds on the pure-JS
+      // fallback used when crypto.subtle is unavailable.
+      const wallet = await unlockWallet(pin);
       updateStage('decrypt', 'done', 'Wallet decrypted successfully');
 
       // Stage 2: Load
@@ -178,6 +178,24 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
             >
               <span>ℹ️</span>
               <span>No stored wallet found. Create a new wallet to get started.</span>
+            </div>
+          )}
+
+          {!webCryptoOk && (
+            <div
+              className="info-box warn"
+              style={{
+                marginBottom: 'var(--sp-4)',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 'var(--sp-2)',
+              }}
+            >
+              <span>🐌</span>
+              <span>
+                Insecure context — WebCrypto is unavailable, so unlocking falls back to pure JS and
+                can take many seconds. Use HTTPS or localhost for fast unlocks.
+              </span>
             </div>
           )}
 
