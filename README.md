@@ -113,7 +113,15 @@ npm install @orion-wallet/sdk
 
   const provider = new WalletProvider({
     walletUrl: 'https://orionwallet.example/connect',
-    capabilities: ['signMessage', 'signContract', 'viewAccounts', 'viewBalance'],
+    capabilities: [
+      'signMessage',
+      'signTypedData',
+      'approveContract',
+      'signContract',
+      'multiAccount',
+      'events',
+      'sessionRestore',
+    ],
   });
 
   // Connect — opens the wallet popup

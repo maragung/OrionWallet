@@ -237,7 +237,15 @@
           <strong>2. Create the provider</strong>
           <pre><code>const provider = new WalletProvider({
   walletUrl: 'https://orionwallet.example/connect',
-  capabilities: ['signMessage', 'signContract'],
+  capabilities: [
+    'signMessage',
+    'signTypedData',
+    'approveContract',
+    'signContract',
+    'multiAccount',
+    'events',
+    'sessionRestore',
+  ],
 });</code></pre>
         </div>
         <div class="integration-step">
@@ -323,7 +331,15 @@ const sig = await provider.signContract({...});</code></pre>
       if (WalletProvider) {
         provider = new WalletProvider({
           walletUrl: WALLET_URL,
-          capabilities: ['signMessage', 'signContract', 'viewAccounts', 'viewBalance', 'viewNetwork'],
+          capabilities: [
+            'signMessage',
+            'signTypedData',
+            'approveContract',
+            'signContract',
+            'multiAccount',
+            'events',
+            'sessionRestore',
+          ],
           requestTimeoutMs: 60000,
         });
       }
