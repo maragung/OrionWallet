@@ -22,6 +22,7 @@ import {
 } from '../tx/builder';
 import { isValidAddress } from '../crypto/address';
 import { putTxCache, listTxCache } from '../wallet/storage';
+import { fetchNextNonce } from './nonce';
 
 export interface SendInputs {
   to: string;
@@ -61,12 +62,8 @@ export async function sendStandard(
   const raw = BigInt(amountRaw);
   if (raw <= 0n) throw new Error('Amount must be positive');
 
-  // Fetch nonce
-  const bi = await rpc.getBalance(wallet.addr);
-  if (!bi.ok || !bi.result) {
-    throw new Error(`Failed to fetch balance: ${bi.error ?? 'unknown'}`);
-  }
-  const nonce = bi.result.nonce + 1;
+  // Fetch nonce (pending-aware so it never collides with a staging tx).
+  const nonce = await fetchNextNonce(rpc, wallet.addr);
 
   // Determine fee
   const ou = inputs.ou ?? recommendedOu('standard', raw);

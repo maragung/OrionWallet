@@ -11,6 +11,7 @@ import {
   formatAmount,
 } from '../tx/builder';
 import { isValidAddress } from '../crypto/address';
+import { fetchNextNonce } from '../api/nonce';
 import { ConfirmDialog } from './ConfirmDialog';
 import { extractMethods } from '../tx/abi';
 import { PanelSkeleton } from './PanelSkeleton';
@@ -103,9 +104,7 @@ export function ContractPanel() {
       const bytecode = compile.result.bytecode;
 
       // Step 2: build & sign program_deploy tx
-      const bi = await rpc.getBalance(wallet.addr);
-      if (!bi.ok || !bi.result) throw new Error('Cannot fetch nonce');
-      const nonce = bi.result.nonce + 1;
+      const nonce = await fetchNextNonce(rpc, wallet.addr);
       const fee = deployFeeRaw;
       const encryptedData = JSON.stringify({ bytecode });
 
@@ -152,9 +151,7 @@ export function ContractPanel() {
         throw new Error('Args must be valid JSON');
       }
       const amountRaw = parseAmountRaw(amount || '0');
-      const bi = await rpc.getBalance(wallet.addr);
-      if (!bi.ok || !bi.result) throw new Error('Cannot fetch nonce');
-      const nonce = bi.result.nonce + 1;
+      const nonce = await fetchNextNonce(rpc, wallet.addr);
       const fee = callFeeRaw;
       const encryptedData = JSON.stringify({ method, args: argsObj });
 

@@ -28,6 +28,7 @@ import { trustSite } from './trusted-sites';
 import { randomBytes } from '../crypto/random';
 import { hexEncode } from '../crypto/hex';
 import { listAccounts, unlockAccount } from '../api/wallet-api';
+import { fetchNextNonce } from '../api/nonce';
 import { PinModal } from '../components/PinModal';
 import { patchSettings } from '../wallet/storage';
 import type { Wallet } from '../wallet/wallet';
@@ -335,9 +336,7 @@ export function ConnectApp() {
         const s = useWalletStore.getState();
         const addr = sessionAddrRef.current ?? s.wallet?.addr;
         if (!s.rpc || !addr) throw new Error('RPC unavailable');
-        const bi = await s.rpc.getBalance(addr);
-        if (!bi.ok || !bi.result) throw new Error('Cannot fetch nonce');
-        return (bi.result.pending_nonce ?? bi.result.nonce ?? 0) + 1;
+        return fetchNextNonce(s.rpc, addr);
       },
       requestApproval,
       requestUnlock,

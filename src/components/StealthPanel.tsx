@@ -4,6 +4,7 @@ import { signTransaction, buildTxJson, parseAmountRaw, recommendedOu, nowTs } fr
 import { isValidAddress } from '../crypto/address';
 import { prepareStealthSend, STEALTH_PREPARE_STEPS } from '../stealth';
 import { base64Decode } from '../crypto/base64';
+import { fetchNextNonce } from '../api/nonce';
 import { formatAmount } from '../tx/builder';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ProcessingModal, useProcessingModal } from './ProcessingModal';
@@ -120,14 +121,9 @@ export function StealthPanel() {
         progress,
       );
 
-      // Step 3: Fetch nonce
+      // Step 3: Fetch nonce (pending-aware)
       await progress.begin('nonce');
-      const bi = await rpc.getBalance(wallet.addr);
-      if (!bi.ok || !bi.result) {
-        progress.fail('nonce', bi.error ?? 'balance request failed');
-        throw new Error('Cannot fetch nonce');
-      }
-      const nonce = bi.result.nonce + 1;
+      const nonce = await fetchNextNonce(rpc, wallet.addr);
       const fee = recommendedOu('stealth', BigInt(amountRaw));
       await progress.done('nonce', `Nonce ${nonce} · stealth fee ${formatAmount(fee)} OCT`);
 

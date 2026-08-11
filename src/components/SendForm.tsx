@@ -2,6 +2,7 @@ import { copyText } from '../utils/clipboard';
 import { useState } from 'react';
 import { useWalletStore } from '../store/wallet-store';
 import { sendStandard } from '../api/send';
+import { fetchNextNonce } from '../api/nonce';
 import { formatAmount, parseAmountRaw } from '../tx/builder';
 import { isValidAddress } from '../crypto/address';
 import { ProcessingModal, type ProcessingStage } from './ProcessingModal';
@@ -92,12 +93,11 @@ export function SendForm() {
     setModalOpen(true);
 
     try {
-      // Stage 1: Fetch nonce
+      // Stage 1: Fetch nonce (display only — sendStandard re-fetches it)
       updateStage('fetch', 'active');
       await new Promise((r) => setTimeout(r, 300)); // brief delay for UX
-      const bi = await rpc.getBalance(wallet.addr);
-      if (!bi.ok || !bi.result) throw new Error(`Failed to fetch nonce: ${bi.error ?? 'unknown'}`);
-      updateStage('fetch', 'done', `Nonce: ${bi.result.nonce + 1}`);
+      const nonce = await fetchNextNonce(rpc, wallet.addr);
+      updateStage('fetch', 'done', `Nonce: ${nonce}`);
 
       // Stage 2: Sign
       updateStage('sign', 'active');

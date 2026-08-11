@@ -25,6 +25,7 @@ import type { Wallet } from '../wallet/wallet';
 import { buildTxJson } from '../tx/builder';
 import { isValidAddress } from '../crypto/address';
 import { signContractCall } from '../connect/typed-data';
+import { fetchNextNonce } from './nonce';
 import {
   OCS01_KEYS,
   MAX_U128,
@@ -461,11 +462,7 @@ export async function transferToken(
     }
   }
 
-  const nonceRes = await rpc.getBalance(wallet.addr);
-  if (!nonceRes.ok || !nonceRes.result) {
-    throw new Error(`Failed to fetch nonce: ${nonceRes.error ?? 'unknown'}`);
-  }
-  const nonce = nonceRes.result.nonce + 1;
+  const nonce = await fetchNextNonce(rpc, wallet.addr);
 
   // Prefer the node's live fee schedule over a hardcoded constant: observed
   // `call` fees on devnet ranged from 2000 to 150000.
