@@ -24,13 +24,13 @@ import { useI18n } from '../i18n/useI18n';
 import { EVENTS, WALLET_CAPABILITIES, type Capability, type HelloMessage } from '../sdk/protocol';
 import { ConnectHandler, type ApprovalRequest, type WalletHost } from './rpc-handler';
 import { ApprovalPrompt, type ApprovalDecision } from './approval-ui/ApprovalPrompt';
-import { trustSite } from './trusted-sites';
 import { randomBytes } from '../crypto/random';
 import { hexEncode } from '../crypto/hex';
 import { listAccounts, unlockAccount } from '../api/wallet-api';
 import { fetchNextNonce } from '../api/nonce';
 import { PinModal } from '../components/PinModal';
 import { patchSettings } from '../wallet/storage';
+import { MAIN_WALLET_NAME, HANDOFF_TYPE } from './handoff';
 import type { Wallet } from '../wallet/wallet';
 
 interface HandshakeParams {
@@ -101,6 +101,9 @@ export function ConnectApp() {
 
   const handlerRef = useRef<ConnectHandler | null>(null);
   const helloSentRef = useRef(false);
+  // Once the session has been handed off to the main wallet window, the popup
+  // stops hosting it (and can close). Guards against double handoff.
+  const handedOffRef = useRef(false);
   // Mirror of the active wallet address for callbacks (avoid stale closure).
   const walletAddrRef = useRef<string | null>(null);
   // Mirror of `selectedAddr` for use inside callbacks (avoid stale closure).
@@ -213,7 +216,7 @@ export function ConnectApp() {
 
   const requestApproval = useCallback(
     (request: ApprovalRequest) =>
-      new Promise<boolean>((resolve) => {
+      new Promise<ApprovalDecision>((resolve) => {
         // Immediately focus the popup so the user sees the prompt.
         try {
           window.focus();
@@ -242,15 +245,12 @@ export function ConnectApp() {
               if (request.kind === 'connect' && d.approved) {
                 // The account chosen in the prompt becomes the session account.
                 sessionAddrRef.current = selectedAddrRef.current;
-                if (request.kind === 'connect' && d.trust) {
-                  await trustSite(request.origin).catch(() => undefined);
-                }
               }
             } finally {
               setBusy(false);
               setAccountPickerVisible(false);
               setPending(null);
-              resolve(d.approved);
+              resolve(d);
             }
           },
         });
@@ -378,6 +378,70 @@ export function ConnectApp() {
     setPinRequest(null);
   }, []);
 
+  /**
+   * Hand the wallet-side port off to the long-lived main wallet window so the
+   * session keeps working after this popup closes. No-ops (and leaves the popup
+   * hosting) when the main wallet window isn't open.
+   */
+  const maybeHandoff = useCallback(
+    (channel: MessageChannel, challenge: string) => {
+      if (handedOffRef.current) return;
+      const h = handlerRef.current;
+      if (!h) return;
+      // Skip unless the main wallet window is actually open (see main.tsx). This
+      // avoids opening a stray blank window when it isn't.
+      let mainOpen = false;
+      try {
+        mainOpen = localStorage.getItem('orion:main-wallet-open') === '1';
+      } catch {
+        /* ignore — treat as not open, handoff falls back to popup hosting */
+      }
+      if (!mainOpen) return; // keep hosting in the popup
+      // The main wallet window shares this origin; reach it by its stable name.
+      const main = window.open('', MAIN_WALLET_NAME);
+      if (!main || main === window) return; // not found — keep hosting in the popup
+      // Safety net: if we accidentally got a blank window, close it and fall back.
+      try {
+        if (main.location.href === 'about:blank') {
+          main.close();
+          return;
+        }
+      } catch {
+        /* cross-origin read blocked — treat as the real main window */
+      }
+      handedOffRef.current = true;
+      const info = {
+        type: HANDOFF_TYPE,
+        origin: params!.origin,
+        challenge,
+        caps: h.getCapabilities() as string[],
+        // Cloned (same-origin) so the session account's keys survive without a
+        // re-PIN prompt. The popup's copy is dropped when it closes.
+        wallet: h.getSessionWallet() as unknown,
+        address: h.getSessionAddress(),
+      };
+      try {
+        main.postMessage(info, location.origin, [channel.port1]);
+        store.pushToast('success', 'Connected — session now managed by your wallet');
+      } catch {
+        // Transfer failed; fall back to hosting in the popup.
+        handedOffRef.current = false;
+        return;
+      }
+      // Give the main window a moment to adopt, then close the popup. If the
+      // browser blocks script-close, the popup simply stays (non-functional,
+      // but the session already lives in the main window).
+      setTimeout(() => {
+        try {
+          window.close();
+        } catch {
+          /* ignore */
+        }
+      }, 400);
+    },
+    [params, store],
+  );
+
   // Send hello + wire the handler, exactly once, after unlock.
   useEffect(() => {
     if (!params || !isUnlocked || helloSentRef.current) return;
@@ -395,7 +459,14 @@ export function ConnectApp() {
       origin: params.origin,
       challenge,
       requestedCapabilities: params.caps.length ? params.caps : (WALLET_CAPABILITIES as string[]),
-      onSessionChange: setSessionId,
+      onSessionChange: (sid) => setSessionId(sid),
+      onConnected: () => {
+        // The port is established and the connect response has been sent. Hand
+        // the wallet-side port to the long-lived main wallet window so the
+        // session survives this popup closing. Deferred slightly so the connect
+        // reply is delivered before the port changes owner.
+        setTimeout(() => maybeHandoff(channel, challenge), 150);
+      },
     });
 
     const hello: HelloMessage = {
@@ -411,7 +482,7 @@ export function ConnectApp() {
 
     opener.postMessage(hello, params.origin, [channel.port2]);
     setHandshakeDone(true);
-  }, [params, isUnlocked, host]);
+  }, [params, isUnlocked, host, maybeHandoff]);
 
   // Bridge wallet lock/unlock into dApp events.
   const prevUnlocked = useRef(isUnlocked);
@@ -482,9 +553,6 @@ export function ConnectApp() {
   if (!isUnlocked || !wallet) {
     return (
       <div style={pageStyle}>
-        <div style={{ position: 'absolute', top: 12, right: 12 }}>
-          <ThemeToggle />
-        </div>
         {showCreate ? (
           <CreateWallet onBack={() => setShowCreate(false)} />
         ) : (

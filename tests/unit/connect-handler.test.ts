@@ -35,7 +35,7 @@ function makeHost(
     getNextNonce: async () => 5,
     requestApproval: async (req) => {
       approvals.push(req);
-      return true;
+      return { approved: true };
     },
     requestUnlock: async () => true,
     requestUnlockAccount: async (addr) => (addr === wallet.addr ? wallet : null),
@@ -222,7 +222,7 @@ describe('ConnectHandler: signing requires approval every time', () => {
   });
 
   it('returns USER_REJECTED when the user declines connect', async () => {
-    const host = makeHost({ requestApproval: vi.fn(async () => false) });
+    const host = makeHost({ requestApproval: vi.fn(async () => ({ approved: false })) });
     const { driver } = wire(host);
     driver.ack();
     const res = await driver.request(METHODS.CONNECT, { origin: ORIGIN });

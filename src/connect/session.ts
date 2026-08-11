@@ -6,8 +6,12 @@
  * Signing is never covered by a session — every sign opens an approval popup.
  *
  * Expiry model:
- *   - idle TTL: refreshed on each use (default 30 min)
- *   - absolute TTL: hard cap from creation (default 8 h)
+ *   - idle TTL: refreshed on each use (default 24 h). The connect popup closes
+ *     right after approval (the MessagePort outlives it), so there is no
+ *     background handler to keep the session warm — a dApp that simply sits
+ *     open would otherwise trip a short idle TTL and force a re-approval on
+ *     its next request. A long idle window matches real dApp usage.
+ *   - absolute TTL: hard cap from creation (default 7 days)
  */
 import {
   saveSdkSession,
@@ -19,8 +23,8 @@ import {
 import { randomBytes } from '../crypto/random';
 import { hexEncode } from '../crypto/hex';
 
-export const IDLE_TTL_MS = 30 * 60 * 1000;
-export const ABS_TTL_MS = 8 * 60 * 60 * 1000;
+export const IDLE_TTL_MS = 24 * 60 * 60 * 1000;
+export const ABS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * Permissions granted on a fresh connect.

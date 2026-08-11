@@ -10,13 +10,9 @@
  * only the connect prompt next time — never the signing prompt).
  */
 import { useState } from 'react';
-import type { ApprovalRequest } from '../rpc-handler';
+import type { ApprovalRequest, ApprovalDecision } from '../rpc-handler';
 
-export interface ApprovalDecision {
-  approved: boolean;
-  /** Only meaningful for `connect`: persist origin as trusted. */
-  trust?: boolean;
-}
+export type { ApprovalDecision };
 
 export interface SelectableAccount {
   address: string;

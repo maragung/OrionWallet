@@ -17,7 +17,6 @@
  * can be unit-tested without a DOM.
  */
 import {
-  CAPABILITIES,
   ERROR_CODES,
   EVENTS,
   METHODS,
@@ -54,7 +53,7 @@ import {
   DEFAULT_PERMISSIONS,
   SIGNING_PERMISSIONS,
 } from './session';
-import { siteIsTrusted } from './trusted-sites';
+import { siteIsTrusted, trustSite } from './trusted-sites';
 import type { SdkSessionRecord } from '../wallet/storage';
 
 /** How far an inbound `ts` may drift from local time (ms). */
@@ -76,6 +75,13 @@ export interface ApprovalRequest {
   accounts?: Array<{ address: string; publicKey: string; name?: string; index?: number }>;
 }
 
+/** Resolution of an approval prompt. `trust` is only meaningful for `connect`. */
+export interface ApprovalDecision {
+  approved: boolean;
+  /** Persist the origin as trusted (skips only the connect prompt next time). */
+  trust?: boolean;
+}
+
 /** Environment the handler needs from the wallet app. */
 export interface WalletHost {
   /** The unlocked wallet, or null when locked. */
@@ -95,10 +101,11 @@ export interface WalletHost {
   /** Fetch the next nonce for building a contract call. */
   getNextNonce(): Promise<number>;
   /**
-   * Ask the user to approve an action. Resolves true (approved) / false
-   * (rejected). Reads never call this; every sign does.
+   * Ask the user to approve an action. Resolves with the decision (approved /
+   * rejected, plus an optional `trust` flag for `connect`). Reads never call
+   * this; every sign does.
    */
-  requestApproval(req: ApprovalRequest): Promise<boolean>;
+  requestApproval(req: ApprovalRequest): Promise<ApprovalDecision>;
   /**
    * Ask the wallet UI to prompt for unlock when a request arrives while locked.
    * Resolves true if unlocked, false if cancelled/failed. Multiple concurrent
@@ -144,6 +151,18 @@ export class ConnectHandler {
   private disposed = false;
   /** Notified whenever the live session id changes (connect/disconnect/expiry). */
   private readonly onSessionChange?: (sid: string | null) => void;
+  /**
+   * Notified once a `connect` has been fully established and its response sent.
+   * Used by the popup to hand the port off to the long-lived main wallet window
+   * so the session survives the popup closing.
+   */
+  private readonly onConnected?: (info: {
+    sid: string;
+    wallet: Wallet | null;
+    address: string | null;
+    challenge: string;
+    capabilities: Capability[];
+  }) => void;
 
   constructor(input: {
     host: WalletHost;
@@ -152,6 +171,15 @@ export class ConnectHandler {
     challenge: string;
     requestedCapabilities?: string[];
     onSessionChange?: (sid: string | null) => void;
+    onConnected?: (info: {
+      sid: string;
+      wallet: Wallet | null;
+      address: string | null;
+      challenge: string;
+      capabilities: Capability[];
+    }) => void;
+    /** Skip the HelloAck challenge wait (used when adopting a handed-off port). */
+    presetAcked?: boolean;
   }) {
     this.host = input.host;
     this.port = input.port;
@@ -160,6 +188,8 @@ export class ConnectHandler {
     this.capabilities = negotiateCapabilities(input.requestedCapabilities);
     this.requestedCaps = this.capabilities;
     this.onSessionChange = input.onSessionChange;
+    this.onConnected = input.onConnected;
+    this.acked = input.presetAcked ?? false;
     this.port.onmessage = (e) => this.onMessage(e);
     this.port.start?.();
   }
@@ -168,6 +198,39 @@ export class ConnectHandler {
   private setSession(session: SdkSessionRecord | null): void {
     this.session = session;
     this.onSessionChange?.(session?.sid ?? null);
+  }
+
+  /** Account the session is bound to (chosen at connect, may differ from active). */
+  getSessionAddress(): string | null {
+    return this.sessionAddress;
+  }
+
+  /** Signing keys for the session account (set when a non-active account is used). */
+  getSessionWallet(): Wallet | null {
+    return this.sessionWallet;
+  }
+
+  /** Negotiated capabilities for this connection. */
+  getCapabilities(): Capability[] {
+    return this.capabilities;
+  }
+
+  /**
+   * Adopt a port that was handed off from the connect popup. The dApp already
+   * acked the original challenge, so we start already-acked, rebind the session
+   * the popup minted, and keep the decrypted keys for the (possibly non-active)
+   * session account so no PIN re-prompt is needed.
+   */
+  async adoptSession(session: SdkSessionRecord | null, wallet: Wallet | null): Promise<void> {
+    this.acked = true;
+    if (!session) return;
+    this.session = session;
+    this.sessionAddress = session.address;
+    this.sessionWallet = wallet;
+    // Keep the host's notion of the active session account coherent so reads
+    // (getBalance) resolve for the connected account, not the wallet's active one.
+    this.host.setSessionAccount(session.address);
+    this.setSession(session);
   }
 
   /** The account address reads/signs should operate on for this session. */
@@ -348,25 +411,24 @@ export class ConnectHandler {
     if (!session) {
       const trusted = await siteIsTrusted(this.origin);
       const accounts = this.host.getAccounts();
-      const approved =
-        trusted ||
-        (await this.host.requestApproval({
-          kind: 'connect',
-          origin: this.origin,
-          detail: { capabilities: this.requestedCaps },
-          // Only offer the account picker when there is more than one account,
-          // and only when the dApp requested the multiAccount capability.
-          accounts:
-            accounts.length > 1 && this.capabilities.includes(CAPABILITIES.MULTI_ACCOUNT)
-              ? accounts
-              : undefined,
-        }));
+      // The picker is offered whenever the wallet holds more than one account —
+      // the user should always be able to choose which account to connect.
+      const decision: ApprovalDecision | null = trusted
+        ? null
+        : await this.host.requestApproval({
+            kind: 'connect',
+            origin: this.origin,
+            detail: { capabilities: this.requestedCaps },
+            accounts: accounts.length > 1 ? accounts : undefined,
+          });
+      const approved = trusted || (decision?.approved ?? false);
       if (!approved) {
         return this.fail(env.id, {
           code: ERROR_CODES.USER_REJECTED,
           message: 'User rejected the connection',
         });
       }
+      if (decision?.trust) await trustSite(this.origin).catch(() => undefined);
 
       // The account the user chose via the picker in the approval UI (synced
       // through the host), falling back to the wallet's active account.
@@ -416,6 +478,16 @@ export class ConnectHandler {
       chainId: await this.host.getChainId(),
       capabilities: this.capabilities,
       sessionId: this.session!.sid,
+    });
+
+    // Port is established and the connect response is sent — hand off to the
+    // main wallet window so the session survives the popup closing.
+    this.onConnected?.({
+      sid: this.session!.sid,
+      wallet: this.sessionWallet,
+      address: this.sessionAddress,
+      challenge: this.challenge,
+      capabilities: this.capabilities,
     });
   }
 
@@ -525,13 +597,13 @@ export class ConnectHandler {
         // Only the two known schemes are honoured; anything else falls back to
         // the domain-separated default rather than silently signing raw bytes.
         const scheme: 'raw' | 'domain' = raw?.scheme === 'raw' ? 'raw' : 'domain';
-        const approved = await this.host.requestApproval({
+        const decision = await this.host.requestApproval({
           kind: 'signMessage',
           origin: this.origin,
           // Surface the scheme so the approval UI can warn on untagged signing.
           detail: { message, scheme },
         });
-        if (!approved) return this.rejected(env.id);
+        if (!decision.approved) return this.rejected(env.id);
         // Grant permission on first successful approval, so subsequent calls do
         // not hit the permission check and can proceed straight to the prompt.
         this.session = await grantPermission(session, 'signMessage');
@@ -545,12 +617,12 @@ export class ConnectHandler {
             message: 'Malformed typed data',
           });
         }
-        const approved = await this.host.requestApproval({
+        const decision = await this.host.requestApproval({
           kind: 'signTypedData',
           origin: this.origin,
           detail: { typedData: td as unknown as Record<string, unknown> },
         });
-        if (!approved) return this.rejected(env.id);
+        if (!decision.approved) return this.rejected(env.id);
         this.session = await grantPermission(session, 'signTypedData');
         return this.reply(env.id, signTypedDataOctra(wallet, td));
       }
@@ -562,12 +634,12 @@ export class ConnectHandler {
             message: 'approveContract requires program and method',
           });
         }
-        const approved = await this.host.requestApproval({
+        const decision = await this.host.requestApproval({
           kind: 'approveContract',
           origin: this.origin,
           detail: { ...params },
         });
-        if (!approved) return this.rejected(env.id);
+        if (!decision.approved) return this.rejected(env.id);
         this.session = await grantPermission(session, 'approveContract');
         return this.reply(env.id, signContractApproval(wallet, params));
       }
@@ -593,14 +665,14 @@ export class ConnectHandler {
             message: `signContract: unsupported opType "${String(params.opType)}" (expected "call" or "program_call")`,
           });
         }
-        const approved = await this.host.requestApproval({
+        const decision = await this.host.requestApproval({
           kind: 'signContract',
           origin: this.origin,
           // Surface the resolved opType so the approval UI shows which
           // operation the user is actually authorising.
           detail: { ...params, opType: params.opType ?? 'program_call' },
         });
-        if (!approved) return this.rejected(env.id);
+        if (!decision.approved) return this.rejected(env.id);
         this.session = await grantPermission(session, 'signContract');
         const nonce = await this.host.getNextNonce();
         const signed = signContractCall(wallet, { ...params, nonce });

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useWalletStore } from '../store/wallet-store';
 import { UnlockWallet } from './UnlockWallet';
 import { CreateWallet } from './CreateWallet';
@@ -20,10 +20,18 @@ import { TokensView } from './TokensView';
 import { Toasts } from './Toasts';
 import { LoadingOverlay } from './LoadingOverlay';
 import { ErrorBoundary } from './ErrorBoundary';
-import { ThemeToggle } from './ThemeToggle';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { ConnectApprovalHost } from './ConnectApprovalHost';
 import { useTheme } from '../hooks/useTheme';
 import { useI18n } from '../i18n/useI18n';
+import { ConnectHandler } from '../connect/rpc-handler';
+import {
+  createWalletHost,
+  refreshHostAccounts,
+} from '../connect/host';
+import { restoreSession } from '../connect/session';
+import type { Wallet } from '../wallet/wallet';
+import { HANDOFF_TYPE, type ConnectHandoffMessage } from '../connect/handoff';
 
 type Tab =
   | 'balance'
@@ -301,6 +309,64 @@ export function Layout() {
   // Initialize theme system (applies data-theme to <html>)
   useTheme();
 
+  // Host for SDK connect sessions handed off from /connect popups (see handoff).
+  // The main wallet window is long-lived, so dApp sessions survive the popup
+  // closing. The host is created once and reused across handoffs.
+  const mainHost = useMemo(() => createWalletHost(), []);
+
+  // Live handlers adopted from popups, so we can tear them down on lock.
+  const handlersRef = useRef<ConnectHandler[]>([]);
+
+  // Adopt a handed-off port and restore the session the popup minted.
+  const adoptHandoff = useCallback(
+    (msg: ConnectHandoffMessage, port: MessagePort) => {
+      const handler = new ConnectHandler({
+        host: mainHost,
+        port,
+        origin: msg.origin,
+        challenge: msg.challenge,
+        requestedCapabilities: msg.caps,
+        presetAcked: true,
+        onSessionChange: () => undefined,
+      });
+      handlersRef.current.push(handler);
+      restoreSession(msg.origin)
+        .then((session) => handler.adoptSession(session, (msg.wallet as Wallet | null) ?? null))
+        .catch(() => undefined);
+    },
+    [mainHost],
+  );
+
+  // Listen for handoffs from /connect popups (same origin only).
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      const data = e.data as Partial<ConnectHandoffMessage> | undefined;
+      if (!data || data.type !== HANDOFF_TYPE) return;
+      // The transferred port arrives in e.ports[0].
+      const port = e.ports?.[0];
+      if (!port) return;
+      adoptHandoff(data as ConnectHandoffMessage, port);
+    };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, [adoptHandoff]);
+
+  // Keep the host's account cache in sync with the manifest.
+  useEffect(() => {
+    refreshHostAccounts();
+  }, [wallet]);
+
+  // On lock, tear down any adopted session handlers (drops the live channel).
+  const prevUnlocked = useRef(isUnlocked);
+  useEffect(() => {
+    if (prevUnlocked.current && !isUnlocked) {
+      for (const h of handlersRef.current) h.dispose();
+      handlersRef.current = [];
+    }
+    prevUnlocked.current = isUnlocked;
+  }, [isUnlocked]);
+
   // Reset showCreate when wallet is locked
   useEffect(() => {
     if (!isUnlocked) {
@@ -417,7 +483,6 @@ export function Layout() {
           <AccountPicker onManage={() => setTab('settings')} />
           <NetworkSwitcher />
           <LanguageSwitcher />
-          <ThemeToggle />
           <button
             className="ghost icon"
             onClick={lock}
@@ -471,6 +536,7 @@ export function Layout() {
 
       <MobileNav tab={tab} setTab={setTab} t={t} />
 
+      <ConnectApprovalHost />
       <Toasts />
       <LoadingOverlay loading={isLoading} message={loadingMessage} />
     </div>
