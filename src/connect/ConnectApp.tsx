@@ -27,8 +27,10 @@ import { ApprovalPrompt, type ApprovalDecision } from './approval-ui/ApprovalPro
 import { trustSite } from './trusted-sites';
 import { randomBytes } from '../crypto/random';
 import { hexEncode } from '../crypto/hex';
-import { listAccounts } from '../api/wallet-api';
+import { listAccounts, unlockAccount } from '../api/wallet-api';
+import { PinModal } from '../components/PinModal';
 import { patchSettings } from '../wallet/storage';
+import type { Wallet } from '../wallet/wallet';
 
 interface HandshakeParams {
   rid: string;
@@ -84,9 +86,28 @@ export function ConnectApp() {
   >([]);
   const [balance, setBalance] = useState<{ balance: string; nonce: number } | null>(null);
   const [selectedAddr, setSelectedAddr] = useState<string | null>(null);
+  // Whether the current connect approval shows the in-prompt account picker.
+  const [accountPickerVisible, setAccountPickerVisible] = useState(false);
+  // Account bound to the live session (may differ from the active wallet account).
+  const [sessionAccount, setSessionAccountState] = useState<string | null>(null);
+  // Signing keys for the session account when it differs from the active wallet.
+  const sessionWalletRef = useRef<Wallet | null>(null);
+  // PIN prompt for unlocking a non-active account for the session.
+  const [pinRequest, setPinRequest] = useState<{
+    addr: string;
+    resolve: (w: Wallet | null) => void;
+  } | null>(null);
 
   const handlerRef = useRef<ConnectHandler | null>(null);
   const helloSentRef = useRef(false);
+  // Mirror of the active wallet address for callbacks (avoid stale closure).
+  const walletAddrRef = useRef<string | null>(null);
+  // Mirror of `selectedAddr` for use inside callbacks (avoid stale closure).
+  const selectedAddrRef = useRef<string | null>(null);
+  // Account bound to the live session (mirror of `sessionAccount` state).
+  const sessionAddrRef = useRef<string | null>(null);
+  // Mirror of `pinRequest` for use inside callbacks.
+  const pinRequestRef = useRef<{ addr: string; resolve: (w: Wallet | null) => void } | null>(null);
 
   // Aggressively focus popup when approval prompt appears.
   // Browsers may ignore a single window.focus(), so we retry with delays.
@@ -143,8 +164,22 @@ export function ConnectApp() {
 
   // Sync selectedAddr when wallet changes.
   useEffect(() => {
-    if (wallet?.addr) setSelectedAddr(wallet.addr);
+    if (wallet?.addr) {
+      walletAddrRef.current = wallet.addr;
+      setSelectedAddr(wallet.addr);
+      selectedAddrRef.current = wallet.addr;
+    }
   }, [wallet?.addr]);
+
+  // Keep the ref mirror in sync whenever selectedAddr changes.
+  useEffect(() => {
+    selectedAddrRef.current = selectedAddr;
+  }, [selectedAddr]);
+
+  // Keep the ref mirror in sync whenever pinRequest changes.
+  useEffect(() => {
+    pinRequestRef.current = pinRequest;
+  }, [pinRequest]);
 
   // Fetch balance for selected account.
   const displayAddr = selectedAddr || wallet?.addr;
@@ -203,16 +238,31 @@ export function ConnectApp() {
           resolve: async (d: ApprovalDecision) => {
             setBusy(true);
             try {
-              if (request.kind === 'connect' && d.approved && d.trust) {
-                await trustSite(request.origin).catch(() => undefined);
+              if (request.kind === 'connect' && d.approved) {
+                // The account chosen in the prompt becomes the session account.
+                sessionAddrRef.current = selectedAddrRef.current;
+                if (request.kind === 'connect' && d.trust) {
+                  await trustSite(request.origin).catch(() => undefined);
+                }
               }
             } finally {
               setBusy(false);
+              setAccountPickerVisible(false);
               setPending(null);
               resolve(d.approved);
             }
           },
         });
+        // Multi-account: show the in-prompt account picker so the user can
+        // choose which account to connect.
+        if (request.kind === 'connect' && (request.accounts?.length ?? 0) > 1) {
+          // Default the picker to the active account.
+          if (!selectedAddrRef.current) {
+            setSelectedAddr(walletAddrRef.current);
+            selectedAddrRef.current = walletAddrRef.current;
+          }
+          setAccountPickerVisible(true);
+        }
       }),
     [],
   );
@@ -271,7 +321,7 @@ export function ConnectApp() {
       },
       getBalance: async () => {
         const s = useWalletStore.getState();
-        const addr = s.wallet?.addr;
+        const addr = sessionAddrRef.current ?? s.wallet?.addr;
         if (!s.rpc || !addr) return { balance: '0', balanceRaw: '0', nonce: 0 };
         const bi = await s.rpc.getBalance(addr);
         if (!bi.ok || !bi.result) return { balance: '0', balanceRaw: '0', nonce: 0 };
@@ -283,7 +333,7 @@ export function ConnectApp() {
       },
       getNextNonce: async () => {
         const s = useWalletStore.getState();
-        const addr = s.wallet?.addr;
+        const addr = sessionAddrRef.current ?? s.wallet?.addr;
         if (!s.rpc || !addr) throw new Error('RPC unavailable');
         const bi = await s.rpc.getBalance(addr);
         if (!bi.ok || !bi.result) throw new Error('Cannot fetch nonce');
@@ -291,9 +341,43 @@ export function ConnectApp() {
       },
       requestApproval,
       requestUnlock,
+      requestUnlockAccount: async (addr: string) => {
+        // The active wallet is already unlocked — reuse it directly.
+        const active = useWalletStore.getState().wallet;
+        if (active && active.addr === addr) return active;
+        // Otherwise prompt for the PIN to decrypt the account's keys.
+        return new Promise<Wallet | null>((resolve) => {
+          setPinRequest({ addr, resolve });
+        });
+      },
+      setSessionAccount: (addr) => {
+        sessionAddrRef.current = addr;
+        setSessionAccountState(addr);
+        setSelectedAddr(addr);
+        selectedAddrRef.current = addr;
+      },
+      getSessionAccount: () => sessionAddrRef.current,
     }),
     [requestApproval, requestUnlock],
   );
+
+  // ── PIN gate for unlocking a non-active session account ───────────────────
+  const handlePinSubmit = useCallback(async (pin: string) => {
+    const req = pinRequestRef.current;
+    if (!req) return;
+    const w = await unlockAccount(req.addr, pin); // throws on wrong PIN
+    // Hold the decrypted keys for the session; do NOT change the active wallet.
+    sessionWalletRef.current = w;
+    req.resolve(w);
+    setPinRequest(null);
+  }, []);
+
+  const handlePinCancel = useCallback(() => {
+    const req = pinRequestRef.current;
+    if (!req) return;
+    req.resolve(null);
+    setPinRequest(null);
+  }, []);
 
   // Send hello + wire the handler, exactly once, after unlock.
   useEffect(() => {
@@ -429,7 +513,7 @@ export function ConnectApp() {
           alignItems: 'center',
         }}
       >
-        {accounts.length > 1 && (
+        {accounts.length > 1 && !accountPickerVisible && (
           <select
             value={displayAddr}
             onChange={(e) => setSelectedAddr(e.target.value)}
@@ -461,7 +545,17 @@ export function ConnectApp() {
 
       {pending ? (
         <div style={overlayStyle}>
-          <ApprovalPrompt request={pending.request} onDecision={pending.resolve} busy={busy} />
+          <ApprovalPrompt
+            request={pending.request}
+            onDecision={pending.resolve}
+            busy={busy}
+            accounts={pending.request.accounts}
+            selectedAccount={selectedAddr}
+            onSelectAccount={(addr) => {
+              setSelectedAddr(addr);
+              selectedAddrRef.current = addr;
+            }}
+          />
         </div>
       ) : (
         <div style={{ maxWidth: 420, width: '100%' }}>
@@ -497,7 +591,11 @@ export function ConnectApp() {
                 marginBottom: 8,
               }}
             >
-              <strong style={{ fontSize: 'var(--fs-sm)' }}>Active Wallet</strong>
+              <strong style={{ fontSize: 'var(--fs-sm)' }}>
+                {sessionAccount && sessionAccount !== wallet?.addr
+                  ? 'Session Account'
+                  : 'Active Wallet'}
+              </strong>
               <span className="pill ok" style={{ fontSize: 11 }}>
                 unlocked
               </span>
@@ -512,6 +610,12 @@ export function ConnectApp() {
             >
               {displayAddr}
             </div>
+            {sessionAccount && sessionAccount !== wallet?.addr && (
+              <div style={{ marginTop: 8, fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
+                Connected with a different account than your active wallet (
+                {wallet?.addr.slice(0, 8)}…). Your wallet account is unchanged.
+              </div>
+            )}
             {balance && (
               <div style={{ marginTop: 8, fontSize: 'var(--fs-sm)' }}>
                 Balance: <strong>{balance.balance}</strong> OCT
@@ -532,6 +636,20 @@ export function ConnectApp() {
         danger
         onConfirm={handleDisconnect}
         onCancel={() => setShowDisconnectConfirm(false)}
+      />
+      <PinModal
+        open={pinRequest !== null}
+        title="Unlock account"
+        description={
+          pinRequest
+            ? `Enter your PIN to unlock ${accounts.find((a) => a.address === pinRequest.addr)?.name || 'this account'} for this connection. ` +
+              'Your active wallet account stays unchanged.'
+            : undefined
+        }
+        confirmLabel="Unlock"
+        busyLabel="Unlocking…"
+        onSubmit={handlePinSubmit}
+        onCancel={handlePinCancel}
       />
       <Toasts />
     </div>

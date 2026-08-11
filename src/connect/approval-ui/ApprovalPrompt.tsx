@@ -18,10 +18,22 @@ export interface ApprovalDecision {
   trust?: boolean;
 }
 
+export interface SelectableAccount {
+  address: string;
+  name?: string;
+  index?: number;
+}
+
 interface Props {
   request: ApprovalRequest;
   onDecision: (d: ApprovalDecision) => void;
   busy?: boolean;
+  /** Accounts to choose between for a `connect` prompt (multi-account). */
+  accounts?: SelectableAccount[];
+  /** Currently selected account for the connect prompt. */
+  selectedAccount?: string | null;
+  /** Called when the user picks a different account in the connect prompt. */
+  onSelectAccount?: (address: string) => void;
 }
 
 const card: React.CSSProperties = {
@@ -90,7 +102,14 @@ function Actions({
   );
 }
 
-export function ApprovalPrompt({ request, onDecision, busy }: Props) {
+export function ApprovalPrompt({
+  request,
+  onDecision,
+  busy,
+  accounts,
+  selectedAccount,
+  onSelectAccount,
+}: Props) {
   const [trust, setTrust] = useState(false);
   const { kind, origin, detail } = request;
 
@@ -108,6 +127,8 @@ export function ApprovalPrompt({ request, onDecision, busy }: Props) {
         return 'Sign Contract Call';
     }
   })();
+
+  const showAccountPicker = kind === 'connect' && !!accounts && accounts.length > 1;
 
   return (
     <div
@@ -127,6 +148,72 @@ export function ApprovalPrompt({ request, onDecision, busy }: Props) {
             balance, and network, and to <strong>request</strong> signatures. It can never move
             funds or broadcast transactions — every signature needs your explicit approval.
           </p>
+
+          {showAccountPicker && (
+            <div style={{ marginTop: 'var(--sp-3)', marginBottom: 'var(--sp-3)' }}>
+              <div
+                style={{
+                  fontSize: 'var(--fs-xs)',
+                  color: 'var(--text-muted)',
+                  marginBottom: 'var(--sp-2)',
+                }}
+              >
+                Connect with account
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--sp-2)',
+                  maxHeight: 180,
+                  overflowY: 'auto',
+                }}
+              >
+                {accounts!.map((a) => {
+                  const isSelected = a.address === selectedAccount;
+                  return (
+                    <label
+                      key={a.address}
+                      className="mono"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--sp-2)',
+                        padding: 'var(--sp-2)',
+                        borderRadius: 'var(--r-md)',
+                        border: `1px solid ${isSelected ? 'var(--border-focus)' : 'var(--border-subtle)'}`,
+                        background: isSelected ? 'var(--accent-soft)' : 'var(--bg-elevated-2)',
+                        cursor: 'pointer',
+                        fontSize: 'var(--fs-xs)',
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="connect-account"
+                        checked={isSelected}
+                        onChange={() => onSelectAccount?.(a.address)}
+                      />
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span
+                          style={{
+                            display: 'block',
+                            fontWeight: 'var(--fw-semibold)',
+                            color: 'var(--text-primary)',
+                          }}
+                        >
+                          {a.name || `Account ${a.index ?? 0}`}
+                        </span>
+                        <span style={{ color: 'var(--text-muted)' }}>
+                          {a.address.slice(0, 10)}…{a.address.slice(-6)}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <label
             style={{
               display: 'flex',

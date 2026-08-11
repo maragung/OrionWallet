@@ -17,6 +17,7 @@
  * can be unit-tested without a DOM.
  */
 import {
+  CAPABILITIES,
   ERROR_CODES,
   EVENTS,
   METHODS,
@@ -67,6 +68,12 @@ export interface ApprovalRequest {
   origin: string;
   /** Human-readable payload for the UI to render. */
   detail: Record<string, unknown>;
+  /**
+   * Accounts the user may choose between when approving a `connect`. Present
+   * only when the wallet has more than one account. When the user picks one,
+   * the UI resolves the approval with exactly that account in this list.
+   */
+  accounts?: Array<{ address: string; publicKey: string; name?: string; index?: number }>;
 }
 
 /** Environment the handler needs from the wallet app. */
@@ -98,6 +105,17 @@ export interface WalletHost {
    * requests should coalesce into one unlock prompt via the implementation.
    */
   requestUnlock(): Promise<boolean>;
+  /**
+   * Load the signing keys for a specific account. The account may differ from
+   * the wallet's currently-active (unlocked-in-memory) account, so the UI must
+   * prompt for the PIN and decrypt it. Resolves null when the user cancels or
+   * the PIN is wrong. Does NOT change the wallet's active account.
+   */
+  requestUnlockAccount(addr: string): Promise<Wallet | null>;
+  /** Tell the wallet UI which account is bound to the current session. */
+  setSessionAccount(addr: string): void;
+  /** The account bound to the current session, or null. */
+  getSessionAccount(): string | null;
 }
 
 interface ReplayState {
@@ -115,6 +133,12 @@ export class ConnectHandler {
   private acked = false;
   private capabilities: Capability[] = [];
   private session: SdkSessionRecord | null = null;
+  /** Account bound to this session (chosen at connect; may differ from the
+   *  wallet's active account). Falls back to the wallet's active account. */
+  private sessionAddress: string | null = null;
+  /** Signing keys for the session account. Null until requested; the wallet's
+   *  active wallet is used as a fallback for the active account. */
+  private sessionWallet: Wallet | null = null;
   private outboundNonce = 1;
   private readonly replay: ReplayState = { lastNonce: 0, seen: new Set() };
   private disposed = false;
@@ -144,6 +168,17 @@ export class ConnectHandler {
   private setSession(session: SdkSessionRecord | null): void {
     this.session = session;
     this.onSessionChange?.(session?.sid ?? null);
+  }
+
+  /** The account address reads/signs should operate on for this session. */
+  private currentAccount(): string | null {
+    return this.sessionAddress ?? this.host.getAddress();
+  }
+
+  /** The signing keys to use for the session account. */
+  private currentWallet(): Wallet | null {
+    if (this.sessionAddress && this.sessionWallet) return this.sessionWallet;
+    return this.host.getWallet();
   }
 
   /** Emit a wallet event to the connected dApp (bounded to this session). */
@@ -305,18 +340,26 @@ export class ConnectHandler {
   private async onConnect(env: Envelope): Promise<void> {
     // Lock is enforced by the centralized gate in handleRequest.
 
-    // Session restore: a live session for this origin reconnects silently.
+    // Session restore: a live session for this origin reconnects silently,
+    // re-binding the account the user chose when the session was created.
     let session = await restoreSession(this.origin);
 
     // Otherwise, trusted sites skip ONLY the connect prompt.
     if (!session) {
       const trusted = await siteIsTrusted(this.origin);
+      const accounts = this.host.getAccounts();
       const approved =
         trusted ||
         (await this.host.requestApproval({
           kind: 'connect',
           origin: this.origin,
           detail: { capabilities: this.requestedCaps },
+          // Only offer the account picker when there is more than one account,
+          // and only when the dApp requested the multiAccount capability.
+          accounts:
+            accounts.length > 1 && this.capabilities.includes(CAPABILITIES.MULTI_ACCOUNT)
+              ? accounts
+              : undefined,
         }));
       if (!approved) {
         return this.fail(env.id, {
@@ -324,7 +367,26 @@ export class ConnectHandler {
           message: 'User rejected the connection',
         });
       }
-      const address = this.host.getAddress() ?? '';
+
+      // The account the user chose via the picker in the approval UI (synced
+      // through the host), falling back to the wallet's active account.
+      const address =
+        this.host.getSessionAccount() ?? this.host.getAddress() ?? accounts[0]?.address ?? '';
+      this.sessionAddress = address;
+
+      // Load signing keys for the session account. For the wallet's active
+      // account this resolves immediately (already unlocked); any other account
+      // requires the PIN and must not fail silently — the user picked it, so a
+      // failed unlock rejects the connection.
+      const wallet = await this.host.requestUnlockAccount(address);
+      if (!wallet) {
+        return this.fail(env.id, {
+          code: ERROR_CODES.USER_REJECTED,
+          message: 'Could not unlock the selected account',
+        });
+      }
+      this.sessionWallet = wallet;
+
       session = await createSession({
         origin: this.origin,
         address,
@@ -333,10 +395,17 @@ export class ConnectHandler {
         chainId: await this.host.getChainId(),
         permissions: DEFAULT_PERMISSIONS,
       });
+    } else {
+      // Silent reconnect: keep the account the previous session was bound to.
+      const address = session.address;
+      this.host.setSessionAccount(address);
+      this.sessionAddress = address;
+      const wallet = await this.host.requestUnlockAccount(address);
+      this.sessionWallet = wallet ?? this.host.getWallet();
     }
     this.setSession(await touchSession(session));
 
-    const address = this.host.getAddress() ?? this.session!.address;
+    const address = this.currentAccount() ?? this.session!.address;
     const accounts = this.host.getAccounts();
     const pk = accounts.find((a) => a.address === address)?.publicKey ?? '';
     this.reply(env.id, {
@@ -364,6 +433,8 @@ export class ConnectHandler {
     if (!this.session) return;
     await endSession(this.session.sid);
     this.setSession(null);
+    this.sessionAddress = null;
+    this.sessionWallet = null;
     this.emitEvent(EVENTS.DISCONNECT, { reason });
   }
 
@@ -401,9 +472,9 @@ export class ConnectHandler {
       case METHODS.GET_ACCOUNTS:
         return this.reply(env.id, this.host.getAccounts());
       case METHODS.GET_ADDRESS:
-        return this.reply(env.id, this.host.getAddress());
+        return this.reply(env.id, this.currentAccount());
       case METHODS.GET_PUBLIC_KEY: {
-        const addr = this.host.getAddress();
+        const addr = this.currentAccount();
         const pk = this.host.getAccounts().find((a) => a.address === addr)?.publicKey ?? '';
         return this.reply(env.id, pk);
       }
@@ -425,7 +496,7 @@ export class ConnectHandler {
     if (!session) return;
     // Lock is enforced by the centralized gate in handleRequest; keep the
     // getWallet() null-guard below as defense in depth.
-    const wallet = this.host.getWallet();
+    const wallet = this.currentWallet();
     if (!wallet) {
       return this.fail(env.id, { code: ERROR_CODES.WALLET_LOCKED, message: 'Wallet is locked' });
     }

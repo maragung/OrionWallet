@@ -4,6 +4,10 @@ dist-ssr
 coverage
 playwright-report
 test-results
+
+# Command Code session data (taste, agents, plans) — machine-local.
+.commandcode/
+
 *.local
 .env
 .env.local

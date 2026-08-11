@@ -8,11 +8,9 @@ import type { Page } from '@playwright/test';
  * Create a wallet end-to-end:
  *   1. Click "Create New Wallet"
  *   2. Fill name, PIN, confirm PIN
- *   3. Check the confirmation checkbox
- *   4. Click "Create Wallet"
- *   5. Wait for mnemonic to appear
- *   6. Click "Continue" to activate the wallet
- *   7. Wait for the main app header to appear
+ *   3. Click "Create Wallet"
+ *   4. Wait for the mnemonic reveal to appear
+ *   5. Wait for the main app header to appear (wallet auto-activates)
  *
  * NOTE: This does NOT clear IndexedDB first. Tests that need a clean state
  * should call clearIndexedDB() in a beforeEach hook.
@@ -34,25 +32,13 @@ export async function createWallet(
   await page.fill('input[id="pin"]', pin);
   await page.fill('input[id="pin2"]', pin);
 
-  // Check the confirmation checkbox
-  await page.check('input[type="checkbox"]');
-
   // Submit
   await page.click('button:has-text("Create Wallet")');
 
-  // Wait for processing modal to complete and mnemonic to appear
+  // Wait for the mnemonic reveal to appear (creation succeeded)
   await page.waitForSelector('text=Save this mnemonic', { timeout: 30_000 });
 
-  // Dismiss the success modal by clicking "View Mnemonic" button
-  const viewMnemonicBtn = page.locator('button:has-text("View Mnemonic")');
-  if (await viewMnemonicBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await viewMnemonicBtn.click();
-  }
-
-  // Click Continue to activate the wallet
-  await page.click('button:has-text("Continue")');
-
-  // Wait for main app to appear
+  // The wallet auto-activates after creation; wait for the main app.
   await page.waitForSelector('.app-header', { timeout: 30_000 });
 }
 
