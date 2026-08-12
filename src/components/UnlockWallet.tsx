@@ -3,14 +3,16 @@ import { useWalletStore } from '../store/wallet-store';
 import { unlockWallet, listStoredWallets } from '../api/wallet-api';
 import { recordPinAttempt, resetPinAttempts } from '../wallet/pin';
 import { isWebCryptoAvailable } from '../crypto/aes';
-import { ThemeToggle } from './ThemeToggle';
 import { ProcessingModal, type ProcessingStage } from './ProcessingModal';
 import { Tooltip } from './Tooltip';
+import type { StoredWalletEntry } from '../wallet/storage';
 
 export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
   const { setWallet, pushToast } = useWalletStore();
   const [pin, setPin] = useState('');
   const [hasStored, setHasStored] = useState<boolean | null>(null);
+  const [storedEntries, setStoredEntries] = useState<StoredWalletEntry[]>([]);
+  const [selectedId, setSelectedId] = useState<string>('default');
   const [showPin, setShowPin] = useState(false);
   // Insecure contexts have no crypto.subtle: PBKDF2 runs in JS and unlock is slow.
   const webCryptoOk = isWebCryptoAvailable();
@@ -22,7 +24,11 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
 
   useEffect(() => {
     listStoredWallets()
-      .then((list) => setHasStored(list.length > 0))
+      .then((list) => {
+        setStoredEntries(list);
+        setHasStored(list.length > 0);
+        if (list.length > 0) setSelectedId(list[0].id);
+      })
       .catch(() => setHasStored(false));
   }, []);
 
@@ -79,7 +85,7 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
       // No blanket timeout here: unlockWallet bounds its own storage read, and
       // PBKDF2 (600k iterations) legitimately takes seconds on the pure-JS
       // fallback used when crypto.subtle is unavailable.
-      const wallet = await unlockWallet(pin);
+      const wallet = await unlockWallet(pin, selectedId);
       updateStage('decrypt', 'done', 'Wallet decrypted successfully');
 
       // Stage 2: Load
@@ -133,10 +139,6 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
           position: 'relative',
         }}
       >
-        <div style={{ position: 'absolute', top: 'var(--sp-4)', right: 'var(--sp-4)' }}>
-          <ThemeToggle />
-        </div>
-
         <div
           className="card"
           style={{
@@ -196,6 +198,28 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
                 Insecure context — WebCrypto is unavailable, so unlocking falls back to pure JS and
                 can take many seconds. Use HTTPS or localhost for fast unlocks.
               </span>
+            </div>
+          )}
+
+          {storedEntries.length > 1 && (
+            <div
+              className="form-row"
+              style={{ marginBottom: 'var(--sp-3)' }}
+            >
+              <label htmlFor="unlock-account">Connect with account</label>
+              <select
+                id="unlock-account"
+                className="connect-select"
+                value={selectedId}
+                onChange={(e) => setSelectedId(e.target.value)}
+                style={{ width: '100%' }}
+              >
+                {storedEntries.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name} ({e.addrHint})
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 

@@ -147,66 +147,30 @@ export function ApprovalPrompt({
 
           {showAccountPicker && (
             <div style={{ marginTop: 'var(--sp-3)', marginBottom: 'var(--sp-3)' }}>
-              <div
+              <label
+                htmlFor="connect-account"
                 style={{
+                  display: 'block',
                   fontSize: 'var(--fs-xs)',
                   color: 'var(--text-muted)',
                   marginBottom: 'var(--sp-2)',
                 }}
               >
                 Connect with account
-              </div>
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 'var(--sp-2)',
-                  maxHeight: 180,
-                  overflowY: 'auto',
-                }}
+              </label>
+              <select
+                id="connect-account"
+                className="connect-select"
+                value={selectedAccount ?? ''}
+                onChange={(e) => onSelectAccount?.(e.target.value)}
+                style={{ width: '100%' }}
               >
-                {accounts!.map((a) => {
-                  const isSelected = a.address === selectedAccount;
-                  return (
-                    <label
-                      key={a.address}
-                      className="mono"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 'var(--sp-2)',
-                        padding: 'var(--sp-2)',
-                        borderRadius: 'var(--r-md)',
-                        border: `1px solid ${isSelected ? 'var(--border-focus)' : 'var(--border-subtle)'}`,
-                        background: isSelected ? 'var(--accent-soft)' : 'var(--bg-elevated-2)',
-                        cursor: 'pointer',
-                        fontSize: 'var(--fs-xs)',
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name="connect-account"
-                        checked={isSelected}
-                        onChange={() => onSelectAccount?.(a.address)}
-                      />
-                      <span style={{ flex: 1, minWidth: 0 }}>
-                        <span
-                          style={{
-                            display: 'block',
-                            fontWeight: 'var(--fw-semibold)',
-                            color: 'var(--text-primary)',
-                          }}
-                        >
-                          {a.name || `Account ${a.index ?? 0}`}
-                        </span>
-                        <span style={{ color: 'var(--text-muted)' }}>
-                          {a.address.slice(0, 10)}…{a.address.slice(-6)}
-                        </span>
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
+                {accounts!.map((a) => (
+                  <option key={a.address} value={a.address}>
+                    {a.name || `Account ${a.index ?? 0}`} ({a.address.slice(0, 10)}…{a.address.slice(-6)})
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 
