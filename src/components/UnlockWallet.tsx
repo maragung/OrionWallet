@@ -27,7 +27,11 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
       .then((list) => {
         setStoredEntries(list);
         setHasStored(list.length > 0);
-        if (list.length > 0) setSelectedId(list[0].id);
+        // Always default to the main wallet entry ("default" sorts before
+        // "acct-..." in key order, but never rely on that ordering).
+        const def = list.find((e) => e.id === 'default');
+        if (def) setSelectedId(def.id);
+        else if (list.length > 0) setSelectedId(list[0].id);
       })
       .catch(() => setHasStored(false));
   }, []);
@@ -124,6 +128,11 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
     setModalError(null);
   };
 
+  // Main wallet entry first, then derived accounts in stable key order.
+  const orderedEntries = [...storedEntries].sort((a, b) =>
+    a.id === 'default' ? -1 : b.id === 'default' ? 1 : a.id.localeCompare(b.id),
+  );
+
   return (
     <>
       <div
@@ -202,10 +211,7 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
           )}
 
           {storedEntries.length > 1 && (
-            <div
-              className="form-row"
-              style={{ marginBottom: 'var(--sp-3)' }}
-            >
+            <div className="form-row" style={{ marginBottom: 'var(--sp-3)' }}>
               <label htmlFor="unlock-account">Connect with account</label>
               <select
                 id="unlock-account"
@@ -214,7 +220,7 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
                 onChange={(e) => setSelectedId(e.target.value)}
                 style={{ width: '100%' }}
               >
-                {storedEntries.map((e) => (
+                {orderedEntries.map((e) => (
                   <option key={e.id} value={e.id}>
                     {e.name} ({e.addrHint})
                   </option>

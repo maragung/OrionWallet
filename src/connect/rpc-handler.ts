@@ -149,6 +149,8 @@ export class ConnectHandler {
   private outboundNonce = 1;
   private readonly replay: ReplayState = { lastNonce: 0, seen: new Set() };
   private disposed = false;
+  /** Requests currently being processed (see getInFlightCount). */
+  private inFlight = 0;
   /** Notified whenever the live session id changes (connect/disconnect/expiry). */
   private readonly onSessionChange?: (sid: string | null) => void;
   /**
@@ -223,14 +225,21 @@ export class ConnectHandler {
    */
   async adoptSession(session: SdkSessionRecord | null, wallet: Wallet | null): Promise<void> {
     this.acked = true;
-    if (!session) return;
-    this.session = session;
-    this.sessionAddress = session.address;
-    this.sessionWallet = wallet;
-    // Keep the host's notion of the active session account coherent so reads
-    // (getBalance) resolve for the connected account, not the wallet's active one.
-    this.host.setSessionAccount(session.address);
-    this.setSession(session);
+    if (session) {
+      this.session = session;
+      this.sessionAddress = session.address;
+      this.sessionWallet = wallet;
+      // Keep the host's notion of the active session account coherent so reads
+      // (getBalance) resolve for the connected account, not the wallet's active one.
+      this.host.setSessionAccount(session.address);
+      this.setSession(session);
+    }
+    // Tell the dApp the port now lives here. Any request it posted around the
+    // transfer may have been dropped mid-flight; the client re-sends those
+    // (same id/nonce) and they land on THIS handler with a fresh replay state.
+    // Emitted even when no session could be restored so a lost request fails
+    // with a clear UNAUTHORIZED instead of hanging the dApp.
+    this.emitEvent(EVENTS.SESSION_ADOPTED, { sid: session?.sid ?? null });
   }
 
   /** The account address reads/signs should operate on for this session. */
@@ -333,8 +342,25 @@ export class ConnectHandler {
   private async handleRequest(env: Envelope): Promise<void> {
     const rawMethod = env.method!;
     const method = canonicalizeMethod(rawMethod);
+    this.inFlight++;
+    try {
+      await this.dispatch(env, rawMethod, method);
+    } finally {
+      this.inFlight--;
+    }
+  }
 
-    // Denylist first — nothing that executes a transaction is ever reachable.
+  /**
+   * True while any request is being processed (approval shown, permission
+   * grant in flight, signing, reply pending). The connect popup's handoff must
+   * wait for this to clear: a reply posted on a port that was just transferred
+   * is silently dropped and the dApp call hangs forever.
+   */
+  getInFlightCount(): number {
+    return this.inFlight;
+  }
+
+  private async dispatch(env: Envelope, rawMethod: string, method: string): Promise<void> {
     // Check BOTH the raw name and the canonical form: the alias namespace must
     // never become a way to smuggle a prohibited method past the check.
     if (isProhibitedMethod(rawMethod) || isProhibitedMethod(method)) {

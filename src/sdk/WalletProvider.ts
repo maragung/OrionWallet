@@ -105,9 +105,13 @@ export interface SignContractParams {
 type Listener = (payload: unknown) => void;
 
 interface Pending {
+  env: Envelope;
   resolve: (v: unknown) => void;
   reject: (e: unknown) => void;
   timer: ReturnType<typeof setTimeout>;
+  /** Sent before the session port was handed off to the main window; re-sent
+   * on SESSION_ADOPTED since the pre-transfer copy may have been dropped. */
+  preAdoption: boolean;
 }
 
 export class WalletProvider {
@@ -124,6 +128,9 @@ export class WalletProvider {
   private nonce = 1;
   private readonly pending = new Map<string, Pending>();
   private readonly listeners = new Map<WalletEventName, Set<Listener>>();
+
+  /** True once the wallet announced the session port moved to its main window. */
+  private adopted = false;
 
   private connected = false;
   private connecting: Promise<ConnectResult> | null = null;
@@ -279,9 +286,11 @@ export class WalletProvider {
         reject(timeoutErr());
       }, this.opts.requestTimeoutMs);
       this.pending.set(env.id, {
+        env,
         resolve: resolve as (v: unknown) => void,
         reject,
         timer,
+        preAdoption: !this.adopted,
       });
       try {
         transport.send(env);
@@ -307,6 +316,17 @@ export class WalletProvider {
       return;
     }
     if (env.kind === 'evt' && env.event) {
+      if (env.event === EVENTS.SESSION_ADOPTED) {
+        // The port moved to the wallet's main window. Anything we posted before
+        // the transfer may never have been delivered — re-send it (same id,
+        // nonce, timestamp) so it lands on the adopted handler.
+        this.adopted = true;
+        for (const p of this.pending.values()) {
+          if (!p.preAdoption) continue;
+          p.preAdoption = false;
+          this.transport?.send(p.env);
+        }
+      }
       this.onWalletEvent(env.event, env.params);
     }
   }

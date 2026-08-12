@@ -19,6 +19,8 @@ export function SendForm() {
   const [showPin, setShowPin] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [result, setResult] = useState<{ hash: string; nonce: number } | null>(null);
+  const [nextNonce, setNextNonce] = useState<number | null>(null);
+  const [nonceStatus, setNonceStatus] = useState<'loading' | 'ready' | 'error'>('loading');
 
   // Processing modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -46,12 +48,23 @@ export function SendForm() {
     );
   };
 
-  const requestSend = () => {
+  const requestSend = async () => {
     if (!rpc) return pushToast('error', 'RPC not initialized');
     if (!validTo) return pushToast('error', 'Invalid recipient address');
     if (!validAmount) return pushToast('error', 'Invalid amount');
     if (!pin) return pushToast('error', 'PIN required to authorize send');
+    // Fetch the nonce up front so it can be shown in the confirmation dialog
+    // before the signing flow starts. The fetched value is also what the signed
+    // transaction uses (passed through to sendStandard).
+    setNextNonce(null);
+    setNonceStatus('loading');
     setShowConfirm(true);
+    try {
+      setNextNonce(await fetchNextNonce(rpc, wallet.addr));
+      setNonceStatus('ready');
+    } catch {
+      setNonceStatus('error');
+    }
   };
 
   const handleSend = async () => {
@@ -93,10 +106,11 @@ export function SendForm() {
     setModalOpen(true);
 
     try {
-      // Stage 1: Fetch nonce (display only — sendStandard re-fetches it)
+      // Stage 1: Fetch nonce (display only — sendStandard re-fetches it unless
+      // the confirm dialog already fetched it; the shown value is what signs).
       updateStage('fetch', 'active');
       await new Promise((r) => setTimeout(r, 300)); // brief delay for UX
-      const nonce = await fetchNextNonce(rpc, wallet.addr);
+      const nonce = nextNonce ?? (await fetchNextNonce(rpc, wallet.addr));
       updateStage('fetch', 'done', `Nonce: ${nonce}`);
 
       // Stage 2: Sign
@@ -106,7 +120,13 @@ export function SendForm() {
       // Stage 3: Submit
       updateStage('sign', 'done');
       updateStage('submit', 'active');
-      const { tx, submitResult } = await sendStandard(wallet, rpc, { to, amount, pin, message });
+      const { tx, submitResult } = await sendStandard(wallet, rpc, {
+        to,
+        amount,
+        pin,
+        message,
+        nonce: nextNonce ?? undefined,
+      });
       updateStage('submit', 'done', `Hash: ${tx.hash.slice(0, 16)}...`);
 
       // Stage 4: Confirm
@@ -127,6 +147,8 @@ export function SendForm() {
       setAmount('');
       setPin('');
       setMessage('');
+      setNextNonce(null);
+      setNonceStatus('loading');
     } catch (e) {
       const msg = (e as Error).message;
       setModalError(msg);
@@ -372,6 +394,13 @@ export function SendForm() {
           `Amount:  ${amountRaw ? formatAmount(amountRaw) : amount} OCT`,
           `Fee:     ${formatAmount(fee)} OCT`,
           `Total:   ${amountRaw ? formatAmount((BigInt(amountRaw) + BigInt(fee)).toString()) : '—'} OCT`,
+          `Nonce:   ${
+            nonceStatus === 'ready'
+              ? String(nextNonce)
+              : nonceStatus === 'error'
+                ? 'unavailable'
+                : 'fetching…'
+          }`,
           message ? `Message: ${message}` : null,
         ]
           .filter(Boolean)

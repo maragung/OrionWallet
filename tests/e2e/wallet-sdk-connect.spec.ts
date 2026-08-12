@@ -21,9 +21,15 @@ function installConnectDriver(this: unknown): void {
     let port: MessagePort | null = null;
     let nonce = 1;
     let ready: Promise<boolean> | null = null;
+    let adopted = false;
     const pending = new Map<
       string,
-      { resolve: (v: unknown) => void; reject: (e: unknown) => void }
+      {
+        env: Record<string, unknown>;
+        resolve: (v: unknown) => void;
+        reject: (e: unknown) => void;
+        preAdoption: boolean;
+      }
     >();
     const events: Array<{ event: string; params: unknown }> = [];
     function isEnv(x: unknown): boolean {
@@ -46,6 +52,7 @@ function installConnectDriver(this: unknown): void {
         params?: unknown;
       };
       if (!isEnv(d)) return;
+      console.log('[driver] port message', JSON.stringify({ kind: d.kind, id: d.id, event: d.event }));
       if (d.kind === 'res') {
         const p = pending.get(d.id!);
         if (p) {
@@ -54,6 +61,21 @@ function installConnectDriver(this: unknown): void {
           else p.resolve(d.result);
         }
       } else if (d.kind === 'evt') {
+        if (d.event === 'sessionAdopted') {
+          // The wallet moved the port to its main window; requests posted
+          // before the transfer may have been dropped mid-flight. Re-send them
+          // (same id/nonce/ts) so they land on the adopted handler.
+          adopted = true;
+          for (const p of pending.values()) {
+            if (!p.preAdoption) continue;
+            p.preAdoption = false;
+            console.log(
+              '[driver] retry on adoption',
+              JSON.stringify({ id: p.env.id, method: p.env.method }),
+            );
+            port!.postMessage(p.env);
+          }
+        }
         events.push({ event: String(d.event), params: d.params });
       }
     }
@@ -100,7 +122,8 @@ function installConnectDriver(this: unknown): void {
           nonce: nonce++,
           ts: Date.now(),
         };
-        pending.set(id, { resolve, reject });
+        console.log('[driver] req posted', JSON.stringify({ id, method, nonce: env.nonce }));
+        pending.set(id, { env, resolve, reject, preAdoption: !adopted });
         port!.postMessage(env);
       });
     }
@@ -120,13 +143,67 @@ async function unlockPopup(popup: Page, pin: string): Promise<void> {
   }
 }
 
+/** The popup may hand its session port to the main wallet window after a
+ * successful connect (see ConnectApp maybeHandoff), so a later approval prompt
+ * can show in EITHER the popup (still hosting) or the main window (adopted).
+ * This approves the prompt wherever it appears first. */
+async function approveInAnyWindow(
+  page: Page,
+  popup: Page,
+  promptTitle: string,
+  confirmButton: string,
+): Promise<void> {
+  const mainPrompt = page.getByText(promptTitle);
+  const popupWait = popup.isClosed()
+    ? Promise.resolve(null)
+    : popup
+        .getByText(promptTitle)
+        .waitFor({ timeout: 12_000 })
+        .then(() => 'popup' as const)
+        .catch(() => null);
+  const mainWait = mainPrompt
+    .waitFor({ timeout: 12_000 })
+    .then(() => 'main' as const)
+    .catch(() => null);
+  const which = await Promise.race([popupWait, mainWait]);
+  if (which === 'popup') {
+    await popup.getByRole('button', { name: confirmButton }).click();
+    return;
+  }
+  if (which === 'main') {
+    await page.getByRole('button', { name: confirmButton }).click();
+    return;
+  }
+  throw new Error(`Approval prompt "${promptTitle}" did not appear in any window`);
+}
+
+function forwardConsole(page: Page, tag: string) {
+  page.on('console', (msg) => {
+    const t = msg.text();
+    if (
+      t.startsWith('[driver]') ||
+      t.startsWith('[handoff]') ||
+      t.startsWith('[rpc]') ||
+      t.startsWith('[approval]')
+    ) {
+      const clock = Date.now() % 100000;
+      console.log(`[browser ${clock}] <${tag}> ${t}`);
+    }
+  });
+}
+
 async function setupWalletAndDriver(page: Page) {
   await clearIndexedDBAndReload(page);
   await createWallet(page);
+  forwardConsole(page, 'main');
   await page.evaluate(installConnectDriver);
 }
 
 test.describe('Wallet SDK connect flow', () => {
+  // The multi-account flow (derive, unlock, PIN gate, handoff) is slow: give it
+  // headroom beyond the global config timeout.
+  test.setTimeout(120_000);
+
   test('connects, reads info, signs a message, and blocks forbidden methods', async ({
     page,
     context,
@@ -139,6 +216,7 @@ test.describe('Wallet SDK connect flow', () => {
       page.evaluate(() => (window as unknown as { __wallet: { open(): boolean } }).__wallet.open()),
     ]);
     // Popup is a separate document — unlock it with the PIN.
+    forwardConsole(popup, 'popup');
     await unlockPopup(popup, 'Pass1word!abc');
 
     // After unlock, the hello fires and the handshake completes.
@@ -167,14 +245,13 @@ test.describe('Wallet SDK connect flow', () => {
     );
     expect(typeof network).toBe('string');
 
-    // signMessage requires an explicit approval popup interaction.
+    // signMessage requires an explicit approval interaction.
     const signPromise = page.evaluate(() =>
       (
         window as unknown as { __wallet: { req(m: string, p: unknown): Promise<unknown> } }
       ).__wallet.req('wallet_signMessage', { message: 'hello from e2e' }),
     );
-    await expect(popup.getByText('Sign Message')).toBeVisible({ timeout: 10_000 });
-    await popup.getByRole('button', { name: 'Sign' }).click();
+    await approveInAnyWindow(page, popup, 'Sign Message', 'Sign');
     const signed = (await signPromise) as { signature: string; message: string };
     expect(signed.signature).toBeTruthy();
     expect(signed.message).toBe('hello from e2e');
@@ -227,6 +304,7 @@ test.describe('Wallet SDK connect flow', () => {
   }) => {
     await clearIndexedDBAndReload(page);
     await createWallet(page);
+    forwardConsole(page, 'main');
 
     // Derive a second HD account via Settings → Accounts → Derive New.
     await page
@@ -263,11 +341,15 @@ test.describe('Wallet SDK connect flow', () => {
     await expect(popup.getByText('Connection Request')).toBeVisible({ timeout: 15_000 });
     // The account picker is visible with two accounts.
     await expect(popup.getByText('Connect with account')).toBeVisible();
-    await expect(popup.getByRole('radio', { name: /Account B/ })).toBeVisible();
+    await expect(popup.locator('select#connect-account')).toBeVisible();
+    await expect(popup.locator('select#connect-account option')).toHaveCount(2);
 
     // The popup unlocked the ORIGINAL account (blob "default"), so Account B is
     // not unlocked there. Pick Account B — connecting requires its PIN.
-    await popup.getByRole('radio', { name: /Account B/ }).check();
+    const optionLabels = await popup.locator('select#connect-account option').allTextContents();
+    const accountBIndex = optionLabels.findIndex((l) => l.includes('Account B'));
+    expect(accountBIndex).toBeGreaterThanOrEqual(0);
+    await popup.locator('select#connect-account').selectOption({ index: accountBIndex });
     await popup.getByRole('button', { name: 'Connect' }).click();
 
     // The popup asks for the PIN to unlock the selected account's keys.
@@ -294,8 +376,7 @@ test.describe('Wallet SDK connect flow', () => {
         window as unknown as { __wallet: { req(m: string, p: unknown): Promise<unknown> } }
       ).__wallet.req('wallet_signMessage', { message: 'multi-account' }),
     );
-    await expect(popup.getByText('Sign Message')).toBeVisible({ timeout: 10_000 });
-    await popup.getByRole('button', { name: 'Sign' }).click();
+    await approveInAnyWindow(page, popup, 'Sign Message', 'Sign');
     const signed = (await signPromise) as { address: string; signature: string };
     expect(signed.signature).toBeTruthy();
     expect(signed.address).toBe(connectResult.address);

@@ -320,6 +320,7 @@ export function Layout() {
   // Adopt a handed-off port and restore the session the popup minted.
   const adoptHandoff = useCallback(
     (msg: ConnectHandoffMessage, port: MessagePort) => {
+      console.log('[handoff] main window: adopting port, origin=', msg.origin);
       const handler = new ConnectHandler({
         host: mainHost,
         port,
@@ -331,8 +332,17 @@ export function Layout() {
       });
       handlersRef.current.push(handler);
       restoreSession(msg.origin)
-        .then((session) => handler.adoptSession(session, (msg.wallet as Wallet | null) ?? null))
-        .catch(() => undefined);
+        .then((session) => {
+          console.log('[handoff] main window: session restored =', !!session);
+          return handler.adoptSession(session, (msg.wallet as Wallet | null) ?? null);
+        })
+        .catch((e) => {
+          // Adopt anyway: the dApp still needs the SESSION_ADOPTED event so it
+          // re-sends anything that was lost in the port transfer. A missing
+          // session surfaces as a clear UNAUTHORIZED rather than a hang.
+          console.error('[handoff] session restore failed:', e);
+          void handler.adoptSession(null, null);
+        });
     },
     [mainHost],
   );
@@ -343,6 +353,7 @@ export function Layout() {
       if (e.origin !== window.location.origin) return;
       const data = e.data as Partial<ConnectHandoffMessage> | undefined;
       if (!data || data.type !== HANDOFF_TYPE) return;
+      console.log('[handoff] main window: handoff message received, ports=', e.ports?.length);
       // The transferred port arrives in e.ports[0].
       const port = e.ports?.[0];
       if (!port) return;

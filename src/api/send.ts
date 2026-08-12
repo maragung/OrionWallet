@@ -29,6 +29,9 @@ export interface SendInputs {
   amount: string; // human-readable, e.g., "1.5"
   pin: string; // not used here (already verified by caller) but kept for API parity
   message?: string;
+  /** Pre-fetched nonce (e.g. shown in the confirm dialog). When omitted the
+   *  pending-aware next nonce is fetched from the network. */
+  nonce?: number;
   ou?: string; // override fee
 }
 
@@ -62,8 +65,10 @@ export async function sendStandard(
   const raw = BigInt(amountRaw);
   if (raw <= 0n) throw new Error('Amount must be positive');
 
-  // Fetch nonce (pending-aware so it never collides with a staging tx).
-  const nonce = await fetchNextNonce(rpc, wallet.addr);
+  // Fetch nonce (pending-aware so it never collides with a staging tx). The
+  // caller may pass the nonce it already fetched (and displayed in the confirm
+  // dialog) so the signed transaction matches what the user approved.
+  const nonce = inputs.nonce ?? (await fetchNextNonce(rpc, wallet.addr));
 
   // Determine fee
   const ou = inputs.ou ?? recommendedOu('standard', raw);

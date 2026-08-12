@@ -108,10 +108,12 @@ export function ConnectApp() {
   const walletAddrRef = useRef<string | null>(null);
   // Mirror of `selectedAddr` for use inside callbacks (avoid stale closure).
   const selectedAddrRef = useRef<string | null>(null);
+  const pinRequestRef = useRef<{ addr: string; resolve: (w: Wallet | null) => void } | null>(
+    null,
+  );
+  const pendingRef = useRef<PendingApproval | null>(null);
   // Account bound to the live session (mirror of `sessionAccount` state).
   const sessionAddrRef = useRef<string | null>(null);
-  // Mirror of `pinRequest` for use inside callbacks.
-  const pinRequestRef = useRef<{ addr: string; resolve: (w: Wallet | null) => void } | null>(null);
 
   // Aggressively focus popup when approval prompt appears.
   // Browsers may ignore a single window.focus(), so we retry with delays.
@@ -185,6 +187,12 @@ export function ConnectApp() {
     pinRequestRef.current = pinRequest;
   }, [pinRequest]);
 
+  // Keep the ref mirror in sync whenever pending changes (the handoff deferral
+  // reads it outside of React).
+  useEffect(() => {
+    pendingRef.current = pending;
+  }, [pending]);
+
   // Fetch balance for selected account.
   const displayAddr = selectedAddr || wallet?.addr;
   useEffect(() => {
@@ -237,7 +245,7 @@ export function ConnectApp() {
             /* ignore */
           }
         }, 500);
-        setPending({
+        const entry = {
           request,
           resolve: async (d: ApprovalDecision) => {
             setBusy(true);
@@ -250,10 +258,16 @@ export function ConnectApp() {
               setBusy(false);
               setAccountPickerVisible(false);
               setPending(null);
+              // Synchronous mirror: the handoff deferral reads this and must
+              // not see a stale "no pending approval" while the prompt is live.
+              pendingRef.current = null;
               resolve(d);
             }
           },
-        });
+        };
+        setPending(entry);
+        // Synchronous mirror of the state above (see note in the resolve).
+        pendingRef.current = entry;
         // Multi-account: show the in-prompt account picker so the user can
         // choose which account to connect.
         if (request.kind === 'connect' && (request.accounts?.length ?? 0) > 1) {
@@ -347,6 +361,8 @@ export function ConnectApp() {
         // Otherwise prompt for the PIN to decrypt the account's keys.
         return new Promise<Wallet | null>((resolve) => {
           setPinRequest({ addr, resolve });
+          // Synchronous mirror: the handoff deferral reads this.
+          pinRequestRef.current = { addr, resolve };
         });
       },
       setSessionAccount: (addr) => {
@@ -369,13 +385,27 @@ export function ConnectApp() {
     sessionWalletRef.current = w;
     req.resolve(w);
     setPinRequest(null);
+    pinRequestRef.current = null;
   }, []);
+
+  const handlePinSubmitSafe = useCallback(
+    async (pin: string) => {
+      try {
+        await handlePinSubmit(pin);
+      } catch (e) {
+        console.error('[connect] unlock account failed:', e);
+        throw e;
+      }
+    },
+    [handlePinSubmit],
+  );
 
   const handlePinCancel = useCallback(() => {
     const req = pinRequestRef.current;
     if (!req) return;
     req.resolve(null);
     setPinRequest(null);
+    pinRequestRef.current = null;
   }, []);
 
   /**
@@ -397,19 +427,49 @@ export function ConnectApp() {
         /* ignore — treat as not open, handoff falls back to popup hosting */
       }
       if (!mainOpen) return; // keep hosting in the popup
+      // Never transfer the port while an approval or PIN prompt is on screen,
+      // or while ANY request is still being processed (approval clicked but the
+      // reply not yet posted): the pending promise would resolve after the
+      // transfer and post its reply on a port that no longer belongs to this
+      // window — the dApp call would hang forever. Retry until the popup is idle.
+      if (
+        pendingRef.current ||
+        pinRequestRef.current ||
+        h.getInFlightCount() > 0
+      ) {
+        console.log('[handoff] deferring, pending=', !!pendingRef.current, 'pin=', !!pinRequestRef.current, 'inflight=', h.getInFlightCount());
+        setTimeout(() => maybeHandoff(channel, challenge), 100);
+        return;
+      }
       // The main wallet window shares this origin; reach it by its stable name.
       const main = window.open('', MAIN_WALLET_NAME);
+      console.log('[handoff] main window lookup:',
+        main === null ? 'null' : main === window ? 'self' : 'found');
       if (!main || main === window) return; // not found — keep hosting in the popup
       // Safety net: if we accidentally got a blank window, close it and fall back.
       try {
         if (main.location.href === 'about:blank') {
+          console.log('[handoff] got blank window, closing + fallback');
           main.close();
           return;
         }
       } catch {
         /* cross-origin read blocked — treat as the real main window */
       }
+      // Re-check after the lookup: a request may have arrived (and prompted)
+      // while we were resolving the window. Transferring now would strand its
+      // reply. Retry instead.
+      if (
+        pendingRef.current ||
+        pinRequestRef.current ||
+        h.getInFlightCount() > 0
+      ) {
+        console.log('[handoff] deferring after lookup, pending=', !!pendingRef.current, 'pin=', !!pinRequestRef.current, 'inflight=', h.getInFlightCount());
+        setTimeout(() => maybeHandoff(channel, challenge), 100);
+        return;
+      }
       handedOffRef.current = true;
+      console.log('[handoff] transferring port');
       const info = {
         type: HANDOFF_TYPE,
         origin: params!.origin,
@@ -423,8 +483,9 @@ export function ConnectApp() {
       try {
         main.postMessage(info, location.origin, [channel.port1]);
         store.pushToast('success', 'Connected — session now managed by your wallet');
-      } catch {
+      } catch (e) {
         // Transfer failed; fall back to hosting in the popup.
+        console.error('[handoff] transfer failed, keeping popup hosting:', e);
         handedOffRef.current = false;
         return;
       }
@@ -715,7 +776,7 @@ export function ConnectApp() {
         }
         confirmLabel="Unlock"
         busyLabel="Unlocking…"
-        onSubmit={handlePinSubmit}
+        onSubmit={handlePinSubmitSafe}
         onCancel={handlePinCancel}
       />
       <Toasts />

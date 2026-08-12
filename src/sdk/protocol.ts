@@ -147,6 +147,10 @@ export const EVENTS = {
   WALLET_LOCKED: 'walletLocked',
   WALLET_UNLOCKED: 'walletUnlocked',
   PERMISSION_CHANGED: 'permissionChanged',
+  /** The connect popup handed the session port over to the main wallet window.
+   * Requests that were in flight before this event may have been lost in the
+   * transfer; clients must re-send them (same id/nonce). */
+  SESSION_ADOPTED: 'sessionAdopted',
 } as const;
 
 export type WalletEventName = (typeof EVENTS)[keyof typeof EVENTS];
