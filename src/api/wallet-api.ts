@@ -26,6 +26,7 @@ import {
   addAccountToManifest,
   removeAccountFromManifest,
   setActiveAccount,
+  DB_OPEN_BUDGET_MS,
   type StoredWalletEntry,
   type ManifestEntry,
   type Manifest,
@@ -37,8 +38,12 @@ import { withTimeout } from '../utils/withTimeout';
 /**
  * Budget for reading the encrypted blob out of IndexedDB. Generous enough for a
  * cold database, short enough that a blocked upgrade surfaces quickly.
+ *
+ * Derived from the open budget rather than hard-coded: a shorter deadline would
+ * fire while `getDb()` is still retrying, cutting short the retry that would
+ * have recovered the connection and reporting a failure instead.
  */
-export const WALLET_READ_TIMEOUT_MS = 10_000;
+export const WALLET_READ_TIMEOUT_MS = DB_OPEN_BUDGET_MS + 5_000;
 import { isValidAddress } from '../crypto/address';
 import { base64Decode } from '../crypto/base64';
 

@@ -19,8 +19,29 @@ const DB_NAME = 'orion-wallet';
 /** Pre-rebrand database name. Data is copied forward on first launch. */
 const LEGACY_DB_NAME = 'webcli-react';
 const DB_VERSION = 6;
-/** How long an IndexedDB open/upgrade may take before we fail loudly. */
+/** How long the first IndexedDB open/upgrade attempt may take. */
 const DB_OPEN_TIMEOUT_MS = 8_000;
+/** Deadline for each retry after the first attempt. */
+const DB_OPEN_RETRY_TIMEOUT_MS = 3_000;
+/** Total open attempts before the failure is reported to the user. */
+const DB_OPEN_ATTEMPTS = 3;
+/** Pause between open attempts. */
+const DB_OPEN_RETRY_DELAY_MS = 250;
+/** Cap on the "does this database exist?" probe used by the legacy migration. */
+const DB_PROBE_TIMEOUT_MS = 2_000;
+/** How long start-up waits for the one-time legacy migration before moving on. */
+const LEGACY_MIGRATION_TIMEOUT_MS = 5_000;
+/** How long closeDb waits for the connection it is closing. */
+const DB_CLOSE_WAIT_MS = 1_000;
+
+/**
+ * Worst case time `getDb()` can spend before it gives up: every attempt plus the
+ * pauses between them. Callers that bound their own storage reads must allow at
+ * least this much, or their deadline fires first and the retries that would have
+ * recovered the open never happen.
+ */
+export const DB_OPEN_BUDGET_MS =
+  DB_OPEN_TIMEOUT_MS + (DB_OPEN_ATTEMPTS - 1) * (DB_OPEN_RETRY_TIMEOUT_MS + DB_OPEN_RETRY_DELAY_MS);
 
 /** Every object store, in the order they are created and migrated. */
 const OBJECT_STORES: { name: string; keyPath: string }[] = [
@@ -111,6 +132,53 @@ export interface Settings {
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
+/**
+ * The open request currently in flight, if any.
+ *
+ * IndexedDB cannot cancel an open request. One we stopped waiting for is still
+ * queued inside the browser, and a *new* request for the same database queues
+ * behind it — so "retry by opening again" guaranteed a second timeout even after
+ * the original blocker went away. Callers attach to this single request instead,
+ * and only a settled request is ever replaced.
+ */
+let pendingOpen: Promise<IDBPDatabase> | null = null;
+/** Identity of the in-flight request, so a stale settle cannot clear a newer one. */
+let openToken: object | null = null;
+/** Set when the in-flight request reported `blocked` (another tab holds the DB). */
+let openBlocked = false;
+
+/** Why a database open failed. */
+export type DbOpenFailureReason = 'timeout' | 'blocked' | 'error';
+
+/**
+ * A failed database open, tagged with its reason so callers can react instead of
+ * pattern-matching the message: only 'blocked' asks something of the user (close
+ * the other tab), and only the others are worth retrying on our own.
+ */
+export class DbOpenError extends Error {
+  readonly reason: DbOpenFailureReason;
+
+  constructor(reason: DbOpenFailureReason, message: string, cause?: unknown) {
+    super(message, cause === undefined ? undefined : { cause });
+    this.name = 'DbOpenError';
+    this.reason = reason;
+  }
+}
+
+const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Resolve when `p` settles or after `ms`, whichever comes first. Never rejects. */
+function settleWithin<T>(p: Promise<T>, ms: number): Promise<T | undefined> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(undefined), ms);
+    const finish = (value?: T): void => {
+      clearTimeout(timer);
+      resolve(value);
+    };
+    p.then(finish, () => finish());
+  });
+}
+
 /** Create any object store that does not yet exist. */
 function ensureStores(db: IDBPDatabase): void {
   for (const { name, keyPath } of OBJECT_STORES) {
@@ -135,6 +203,17 @@ async function databaseExists(name: string): Promise<boolean> {
   }
   return new Promise((resolve) => {
     let existed = true;
+    let done = false;
+    const finish = (value: boolean): void => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      resolve(value);
+    };
+    // The probe is an open request of its own, so it can be queued behind an
+    // upgrade and never answer. Assume "exists" and move on rather than let a
+    // best-effort migration check hold up start-up.
+    const timer = setTimeout(() => finish(existed), DB_PROBE_TIMEOUT_MS);
     const req = indexedDB.open(name);
     req.onupgradeneeded = () => {
       // Fired only for a database that did not previously exist.
@@ -144,10 +223,10 @@ async function databaseExists(name: string): Promise<boolean> {
     req.onsuccess = () => {
       req.result.close();
       if (!existed) indexedDB.deleteDatabase(name);
-      resolve(existed);
+      finish(existed);
     };
-    req.onerror = () => resolve(existed);
-    req.onblocked = () => resolve(existed);
+    req.onerror = () => finish(existed);
+    req.onblocked = () => finish(existed);
   });
 }
 
@@ -205,47 +284,125 @@ async function migrateLegacyDatabase(target: IDBPDatabase): Promise<void> {
   }
 }
 
+/** Forget the cached connection so the next call opens a fresh one. */
+function forgetDb(): void {
+  dbPromise = null;
+  pendingOpen = null;
+  openToken = null;
+}
+
+/**
+ * Start — or join — the single open request for the wallet database.
+ *
+ * Every connection registers `blocking` and `terminated`: a wallet tab that
+ * keeps an older version open is precisely what blocks the next build's upgrade
+ * forever, and that deadlock is what this whole path exists to prevent.
+ */
+function openRequest(): Promise<IDBPDatabase> {
+  if (pendingOpen) return pendingOpen;
+
+  const token = {};
+  openToken = token;
+  openBlocked = false;
+  let opened: IDBPDatabase | null = null;
+
+  const clear = (): void => {
+    if (openToken !== token) return;
+    openToken = null;
+    pendingOpen = null;
+  };
+
+  const request = openDB(DB_NAME, DB_VERSION, {
+    upgrade(database) {
+      ensureStores(database);
+    },
+    blocked() {
+      // An older connection (another wallet tab, or the /connect popup) has not
+      // closed yet, so the upgrade cannot start. That is neither fatal nor
+      // final: the request stays queued and completes the moment the other tab
+      // lets go. Record it and let the deadline decide when to give up.
+      openBlocked = true;
+      console.warn(
+        '[storage] IndexedDB upgrade is waiting for another Orion tab to close its connection.',
+      );
+    },
+    blocking() {
+      // Now we are the old connection and another tab wants to upgrade. Closing
+      // is the only way it can proceed, and the next storage call reopens at the
+      // new version. Holding on is exactly the deadlock users see as
+      // "IndexedDB open timed out".
+      console.info('[storage] Closing the IndexedDB connection so another tab can upgrade.');
+      // Only this request's own bookkeeping: a newer open may already be in
+      // flight, and clearing that one would start the duplicate request this
+      // module goes out of its way to avoid.
+      dbPromise = null;
+      clear();
+      opened?.close();
+    },
+    terminated() {
+      // The browser dropped the connection (storage eviction, tab discard), so
+      // forget it: the next call must reopen instead of using a dead handle.
+      console.warn('[storage] IndexedDB connection was terminated by the browser; will reopen.');
+      forgetDb();
+    },
+  });
+
+  const tracked = request.then(
+    (db) => {
+      opened = db;
+      clear();
+      return db;
+    },
+    (err: unknown) => {
+      clear();
+      throw new DbOpenError(
+        'error',
+        `Opening the wallet database failed: ${err instanceof Error ? err.message : String(err)}`,
+        err,
+      );
+    },
+  );
+  pendingOpen = tracked;
+  return tracked;
+}
+
 /**
  * Open the database with a fail-safe: an upgrade (version bump) pending on an
  * old connection — e.g. the app still open in another tab — blocks forever by
  * default, which would wedge every storage call including wallet unlock.
- * Instead, surface a clear error via `blocked` or a timeout, and let later
- * calls retry from scratch.
+ * Instead, surface a clear error once the deadline passes, and let later calls
+ * retry from scratch.
+ *
+ * Giving up here does not cancel the request (see `pendingOpen`): a later call
+ * waits on that same request, which is why a retry succeeds the instant the
+ * blocking tab goes away.
  */
 export function openDbWithTimeout(timeoutMs: number = DB_OPEN_TIMEOUT_MS): Promise<IDBPDatabase> {
+  const request = openRequest();
   return new Promise((resolve, reject) => {
     let settled = false;
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
       reject(
-        new Error(
-          'IndexedDB open timed out. If the wallet is open in another tab, close it and try again.',
-        ),
+        openBlocked
+          ? new DbOpenError(
+              'blocked',
+              'Database upgrade is blocked by another open tab. Close other wallet tabs and try again.',
+            )
+          : new DbOpenError(
+              'timeout',
+              'IndexedDB open timed out. If the wallet is open in another tab, close it and try again.',
+            ),
       );
     }, timeoutMs);
 
-    openDB(DB_NAME, DB_VERSION, {
-      upgrade(database) {
-        ensureStores(database);
-      },
-      blocked() {
-        // Another connection (older version, e.g. an old tab) refuses to close:
-        // the upgrade cannot proceed. Surface it now instead of hanging.
-        if (settled) return;
-        settled = true;
-        reject(
-          new Error(
-            'Database upgrade is blocked by another open tab. Close other wallet tabs and try again.',
-          ),
-        );
-      },
-    })
+    request
       .then((db) => {
-        if (settled) {
-          db.close();
-          return;
-        }
+        // The deadline already won. Leave the connection alone: closing it here
+        // could yank the handle out from under another caller that attached to
+        // this same request and did resolve with it.
+        if (settled) return;
         settled = true;
         resolve(db);
       })
@@ -258,18 +415,56 @@ export function openDbWithTimeout(timeoutMs: number = DB_OPEN_TIMEOUT_MS): Promi
   });
 }
 
+/**
+ * Open the database, retrying the failures a retry can actually fix.
+ *
+ * One timeout is not evidence of a broken database: a cold profile, a busy disk,
+ * a transient backing-store error, or a tab that closed a moment too late all
+ * produce one. Without this loop that single failure reached the user as "no
+ * stored wallet found", which reads as data loss.
+ */
+async function openWithRetry(): Promise<IDBPDatabase> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= DB_OPEN_ATTEMPTS; attempt += 1) {
+    try {
+      return await openDbWithTimeout(attempt === 1 ? DB_OPEN_TIMEOUT_MS : DB_OPEN_RETRY_TIMEOUT_MS);
+    } catch (err) {
+      lastError = err;
+      // Only the user can clear a blocked upgrade, by closing the other tab, so
+      // more attempts would just delay telling them so.
+      const blocked = err instanceof DbOpenError && err.reason === 'blocked';
+      if (blocked || attempt === DB_OPEN_ATTEMPTS) break;
+      console.warn(`[storage] IndexedDB open attempt ${attempt} failed; retrying.`, err);
+      await delay(DB_OPEN_RETRY_DELAY_MS);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
 /** Get (or open) the IndexedDB connection. */
 export function getDb(): Promise<IDBPDatabase> {
   if (!dbPromise) {
-    dbPromise = (async () => {
-      const db = await openDbWithTimeout();
-      await migrateLegacyDatabase(db);
+    const attempt: Promise<IDBPDatabase> = (async () => {
+      const db = await openWithRetry();
+      // A slow or wedged migration must not hold up the wallet. It is
+      // idempotent and `put`-based, so letting it finish in the background is
+      // safe, and never starting the app is not.
+      const migrated = await Promise.race([
+        migrateLegacyDatabase(db).then(() => true),
+        delay(LEGACY_MIGRATION_TIMEOUT_MS).then(() => false),
+      ]);
+      if (!migrated) {
+        console.warn('[storage] Legacy migration is still running; continuing without waiting.');
+      }
       return db;
-    })().catch((err) => {
+    })().catch((err: unknown) => {
       // Let a later call retry instead of caching the rejection forever.
-      dbPromise = null;
+      if (dbPromise === attempt) dbPromise = null;
       throw err;
     });
+    dbPromise = attempt;
   }
   return dbPromise;
 }
@@ -784,11 +979,21 @@ export async function wipeEverything(): Promise<void> {
   }
 }
 
-/** Close the DB connection (for tests). */
+/**
+ * Close the connection and forget it, so the next storage call opens a fresh
+ * one. Used by tests and by the unlock screen's retry, where the point is to
+ * drop whatever half-open state produced the failure.
+ */
 export async function closeDb(): Promise<void> {
-  if (dbPromise) {
-    const db = await dbPromise;
-    db.close();
-    dbPromise = null;
+  const handles = [dbPromise, pendingOpen].filter((p): p is Promise<IDBPDatabase> => p !== null);
+  forgetDb();
+  for (const p of handles) {
+    // A request that never lands must not make this hang, so close it if and
+    // when it does; the bounded wait below covers the ordinary case.
+    void p.then(
+      (db) => db.close(),
+      () => undefined,
+    );
   }
+  await Promise.all(handles.map((p) => settleWithin(p, DB_CLOSE_WAIT_MS)));
 }

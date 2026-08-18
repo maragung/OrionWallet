@@ -387,6 +387,10 @@ npm run dev</code></pre>
 <p>Either no passkey is registered in this browser, or the device cannot do what passkey unlock<br />requires. <strong>Settings → 🔑 Security → Passkey Unlock</strong> says which. Passkeys are per device<br />and per browser, so one registered elsewhere does not appear here. The PIN always works.</p>
 <h3 id="i-forgot-my-pin">I forgot my PIN</h3>
 <p>Reinstall the wallet using your recovery phrase and set a new PIN. Without the phrase,<br />the funds cannot be recovered — by anyone.</p>
+<h3 id="could-not-read-your-saved-wallets-could-not-read-your-accounts">"Could not read your saved wallets" / "Could not read your accounts"</h3>
+<p>The wallet could not open its local database. Nothing has been deleted — this is almost<br />always another Orion tab, or a leftover <strong>Connect</strong> popup, still holding the database open.<br />After an update the browser will not upgrade the database while an older tab is still<br />attached to it.</p>
+<p>Close the other Orion tabs and popups, then select <strong>↻ Try again</strong>. If the message stays,<br />close every Orion tab and reopen the wallet in a single tab.</p>
+<p>The unlock screen tells the two states apart on purpose: <em>No stored wallet found</em> means the<br />database really is empty, while <em>Could not read your saved wallets</em> means your accounts are<br />there but temporarily unreachable. <strong>Do not create a new wallet</strong> while you are seeing the<br />second message.</p>
 <h3 id="my-wallet-vanished-after-an-update">My wallet vanished after an update</h3>
 <p>Data is migrated automatically from older builds on first launch. If your accounts are<br />missing, <strong>do not create a new wallet</strong> — that could overwrite the old data. Report the<br />issue, and restore from your recovery phrase in the meantime.</p>
 <h3 id="dapp-says-session-expired">dApp says "Session expired"</h3>

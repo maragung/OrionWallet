@@ -471,6 +471,21 @@ and per browser, so one registered elsewhere does not appear here. The PIN alway
 Reinstall the wallet using your recovery phrase and set a new PIN. Without the phrase,
 the funds cannot be recovered — by anyone.
 
+### "Could not read your saved wallets" / "Could not read your accounts"
+
+The wallet could not open its local database. Nothing has been deleted — this is almost
+always another Orion tab, or a leftover **Connect** popup, still holding the database open.
+After an update the browser will not upgrade the database while an older tab is still
+attached to it.
+
+Close the other Orion tabs and popups, then select **↻ Try again**. If the message stays,
+close every Orion tab and reopen the wallet in a single tab.
+
+The unlock screen tells the two states apart on purpose: *No stored wallet found* means the
+database really is empty, while *Could not read your saved wallets* means your accounts are
+there but temporarily unreachable. **Do not create a new wallet** while you are seeing the
+second message.
+
 ### My wallet vanished after an update
 
 Data is migrated automatically from older builds on first launch. If your accounts are

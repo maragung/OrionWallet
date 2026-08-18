@@ -162,7 +162,15 @@ export function ConnectApp() {
           })),
         ),
       )
-      .catch(() => setAccounts([]));
+      .catch((e: unknown) => {
+        // Do not blank the list: an empty picker looks like the wallet has no
+        // accounts, when the accounts are there and only the read failed.
+        // Read through getState so this callback stays stable: `store` changes
+        // identity on every state update, which would re-run the read each time.
+        useWalletStore
+          .getState()
+          .pushToast('error', `Could not read your accounts: ${(e as Error).message}`);
+      });
   }, [isUnlocked]);
 
   useEffect(() => {

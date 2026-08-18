@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useWalletStore } from '../store/wallet-store';
 import { unlockWallet, listStoredWallets } from '../api/wallet-api';
 import { recordPinAttempt, resetPinAttempts } from '../wallet/pin';
@@ -11,13 +11,17 @@ import {
 } from '../wallet/passkey';
 import { ProcessingModal, type ProcessingStage } from './ProcessingModal';
 import { Tooltip } from './Tooltip';
-import type { StoredWalletEntry } from '../wallet/storage';
+import { closeDb, type StoredWalletEntry } from '../wallet/storage';
 
 export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
   const { setWallet, pushToast } = useWalletStore();
   const [pin, setPin] = useState('');
+  // `null` means "not known yet or unreadable" — never "none saved".
   const [hasStored, setHasStored] = useState<boolean | null>(null);
   const [storedEntries, setStoredEntries] = useState<StoredWalletEntry[]>([]);
+  /** Why the stored-wallet list could not be read, if it could not. */
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [probing, setProbing] = useState(false);
   const [selectedId, setSelectedId] = useState<string>('default');
   const [showPin, setShowPin] = useState(false);
   // Insecure contexts have no crypto.subtle: PBKDF2 runs in JS and unlock is slow.
@@ -31,26 +35,49 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
   const [modalStages, setModalStages] = useState<ProcessingStage[]>([]);
   const [modalError, setModalError] = useState<string | null>(null);
 
-  useEffect(() => {
-    listStoredWallets()
-      .then((list) => {
-        setStoredEntries(list);
-        setHasStored(list.length > 0);
-        // Always default to the main wallet entry ("default" sorts before
-        // "acct-..." in key order, but never rely on that ordering).
-        const def = list.find((e) => e.id === 'default');
-        if (def) setSelectedId(def.id);
-        else if (list.length > 0) setSelectedId(list[0].id);
-      })
-      .catch(() => setHasStored(false));
+  /**
+   * Read the saved wallets, keeping "none saved" and "could not read" apart.
+   *
+   * The two look the same to a user but mean opposite things: the first invites
+   * creating a wallet, the second means existing accounts are momentarily
+   * unreachable — a blocked IndexedDB upgrade, usually another wallet tab still
+   * holding the database. Reporting the second as the first is what made saved
+   * accounts look lost, and sent people into the create flow over their wallet.
+   */
+  const probeStored = useCallback(async () => {
+    setProbing(true);
+    try {
+      const list = await listStoredWallets();
+      setStoredEntries(list);
+      setHasStored(list.length > 0);
+      setLoadError(null);
+      // Always default to the main wallet entry ("default" sorts before
+      // "acct-..." in key order, but never rely on that ordering).
+      const def = list.find((e) => e.id === 'default');
+      if (def) setSelectedId(def.id);
+      else if (list.length > 0) setSelectedId(list[0].id);
+    } catch (e) {
+      setHasStored(null);
+      setStoredEntries([]);
+      setLoadError((e as Error).message);
+    } finally {
+      setProbing(false);
+    }
+    // Same storage, so a failed read leaves the passkey unknown too. Re-probing
+    // it here keeps the retry a single action for the user.
+    if (isPasskeySupported()) setPasskey(await getPasskeyInfo().catch(() => null));
   }, []);
 
   useEffect(() => {
-    if (!isPasskeySupported()) return;
-    getPasskeyInfo()
-      .then(setPasskey)
-      .catch(() => setPasskey(null));
-  }, []);
+    void probeStored();
+  }, [probeStored]);
+
+  const handleRetryProbe = async () => {
+    // Drop the cached connection first: reusing the handle that just failed
+    // reproduces the same failure.
+    await closeDb();
+    await probeStored();
+  };
 
   const handlePasskeyUnlock = async () => {
     setPasskeyBusy(true);
@@ -210,7 +237,42 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
             </p>
           </div>
 
-          {hasStored === false && (
+          {loadError && (
+            <div
+              className="info-box err"
+              style={{
+                marginBottom: 'var(--sp-4)',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 'var(--sp-2)',
+              }}
+            >
+              <span>⚠️</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div>Could not read your saved wallets: {loadError}</div>
+                <div style={{ marginTop: 'var(--sp-1)' }}>
+                  Nothing has been lost — the accounts are still on this device. Close any other
+                  Orion tab or connect popup, then try again.
+                </div>
+                <button
+                  className="ghost"
+                  onClick={() => void handleRetryProbe()}
+                  disabled={probing}
+                  style={{ marginTop: 'var(--sp-2)', minHeight: 32 }}
+                >
+                  {probing ? (
+                    <>
+                      <span className="spinner" /> Checking…
+                    </>
+                  ) : (
+                    <>↻ Try again</>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {hasStored === false && !loadError && (
             <div
               className="info-box warn"
               style={{

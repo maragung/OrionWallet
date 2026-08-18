@@ -18,13 +18,19 @@ export function AccountPicker({ onManage }: { onManage?: () => void } = {}) {
   const [accounts, setAccounts] = useState<ManifestEntry[]>([]);
   const [open, setOpen] = useState(false);
   const [pendingSwitch, setPendingSwitch] = useState<ManifestEntry | null>(null);
+  /** Why the account list could not be read, if it could not. */
+  const [loadError, setLoadError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(async () => {
     try {
       setAccounts(await listAccounts());
-    } catch {
-      // Non-fatal: the picker just shows the active account only.
+      setLoadError(null);
+    } catch (e) {
+      // Leave whatever list we already have in place. Falling back to an empty
+      // list would show "No accounts" for what is only a failed read, which
+      // reads as "my accounts are gone".
+      setLoadError((e as Error).message);
     }
   }, []);
 
@@ -156,7 +162,27 @@ export function AccountPicker({ onManage }: { onManage?: () => void } = {}) {
               Accounts
             </div>
 
-            {accounts.length === 0 ? (
+            {loadError && (
+              <div
+                style={{
+                  padding: 'var(--sp-3)',
+                  fontSize: 'var(--fs-xs)',
+                  color: 'var(--error)',
+                  borderBottom: '1px solid var(--border-subtle)',
+                }}
+              >
+                Could not read your accounts: {loadError}
+                <button
+                  className="ghost"
+                  onClick={() => void refresh()}
+                  style={{ marginTop: 'var(--sp-2)', minHeight: 28, fontSize: 'var(--fs-xs)' }}
+                >
+                  ↻ Try again
+                </button>
+              </div>
+            )}
+
+            {accounts.length === 0 && !loadError ? (
               <div
                 style={{
                   padding: 'var(--sp-3)',
