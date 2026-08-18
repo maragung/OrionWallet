@@ -216,6 +216,8 @@ Before approving:
 - **Check the origin carefully.** Confirm the domain is exactly the site you intended.
 - Approve only the permissions you expect.
 - "Trust this site" skips future prompts for read-only requests — use it sparingly.
+- Check the **network** selector in the popup. It lists every network you have, including
+  ones you added yourself, so you can connect on the right one without leaving the popup.
 
 Review and revoke connections at any time under **Settings → Connected Sites**.
 
@@ -315,6 +317,35 @@ The dApp should then prompt you to reconnect.
 **Settings → ⚙️ General** holds the RPC URL the wallet talks to, the explorer it links out
 to, and an optional proxy. Change the RPC URL and select **Save URLs** to point the wallet
 at a different node.
+
+### Adding your own network
+
+Devnet and Mainnet ship with the wallet. To add another — your own node, a devnet fork, a
+paid RPC — scroll to **Custom Networks** in the same panel and fill in:
+
+| Field | Required | Notes |
+|---|---|---|
+| Network name | yes | Shown everywhere the network appears, including to dApps |
+| RPC URL | yes | `http://` or `https://` |
+| Explorer URL | no | Defaults to the RPC URL |
+| Relayer URL | no | Only needed for stealth transfers |
+
+Select **Add network** and it joins the list. From then on it is a normal choice:
+
+- the **network pill** in the top bar switches to it like any preset,
+- the **connect popup** lists it when a site asks to connect, marked _(custom)_,
+- and a connected dApp can read its name and explorer so it labels things correctly.
+
+Switching network updates all three endpoints together — RPC, explorer, and relayer — so the
+wallet never ends up reading one network while linking to another.
+
+Remove a network with the ✕ beside it. If you delete the one you are currently on, the
+wallet falls back to a preset.
+
+**What a dApp sees.** Sites you connect to can read a custom network's name, icon, explorer
+URL, and the fact that you added it. They **cannot** read its RPC or relayer URL — a home
+node's address or a provider key stays in the wallet. Since the name is visible, avoid
+naming a network after something personal.
 
 ### Nodes without HTTPS
 

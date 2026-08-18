@@ -95,6 +95,55 @@ export function getNetworkDef(
   return found ? { ...found, custom: true } : null;
 }
 
+/**
+ * The view of a network that leaves the wallet — sent to the connect popup's
+ * caller and to dApps over the SDK channel.
+ *
+ * Deliberately **not** the whole `NetworkDef`: `rpcUrl` and `relayerUrl` are
+ * omitted. A user-added network is frequently a private endpoint
+ * (`http://192.168.1.50:8080`, a tunnel, a paid provider key in the query
+ * string), and handing that to every site the user connects to would leak their
+ * infrastructure. dApps never need it either — every read goes through the
+ * wallet (`wallet_getBalance` and friends) and execution never leaves the
+ * wallet UI. What a dApp legitimately needs is which network it is talking to,
+ * whether the wallet's owner added it by hand, and where to link a transaction.
+ */
+export interface NetworkInfo {
+  id: NetworkId;
+  name: string;
+  explorerUrl: string;
+  icon?: string;
+  /** True when the wallet's owner added this network manually. */
+  custom: boolean;
+}
+
+/** Project a full definition down to the fields that may cross the wire. */
+export function toNetworkInfo(def: NetworkDef): NetworkInfo {
+  return {
+    id: def.id,
+    name: def.name,
+    explorerUrl: def.explorerUrl,
+    ...(def.icon ? { icon: def.icon } : {}),
+    custom: def.custom === true,
+  };
+}
+
+/** Every network the wallet offers, presets first, as wire-safe info. */
+export function networkInfoList(customNetworks?: CustomNetworkDef[]): NetworkInfo[] {
+  return allNetworks(customNetworks).map(toNetworkInfo);
+}
+
+/**
+ * Wire-safe info for the active network. Never null: an id with no definition
+ * (a custom network deleted while a session was live) still resolves to a
+ * usable entry, so a dApp gets a coherent answer instead of an error.
+ */
+export function activeNetworkInfo(id: NetworkId, customNetworks?: CustomNetworkDef[]): NetworkInfo {
+  const def = getNetworkDef(id, customNetworks);
+  if (def) return toNetworkInfo(def);
+  return { id, name: id, explorerUrl: '', custom: true };
+}
+
 /** Slugify a display name into a stable custom network id. */
 export function networkIdFromName(name: string, existing: NetworkId[]): string {
   const base =

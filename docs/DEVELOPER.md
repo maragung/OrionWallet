@@ -302,6 +302,8 @@ The wallet answers to two equivalent namespaces:
 | `wallet_signContract` | `orion_wallet_signContract` | Sign a contract transaction |
 | `wallet_getAccounts` | `orion_wallet_getAccounts` | List accounts |
 | `wallet_getBalance` | `orion_wallet_getBalance` | Read balance |
+| `wallet_getNetworkInfo` | `orion_wallet_getNetworkInfo` | Read the active network as a record |
+| `wallet_getNetworks` | `orion_wallet_getNetworks` | List every network the wallet offers |
 | … | … | … |
 
 Both are accepted and execute identically. The `orion_wallet_*` names exist for dApps that
@@ -387,6 +389,7 @@ const provider = new WalletProvider({
     'multiAccount',
     'events',
     'sessionRestore',
+    'customNetworks',
   ],
 });
 
@@ -409,6 +412,56 @@ provider.on('sessionExpired', () => {
   setConnected(false);
 });
 ```
+
+### Networks, including the user's own
+
+A user can add their own network in Settings → Network (their own node, a devnet fork, a
+paid RPC). Those networks are first-class: they appear in the connect popup's selector
+alongside the presets, and a connected dApp can see them.
+
+```javascript
+// Which network am I on? A record, not just an id string.
+const active = await provider.getNetworkInfo();
+// { id: 'home-node', name: 'Home node', explorerUrl: 'https://octrascan.io',
+//   icon: '🏠', custom: true }
+
+// Everything the wallet offers — presets first, user-added ones after.
+const all = await provider.getNetworks();
+const userAdded = all.filter((n) => n.custom);
+
+// Cached from the connect reply, no round-trip; null before connect.
+provider.networkInfo();
+
+provider.on('networkChanged', ({ network, chainId, networkInfo }) => {
+  // networkInfo is present on wallets that granted `customNetworks`.
+  setChain(networkInfo?.name ?? network);
+});
+```
+
+Feature-detect on the **`customNetworks`** capability before relying on any of it — older
+wallet builds only answer the bare `wallet_getNetwork`, which returns an id string.
+
+**`NetworkInfo` deliberately carries no `rpcUrl` and no `relayerUrl`.** A user-added
+network is frequently a private endpoint — a LAN address, a tunnel, a provider URL with the
+API key in the query string — and handing that to every site the user connects to would
+leak their infrastructure. A dApp does not need it: every read goes through the wallet
+(`wallet_getBalance` and friends) and execution never leaves the wallet UI. What crosses
+the wire is what a dApp legitimately needs — which network it is talking to, whether the
+owner added it by hand (`custom`), and where to link a transaction (`explorerUrl`).
+
+There is **no `wallet_switchNetwork`**. Switching stays in the wallet's own UI — the popup's
+selector or the main window's network pill — consistent with the rule that state changes
+never originate from a dApp. A dApp that needs another network asks the user to switch, then
+waits for `networkChanged`.
+
+`networkChanged` is emitted from **both** places a switch can happen: the connect popup and
+the main window. Sessions are handed off to the main window when the popup closes, so by the
+time most users touch the network pill the popup is long gone — `Layout.tsx` emits to the
+adopted handlers so a connected dApp is not left showing a stale network.
+
+Two independent classes implement `WalletHost` — `src/connect/host.ts` (main window) and an
+inline host in `src/connect/ConnectApp.tsx` (popup). Anything added to the interface must be
+implemented in both, plus the fixture in `tests/unit/connect-handler.test.ts`.
 
 ### Connection flow diagram
 

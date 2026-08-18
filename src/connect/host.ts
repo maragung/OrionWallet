@@ -12,6 +12,7 @@ import { useWalletStore } from '../store/wallet-store';
 import { listAccounts } from '../api/wallet-api';
 import { fetchNextNonce } from '../api/nonce';
 import type { Wallet } from '../wallet/wallet';
+import { activeNetworkInfo, networkInfoList } from '../wallet/networks';
 import type {
   WalletHost,
   ApprovalRequest,
@@ -111,6 +112,11 @@ export function createWalletHost(): WalletHost {
     getAddress: () => useWalletStore.getState().wallet?.addr ?? null,
     getAccounts: () => accountsCache,
     getNetwork: () => useWalletStore.getState().settings?.network ?? 'devnet',
+    getNetworkInfo: () => {
+      const s = useWalletStore.getState().settings;
+      return activeNetworkInfo(s?.network ?? 'devnet', s?.customNetworks);
+    },
+    getNetworks: () => networkInfoList(useWalletStore.getState().settings?.customNetworks),
     getChainId: async () => {
       const client = useWalletStore.getState().rpc;
       if (!client) return 'octra:devnet';

@@ -196,7 +196,9 @@ npm run dev</code></pre>
 <li><strong>Check the origin carefully.</strong> Confirm the domain is exactly the site you intended.</li>
 <li>Approve only the permissions you expect.</li>
 <li>"Trust this site" skips future prompts for read-only requests — use it sparingly.</li>
+<li>Check the <strong>network</strong> selector in the popup. It lists every network you have, including</li>
 </ul>
+<p>ones you added yourself, so you can connect on the right one without leaving the popup.</p>
 <p>Review and revoke connections at any time under <strong>Settings → Connected Sites</strong>.</p>
 <hr />
 <h2 id="locking-and-unlocking">Locking and unlocking</h2>
@@ -279,6 +281,28 @@ npm run dev</code></pre>
 <hr />
 <h2 id="network-settings">Network settings</h2>
 <p><strong>Settings → ⚙️ General</strong> holds the RPC URL the wallet talks to, the explorer it links out<br />to, and an optional proxy. Change the RPC URL and select <strong>Save URLs</strong> to point the wallet<br />at a different node.</p>
+<h3 id="adding-your-own-network">Adding your own network</h3>
+<p>Devnet and Mainnet ship with the wallet. To add another — your own node, a devnet fork, a<br />paid RPC — scroll to <strong>Custom Networks</strong> in the same panel and fill in:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Field</th><th>Required</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Network name</td><td>yes</td><td>Shown everywhere the network appears, including to dApps</td></tr>
+<tr><td>RPC URL</td><td>yes</td><td><code>http://</code> or <code>https://</code></td></tr>
+<tr><td>Explorer URL</td><td>no</td><td>Defaults to the RPC URL</td></tr>
+<tr><td>Relayer URL</td><td>no</td><td>Only needed for stealth transfers</td></tr>
+</tbody>
+</table>
+</div>
+<p>Select <strong>Add network</strong> and it joins the list. From then on it is a normal choice:</p>
+<ul>
+<li>the <strong>network pill</strong> in the top bar switches to it like any preset,</li>
+<li>the <strong>connect popup</strong> lists it when a site asks to connect, marked _(custom)_,</li>
+<li>and a connected dApp can read its name and explorer so it labels things correctly.</li>
+</ul>
+<p>Switching network updates all three endpoints together — RPC, explorer, and relayer — so the<br />wallet never ends up reading one network while linking to another.</p>
+<p>Remove a network with the ✕ beside it. If you delete the one you are currently on, the<br />wallet falls back to a preset.</p>
+<p><strong>What a dApp sees.</strong> Sites you connect to can read a custom network's name, icon, explorer<br />URL, and the fact that you added it. They <strong>cannot</strong> read its RPC or relayer URL — a home<br />node's address or a provider key stays in the wallet. Since the name is visible, avoid<br />naming a network after something personal.</p>
 <h3 id="nodes-without-https">Nodes without HTTPS</h3>
 <p>An <code>https://</code> node needs no special handling. A node reachable only over plain <code>http://</code> is<br />a different matter, because everything the wallet asks it — every balance and history<br />lookup, every transaction it submits — travels in the clear, where anyone on the network<br />path can read it <em>and change the answers</em>. So the wallet asks first.</p>
 <ul>

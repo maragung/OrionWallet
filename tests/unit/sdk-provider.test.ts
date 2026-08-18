@@ -203,3 +203,93 @@ describe('WalletProvider: session hint', () => {
     expect(p.hasSessionHint()).toBe(false);
   });
 });
+
+describe('WalletProvider: custom networks', () => {
+  const DEVNET = {
+    id: 'devnet',
+    name: 'Devnet',
+    explorerUrl: 'https://devnet.octrascan.io',
+    icon: '🧪',
+    custom: false,
+  };
+  const HOME = {
+    id: 'home-node',
+    name: 'Home node',
+    explorerUrl: 'https://octrascan.io',
+    icon: '🏠',
+    custom: true,
+  };
+
+  function netProvider() {
+    const t = new FakeTransport();
+    const p = makeProvider(t);
+    // Wallet builds that support the feature answer connect with networkInfo.
+    t.auto[METHODS.CONNECT] = () => ({
+      address: 'octAddr',
+      publicKey: 'pk',
+      accounts: [{ address: 'octAddr', publicKey: 'pk' }],
+      network: 'devnet',
+      networkInfo: DEVNET,
+      chainId: 'octra:devnet',
+    });
+    t.auto[METHODS.GET_NETWORKS] = () => [DEVNET, HOME];
+    t.auto[METHODS.GET_NETWORK_INFO] = () => DEVNET;
+    return { t, p };
+  }
+
+  it('caches networkInfo from the connect reply', async () => {
+    const { p } = netProvider();
+    expect(p.networkInfo()).toBeNull();
+    const res = await p.connect();
+    expect(res.networkInfo).toEqual(DEVNET);
+    expect(p.networkInfo()).toEqual(DEVNET);
+  });
+
+  it('stays null against a wallet build that does not send networkInfo', async () => {
+    const t = new FakeTransport();
+    const p = makeProvider(t); // default connect reply: no networkInfo
+    await p.connect();
+    // Feature-detection contract: the getter is null rather than a guess, so a
+    // dApp falls back to the bare `wallet_getNetwork` id string.
+    expect(p.networkInfo()).toBeNull();
+  });
+
+  it('lists the wallet networks including user-added ones', async () => {
+    const { p } = netProvider();
+    await p.connect();
+    const list = await p.getNetworks();
+    expect(list.map((n) => n.id)).toEqual(['devnet', 'home-node']);
+    expect(list[1]!.custom).toBe(true);
+  });
+
+  it('fetches the active network record on demand', async () => {
+    const { p } = netProvider();
+    await p.connect();
+    expect(await p.getNetworkInfo()).toEqual(DEVNET);
+  });
+
+  it('updates the cache when the wallet switches to a custom network', async () => {
+    const { t, p } = netProvider();
+    await p.connect();
+    const seen: unknown[] = [];
+    p.on(EVENTS.NETWORK_CHANGED, (payload) => seen.push(payload));
+    t.pushEvent(
+      makeEvent(
+        EVENTS.NETWORK_CHANGED,
+        { network: 'home-node', chainId: 'octra:home-node', networkInfo: HOME },
+        7,
+      ),
+    );
+    expect(seen).toEqual([{ network: 'home-node', chainId: 'octra:home-node', networkInfo: HOME }]);
+    expect(p.networkInfo()).toEqual(HOME);
+  });
+
+  it('forgets the network when the session ends', async () => {
+    const { t, p } = netProvider();
+    await p.connect();
+    expect(p.networkInfo()).toEqual(DEVNET);
+    t.pushEvent(makeEvent(EVENTS.SESSION_EXPIRED, {}, 8));
+    // A dead session must not keep reporting the network it used to be on.
+    expect(p.networkInfo()).toBeNull();
+  });
+});

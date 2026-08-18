@@ -14,6 +14,7 @@ export { WalletProvider } from './WalletProvider';
 export type {
   WalletProviderOptions,
   WalletAccount,
+  NetworkInfo,
   ConnectResult,
   SignMessageResult,
   SignTypedDataResult,

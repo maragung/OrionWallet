@@ -231,6 +231,8 @@ await panelLoading.run('Loading history', async () =&gt; {
 <tr><td><code>wallet_signContract</code></td><td><code>orion_wallet_signContract</code></td><td>Sign a contract transaction</td></tr>
 <tr><td><code>wallet_getAccounts</code></td><td><code>orion_wallet_getAccounts</code></td><td>List accounts</td></tr>
 <tr><td><code>wallet_getBalance</code></td><td><code>orion_wallet_getBalance</code></td><td>Read balance</td></tr>
+<tr><td><code>wallet_getNetworkInfo</code></td><td><code>orion_wallet_getNetworkInfo</code></td><td>Read the active network as a record</td></tr>
+<tr><td><code>wallet_getNetworks</code></td><td><code>orion_wallet_getNetworks</code></td><td>List every network the wallet offers</td></tr>
 <tr><td>…</td><td>…</td><td>…</td></tr>
 </tbody>
 </table>
@@ -300,6 +302,7 @@ const provider = new WalletProvider({
     'multiAccount',
     'events',
     'sessionRestore',
+    'customNetworks',
   ],
 });
 
@@ -315,6 +318,29 @@ if (!provider.isSessionAlive()) {
 provider.on('sessionExpired', () =&gt; {
   setConnected(false);
 });</code></pre>
+<h3 id="networks-including-the-users-own">Networks, including the user's own</h3>
+<p>A user can add their own network in Settings → Network (their own node, a devnet fork, a<br />paid RPC). Those networks are first-class: they appear in the connect popup's selector<br />alongside the presets, and a connected dApp can see them.</p>
+<pre><code class="language-javascript">// Which network am I on? A record, not just an id string.
+const active = await provider.getNetworkInfo();
+// { id: 'home-node', name: 'Home node', explorerUrl: 'https://octrascan.io',
+//   icon: '🏠', custom: true }
+
+// Everything the wallet offers — presets first, user-added ones after.
+const all = await provider.getNetworks();
+const userAdded = all.filter((n) =&gt; n.custom);
+
+// Cached from the connect reply, no round-trip; null before connect.
+provider.networkInfo();
+
+provider.on('networkChanged', ({ network, chainId, networkInfo }) =&gt; {
+  // networkInfo is present on wallets that granted `customNetworks`.
+  setChain(networkInfo?.name ?? network);
+});</code></pre>
+<p>Feature-detect on the <strong><code>customNetworks</code></strong> capability before relying on any of it — older<br />wallet builds only answer the bare <code>wallet_getNetwork</code>, which returns an id string.</p>
+<p><strong><code>NetworkInfo</code> deliberately carries no <code>rpcUrl</code> and no <code>relayerUrl</code>.</strong> A user-added<br />network is frequently a private endpoint — a LAN address, a tunnel, a provider URL with the<br />API key in the query string — and handing that to every site the user connects to would<br />leak their infrastructure. A dApp does not need it: every read goes through the wallet<br />(<code>wallet_getBalance</code> and friends) and execution never leaves the wallet UI. What crosses<br />the wire is what a dApp legitimately needs — which network it is talking to, whether the<br />owner added it by hand (<code>custom</code>), and where to link a transaction (<code>explorerUrl</code>).</p>
+<p>There is <strong>no <code>wallet_switchNetwork</code></strong>. Switching stays in the wallet's own UI — the popup's<br />selector or the main window's network pill — consistent with the rule that state changes<br />never originate from a dApp. A dApp that needs another network asks the user to switch, then<br />waits for <code>networkChanged</code>.</p>
+<p><code>networkChanged</code> is emitted from <strong>both</strong> places a switch can happen: the connect popup and<br />the main window. Sessions are handed off to the main window when the popup closes, so by the<br />time most users touch the network pill the popup is long gone — <code>Layout.tsx</code> emits to the<br />adopted handlers so a connected dApp is not left showing a stale network.</p>
+<p>Two independent classes implement <code>WalletHost</code> — <code>src/connect/host.ts</code> (main window) and an<br />inline host in <code>src/connect/ConnectApp.tsx</code> (popup). Anything added to the interface must be<br />implemented in both, plus the fixture in <code>tests/unit/connect-handler.test.ts</code>.</p>
 <h3 id="connection-flow-diagram">Connection flow diagram</h3>
 <pre><code class="language-">dApp                          Orion Wallet
   │                              │

@@ -30,6 +30,10 @@ export const METHODS = {
   GET_PUBLIC_KEY: 'wallet_getPublicKey',
   GET_BALANCE: 'wallet_getBalance',
   GET_NETWORK: 'wallet_getNetwork',
+  /** Active network as a structured record (id, name, explorer, custom flag). */
+  GET_NETWORK_INFO: 'wallet_getNetworkInfo',
+  /** Every network the wallet offers, including ones the user added by hand. */
+  GET_NETWORKS: 'wallet_getNetworks',
   GET_CHAIN_ID: 'wallet_getChainId',
   GET_PERMISSIONS: 'wallet_getPermissions',
   // Signing (always require explicit user confirmation)
@@ -122,6 +126,13 @@ export const CAPABILITIES = {
   MULTI_ACCOUNT: 'multiAccount',
   EVENTS: 'events',
   SESSION_RESTORE: 'sessionRestore',
+  /**
+   * The wallet can describe its networks — `wallet_getNetworkInfo` /
+   * `wallet_getNetworks` answer, and `networkChanged` carries a `networkInfo`
+   * payload. dApps feature-detect on this before relying on either; older
+   * wallet builds only expose the bare `wallet_getNetwork` id string.
+   */
+  CUSTOM_NETWORKS: 'customNetworks',
 } as const;
 
 export type Capability = (typeof CAPABILITIES)[keyof typeof CAPABILITIES];
@@ -135,6 +146,7 @@ export const WALLET_CAPABILITIES: Capability[] = [
   CAPABILITIES.MULTI_ACCOUNT,
   CAPABILITIES.EVENTS,
   CAPABILITIES.SESSION_RESTORE,
+  CAPABILITIES.CUSTOM_NETWORKS,
 ];
 
 /** Events the wallet can push to a connected dApp. */

@@ -12,10 +12,26 @@ import {
   type Envelope,
 } from '../../src/sdk/protocol';
 import { importWalletFromSeed } from '../../src/wallet/wallet';
+import {
+  activeNetworkInfo,
+  networkInfoList,
+  type CustomNetworkDef,
+} from '../../src/wallet/networks';
 import { wipeEverything } from '../../src/wallet/storage';
 
 const wallet = importWalletFromSeed(new Uint8Array(32).fill(3));
 const ORIGIN = 'https://dapp.example';
+/** A user-added network, of the kind the popup and dApps must be able to see. */
+const CUSTOM_NETWORKS: CustomNetworkDef[] = [
+  {
+    id: 'home-node',
+    name: 'Home node',
+    rpcUrl: 'http://192.168.1.50:8080',
+    explorerUrl: 'https://octrascan.io',
+    relayerUrl: 'http://192.168.1.50:9000',
+    icon: '🏠',
+  },
+];
 const CHALLENGE = 'a'.repeat(64);
 
 /** Build a WalletHost with overridable approval behaviour. */
@@ -30,6 +46,8 @@ function makeHost(
     getAddress: () => wallet.addr,
     getAccounts: () => [{ address: wallet.addr, publicKey: wallet.pubB64, name: 'A', index: 0 }],
     getNetwork: () => 'devnet',
+    getNetworkInfo: () => activeNetworkInfo('devnet', CUSTOM_NETWORKS),
+    getNetworks: () => networkInfoList(CUSTOM_NETWORKS),
     getChainId: async () => 'octra:devnet',
     getBalance: async () => ({ balance: '1.5', balanceRaw: '1500000', nonce: 4 }),
     getNextNonce: async () => 5,
@@ -436,5 +454,64 @@ describe('ConnectHandler: multi-account connect', () => {
     const res2 = await driver.request(METHODS.CONNECT, { origin: ORIGIN });
     expect(res2.error).toBeUndefined();
     expect((res2.result as { address?: string }).address).toBe(ACC_B.address);
+  });
+});
+
+describe('ConnectHandler: custom networks', () => {
+  it('reports the active network as a structured record', async () => {
+    const host = makeHost();
+    const { driver } = wire(host);
+    await connect(driver);
+    const res = await driver.request(METHODS.GET_NETWORK_INFO, {});
+    expect(res.result).toEqual({
+      id: 'devnet',
+      name: 'Devnet',
+      explorerUrl: 'https://devnet.octrascan.io',
+      icon: '🧪',
+      custom: false,
+    });
+  });
+
+  it('lists user-added networks to the dApp, flagged as custom', async () => {
+    const host = makeHost();
+    const { driver } = wire(host);
+    await connect(driver);
+    const res = await driver.request(METHODS.GET_NETWORKS, {});
+    const list = res.result as { id: string; name: string; custom: boolean }[];
+    expect(list.map((n) => n.id)).toEqual(['devnet', 'mainnet', 'home-node']);
+    const home = list.find((n) => n.id === 'home-node')!;
+    expect(home).toMatchObject({ name: 'Home node', custom: true, icon: '🏠' });
+  });
+
+  it("never puts the custom network's endpoints on the wire", async () => {
+    // A user-added network is usually a private endpoint. Connecting a site must
+    // not tell it where that node lives.
+    const host = makeHost();
+    const { driver } = wire(host);
+    const connected = await connect(driver);
+    const infos = await driver.request(METHODS.GET_NETWORKS, {});
+    const payload = JSON.stringify([connected.result, infos.result]);
+    expect(payload).not.toContain('192.168.1.50');
+    expect(payload).not.toContain('rpcUrl');
+    expect(payload).not.toContain('relayerUrl');
+  });
+
+  it('includes networkInfo in the connect reply', async () => {
+    const host = makeHost();
+    const { driver } = wire(host);
+    const res = await connect(driver);
+    const r = res.result as { network: string; networkInfo?: { id: string; custom: boolean } };
+    expect(r.network).toBe('devnet');
+    expect(r.networkInfo).toMatchObject({ id: 'devnet', custom: false });
+  });
+
+  it('still requires a session for the network reads', async () => {
+    const host = makeHost();
+    const { driver } = wire(host);
+    driver.ack();
+    for (const m of [METHODS.GET_NETWORK_INFO, METHODS.GET_NETWORKS]) {
+      const res = await driver.request(m, {});
+      expect(res.error?.code).toBe(ERROR_CODES.UNAUTHORIZED);
+    }
   });
 });

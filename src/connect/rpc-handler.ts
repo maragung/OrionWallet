@@ -35,6 +35,7 @@ import {
 } from '../sdk/protocol';
 import type { Wallet } from '../wallet/wallet';
 import { isWatchOnly } from '../wallet/watch-only';
+import type { NetworkInfo } from '../wallet/networks';
 import {
   signPlainMessage,
   signTypedDataOctra,
@@ -93,8 +94,15 @@ export interface WalletHost {
   getAddress(): string | null;
   /** All accounts (multi-account support). */
   getAccounts(): Array<{ address: string; publicKey: string; name?: string; index?: number }>;
-  /** Network name (e.g. "devnet"). */
+  /** Network id (e.g. "devnet", or a custom network's slug). */
   getNetwork(): string;
+  /**
+   * The active network as a structured record. Wire-safe by construction —
+   * see `NetworkInfo` for what is deliberately left out.
+   */
+  getNetworkInfo(): NetworkInfo;
+  /** Every network the wallet offers, including user-added ones. */
+  getNetworks(): NetworkInfo[];
   /** Chain id string. */
   getChainId(): Promise<string>;
   /** Read balance for the active account. */
@@ -403,6 +411,8 @@ export class ConnectHandler {
         case METHODS.GET_PUBLIC_KEY:
         case METHODS.GET_BALANCE:
         case METHODS.GET_NETWORK:
+        case METHODS.GET_NETWORK_INFO:
+        case METHODS.GET_NETWORKS:
         case METHODS.GET_CHAIN_ID:
         case METHODS.GET_PERMISSIONS:
           return await this.onRead(env, method);
@@ -502,6 +512,7 @@ export class ConnectHandler {
       publicKey: pk,
       accounts,
       network: this.host.getNetwork(),
+      networkInfo: this.host.getNetworkInfo(),
       chainId: await this.host.getChainId(),
       capabilities: this.capabilities,
       sessionId: this.session!.sid,
@@ -581,6 +592,10 @@ export class ConnectHandler {
         return this.reply(env.id, await this.host.getBalance());
       case METHODS.GET_NETWORK:
         return this.reply(env.id, this.host.getNetwork());
+      case METHODS.GET_NETWORK_INFO:
+        return this.reply(env.id, this.host.getNetworkInfo());
+      case METHODS.GET_NETWORKS:
+        return this.reply(env.id, this.host.getNetworks());
       case METHODS.GET_CHAIN_ID:
         return this.reply(env.id, await this.host.getChainId());
       case METHODS.GET_PERMISSIONS:

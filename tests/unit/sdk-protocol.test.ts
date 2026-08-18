@@ -14,6 +14,11 @@ import {
   MIN_PROTOCOL_VERSION,
   ERROR_CODES,
   EVENTS,
+  METHODS,
+  ORION_METHODS,
+  SUPPORTED_METHODS,
+  CAPABILITIES,
+  canonicalizeMethod,
 } from '../../src/sdk/protocol';
 
 describe('protocol: prohibited method denylist', () => {
@@ -113,5 +118,36 @@ describe('protocol: envelopes', () => {
   it('generates unique ids', () => {
     const ids = new Set(Array.from({ length: 1000 }, () => makeRequest('m', {}, 1).id));
     expect(ids.size).toBe(1000);
+  });
+});
+
+describe('protocol: custom network methods', () => {
+  it('exposes the network reads under both namespaces', () => {
+    expect(METHODS.GET_NETWORK_INFO).toBe('wallet_getNetworkInfo');
+    expect(METHODS.GET_NETWORKS).toBe('wallet_getNetworks');
+    for (const m of [METHODS.GET_NETWORK_INFO, METHODS.GET_NETWORKS]) {
+      expect(SUPPORTED_METHODS).toContain(m);
+      const orion = m.replace('wallet_', 'orion_wallet_');
+      expect(SUPPORTED_METHODS).toContain(orion);
+      expect(canonicalizeMethod(orion)).toBe(m);
+    }
+    expect(ORION_METHODS.GET_NETWORKS).toBe('orion_wallet_getNetworks');
+  });
+
+  it('does not trip the execution-intent denylist', () => {
+    // "getNetworks" contains no send/transfer/swap/bridge substring, but the
+    // matcher is prefix- and case-insensitive, so assert rather than assume.
+    expect(isProhibitedMethod(METHODS.GET_NETWORK_INFO)).toBe(false);
+    expect(isProhibitedMethod(METHODS.GET_NETWORKS)).toBe(false);
+    expect(isProhibitedMethod(ORION_METHODS.GET_NETWORKS!)).toBe(false);
+  });
+
+  it('advertises the customNetworks capability so dApps can feature-detect', () => {
+    expect(CAPABILITIES.CUSTOM_NETWORKS).toBe('customNetworks');
+    expect(WALLET_CAPABILITIES).toContain(CAPABILITIES.CUSTOM_NETWORKS);
+    expect(negotiateCapabilities(['customNetworks'])).toEqual(['customNetworks']);
+    // An older dApp that never asks for it still gets it in the "no request" case,
+    // which is how the wallet advertises everything it can do.
+    expect(negotiateCapabilities()).toContain('customNetworks');
   });
 });

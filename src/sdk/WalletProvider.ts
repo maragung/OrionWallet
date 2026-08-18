@@ -47,11 +47,39 @@ export interface WalletAccount {
   index?: number;
 }
 
+/**
+ * A network the wallet can be pointed at — a built-in preset, or one the
+ * wallet's owner added by hand.
+ *
+ * The RPC endpoint is intentionally absent. A user-added network is often
+ * private (a LAN address, a tunnel, a provider URL with a key in it), so the
+ * wallet does not hand it to connected sites. Read wallet state through the
+ * provider (`getBalance`, `getChainId`) rather than by talking to a node
+ * yourself.
+ */
+export interface NetworkInfo {
+  /** Stable id: `devnet`, `mainnet`, or a slug for a user-added network. */
+  id: string;
+  /** Display name, as the wallet's owner sees it. */
+  name: string;
+  /** Block explorer base URL; may be empty for a user-added network. */
+  explorerUrl: string;
+  /** Display icon (emoji), when the network has one. */
+  icon?: string;
+  /** True when the wallet's owner added this network manually. */
+  custom: boolean;
+}
+
 export interface ConnectResult {
   address: string;
   publicKey: string;
   accounts: WalletAccount[];
   network: string;
+  /**
+   * Structured form of `network`. Present only when the wallet advertises the
+   * `customNetworks` capability.
+   */
+  networkInfo?: NetworkInfo;
   chainId: string;
   capabilities: Capability[];
 }
@@ -137,6 +165,7 @@ export class WalletProvider {
   private grantedCapabilities: Capability[] = [];
   private currentAddress: string | null = null;
   private currentNetwork: string | null = null;
+  private currentNetworkInfo: NetworkInfo | null = null;
   private currentChainId: string | null = null;
 
   constructor(options: WalletProviderOptions) {
@@ -183,6 +212,7 @@ export class WalletProvider {
       this.connected = true;
       this.currentAddress = result.address;
       this.currentNetwork = result.network;
+      this.currentNetworkInfo = result.networkInfo ?? null;
       this.currentChainId = result.chainId;
       this.persistSession(result);
       this.emit(EVENTS.CONNECT, result);
@@ -231,6 +261,29 @@ export class WalletProvider {
 
   async getNetwork(): Promise<string> {
     return (await this.request(METHODS.GET_NETWORK, {})) as string;
+  }
+
+  /**
+   * The active network as a structured record, including whether the wallet's
+   * owner added it manually. Requires the `customNetworks` capability.
+   */
+  async getNetworkInfo(): Promise<NetworkInfo> {
+    return (await this.request(METHODS.GET_NETWORK_INFO, {})) as NetworkInfo;
+  }
+
+  /**
+   * Every network the wallet offers — built-in presets plus the ones its owner
+   * added by hand — so a dApp can tell the user which of them it supports.
+   * Requires the `customNetworks` capability. Reading the list does not switch
+   * anything; only the wallet's own UI can change network.
+   */
+  async getNetworks(): Promise<NetworkInfo[]> {
+    return (await this.request(METHODS.GET_NETWORKS, {})) as NetworkInfo[];
+  }
+
+  /** Last known network info without a round-trip; null before connect. */
+  networkInfo(): NetworkInfo | null {
+    return this.currentNetworkInfo;
   }
 
   async getChainId(): Promise<string> {
@@ -340,8 +393,10 @@ export class WalletProvider {
         break;
       }
       case EVENTS.NETWORK_CHANGED: {
-        const p = payload as { network?: string; chainId?: string } | undefined;
+        const p = payload as
+          { network?: string; chainId?: string; networkInfo?: NetworkInfo } | undefined;
         if (p?.network) this.currentNetwork = p.network;
+        if (p?.networkInfo) this.currentNetworkInfo = p.networkInfo;
         if (p?.chainId) this.currentChainId = p.chainId;
         break;
       }
@@ -423,6 +478,13 @@ export class WalletProvider {
   private clearSession(reason: string): void {
     this.connected = false;
     this.currentAddress = null;
+    // Drop the cached network too. `networkInfo()` is documented as "last known,
+    // null before connect", and a torn-down session reporting the network it used
+    // to be on is worse than reporting nothing. Safe to clear: `snapshot()` is
+    // only reachable from `connect()` while `isConnected()` is still true.
+    this.currentNetwork = null;
+    this.currentNetworkInfo = null;
+    this.currentChainId = null;
     try {
       localStorage.removeItem(this.opts.storageKey);
     } catch {
@@ -450,6 +512,7 @@ export class WalletProvider {
       publicKey: '',
       accounts: [],
       network: this.currentNetwork ?? '',
+      ...(this.currentNetworkInfo ? { networkInfo: this.currentNetworkInfo } : {}),
       chainId: this.currentChainId ?? '',
       capabilities: this.grantedCapabilities,
     };

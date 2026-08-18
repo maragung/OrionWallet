@@ -273,6 +273,33 @@ network) only. It never grants silent signing.
 
 Connections can be reviewed and revoked under **Settings → Connected Sites**.
 
+### What a dApp learns about a custom network
+
+Networks the user added by hand are visible to connected sites (`wallet_getNetworkInfo`,
+`wallet_getNetworks`, and the `networkChanged` event), because a dApp cannot render a correct
+explorer link or chain label without knowing which network it is on. The record that crosses
+the wire is a deliberate subset:
+
+| Sent | Withheld |
+|---|---|
+| `id`, `name`, `explorerUrl`, `icon`, `custom` | `rpcUrl`, `relayerUrl` |
+
+The endpoints are withheld because a user-added network is usually a private one — a LAN
+address, a tunnel, a paid provider URL with the API key in the query string. Connecting to a
+site should not disclose where the user's node lives or hand over a credentialed URL. No
+functionality is lost: reads are proxied through the wallet and transactions are built and
+broadcast by the wallet, so a dApp never needs to reach the RPC itself.
+
+Two consequences worth knowing:
+
+- A custom network's **name** is user-chosen and is shown to dApps. Naming one after a
+  personal identifier discloses that identifier to every site you connect to.
+- `wallet_getNetworks` reveals **how many** networks you have configured. This is a small
+  fingerprinting surface, accepted so that a dApp can offer "switch to X" guidance.
+
+No dApp can change the network. There is no `wallet_switchNetwork` method; switching happens
+only in the wallet's own UI, and the dApp finds out afterwards via `networkChanged`.
+
 ---
 
 ## Dependency status

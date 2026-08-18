@@ -271,6 +271,27 @@ base-uri 'self'; form-action 'self';</code></pre>
 </ol>
 <p>"Trust this site" suppresses prompts for <strong>read-only</strong> requests (balance, accounts,<br />network) only. It never grants silent signing.</p>
 <p>Connections can be reviewed and revoked under <strong>Settings → Connected Sites</strong>.</p>
+<h3 id="what-a-dapp-learns-about-a-custom-network">What a dApp learns about a custom network</h3>
+<p>Networks the user added by hand are visible to connected sites (<code>wallet_getNetworkInfo</code>,<br /><code>wallet_getNetworks</code>, and the <code>networkChanged</code> event), because a dApp cannot render a correct<br />explorer link or chain label without knowing which network it is on. The record that crosses<br />the wire is a deliberate subset:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Sent</th><th>Withheld</th></tr></thead>
+<tbody>
+<tr><td><code>id</code>, <code>name</code>, <code>explorerUrl</code>, <code>icon</code>, <code>custom</code></td><td><code>rpcUrl</code>, <code>relayerUrl</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>The endpoints are withheld because a user-added network is usually a private one — a LAN<br />address, a tunnel, a paid provider URL with the API key in the query string. Connecting to a<br />site should not disclose where the user's node lives or hand over a credentialed URL. No<br />functionality is lost: reads are proxied through the wallet and transactions are built and<br />broadcast by the wallet, so a dApp never needs to reach the RPC itself.</p>
+<p>Two consequences worth knowing:</p>
+<ul>
+<li>A custom network's <strong>name</strong> is user-chosen and is shown to dApps. Naming one after a</li>
+</ul>
+<p>personal identifier discloses that identifier to every site you connect to.</p>
+<ul>
+<li><code>wallet_getNetworks</code> reveals <strong>how many</strong> networks you have configured. This is a small</li>
+</ul>
+<p>fingerprinting surface, accepted so that a dApp can offer "switch to X" guidance.</p>
+<p>No dApp can change the network. There is no <code>wallet_switchNetwork</code> method; switching happens<br />only in the wallet's own UI, and the dApp finds out afterwards via <code>networkChanged</code>.</p>
 <hr />
 <h2 id="dependency-status">Dependency status</h2>
 <p>Production dependencies: <strong>zero known vulnerabilities</strong> (<code>npm audit --omit=dev</code>).</p>

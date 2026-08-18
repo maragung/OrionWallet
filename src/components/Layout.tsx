@@ -27,6 +27,8 @@ import { useTheme } from '../hooks/useTheme';
 import { useAutoLock } from '../hooks/useAutoLock';
 import { useI18n } from '../i18n/useI18n';
 import { ConnectHandler } from '../connect/rpc-handler';
+import { EVENTS } from '../sdk/protocol';
+import { activeNetworkInfo } from '../wallet/networks';
 import { createWalletHost, refreshHostAccounts } from '../connect/host';
 import { restoreSession } from '../connect/session';
 import type { Wallet } from '../wallet/wallet';
@@ -314,6 +316,7 @@ export function Layout() {
     pvacStatus,
     pvacError,
     rpcWarning,
+    settings,
   } = useWalletStore();
 
   // Initialize theme system (applies data-theme to <html>)
@@ -381,6 +384,31 @@ export function Layout() {
   useEffect(() => {
     refreshHostAccounts();
   }, [wallet]);
+
+  // Tell connected dApps when the network changes *here*. Sessions outlive the
+  // connect popup (they are handed off to this window), so by the time a user
+  // switches network in the top-bar pill the popup that emitted this event is
+  // usually gone. Without this, a connected dApp keeps showing the old network
+  // indefinitely.
+  const activeNetwork = settings?.network;
+  const prevNetwork = useRef(activeNetwork);
+  useEffect(() => {
+    if (prevNetwork.current === activeNetwork) return;
+    const had = prevNetwork.current;
+    prevNetwork.current = activeNetwork;
+    // Settings load asynchronously, so the first transition is undefined → the
+    // stored network. That is not a change; emitting it would announce a switch
+    // that never happened.
+    if (!activeNetwork || !had) return;
+    const info = activeNetworkInfo(activeNetwork, settings?.customNetworks);
+    for (const h of handlersRef.current) {
+      h.emitEvent(EVENTS.NETWORK_CHANGED, {
+        network: activeNetwork,
+        chainId: `octra:${activeNetwork}`,
+        networkInfo: info,
+      });
+    }
+  }, [activeNetwork, settings?.customNetworks]);
 
   // On lock, tear down any adopted session handlers (drops the live channel).
   const prevUnlocked = useRef(isUnlocked);

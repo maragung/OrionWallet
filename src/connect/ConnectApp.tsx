@@ -31,6 +31,13 @@ import { listAccounts, unlockAccount } from '../api/wallet-api';
 import { fetchNextNonce } from '../api/nonce';
 import { PinModal } from '../components/PinModal';
 import { patchSettings } from '../wallet/storage';
+import {
+  activeNetworkInfo,
+  allNetworks,
+  getNetworkDef,
+  networkInfoList,
+  type NetworkId,
+} from '../wallet/networks';
 import { MAIN_WALLET_NAME, HANDOFF_TYPE } from './handoff';
 import type { Wallet } from '../wallet/wallet';
 
@@ -60,11 +67,6 @@ interface PendingApproval {
   request: ApprovalRequest;
   resolve: (d: ApprovalDecision) => void;
 }
-
-const NETWORK_OPTIONS = [
-  { value: 'devnet' as const, label: 'Devnet', rpcUrl: 'https://devnet.octrascan.io/rpc' },
-  { value: 'mainnet' as const, label: 'Mainnet', rpcUrl: 'https://mainnet.octrascan.io/rpc' },
-];
 
 function abbreviate(addr: string): string {
   if (addr.length <= 16) return addr;
@@ -109,9 +111,7 @@ export function ConnectApp() {
   const walletAddrRef = useRef<string | null>(null);
   // Mirror of `selectedAddr` for use inside callbacks (avoid stale closure).
   const selectedAddrRef = useRef<string | null>(null);
-  const pinRequestRef = useRef<{ addr: string; resolve: (w: Wallet | null) => void } | null>(
-    null,
-  );
+  const pinRequestRef = useRef<{ addr: string; resolve: (w: Wallet | null) => void } | null>(null);
   const pendingRef = useRef<PendingApproval | null>(null);
   // Account bound to the live session (mirror of `sessionAccount` state).
   const sessionAddrRef = useRef<string | null>(null);
@@ -336,6 +336,11 @@ export function ConnectApp() {
       getAddress: () => useWalletStore.getState().wallet?.addr ?? null,
       getAccounts: () => accountsRef.current,
       getNetwork: () => useWalletStore.getState().settings?.network ?? 'devnet',
+      getNetworkInfo: () => {
+        const st = useWalletStore.getState().settings;
+        return activeNetworkInfo(st?.network ?? 'devnet', st?.customNetworks);
+      },
+      getNetworks: () => networkInfoList(useWalletStore.getState().settings?.customNetworks),
       getChainId: async () => {
         const client = useWalletStore.getState().rpc;
         if (!client) return 'octra:unknown';
@@ -440,19 +445,24 @@ export function ConnectApp() {
       // reply not yet posted): the pending promise would resolve after the
       // transfer and post its reply on a port that no longer belongs to this
       // window — the dApp call would hang forever. Retry until the popup is idle.
-      if (
-        pendingRef.current ||
-        pinRequestRef.current ||
-        h.getInFlightCount() > 0
-      ) {
-        console.log('[handoff] deferring, pending=', !!pendingRef.current, 'pin=', !!pinRequestRef.current, 'inflight=', h.getInFlightCount());
+      if (pendingRef.current || pinRequestRef.current || h.getInFlightCount() > 0) {
+        console.log(
+          '[handoff] deferring, pending=',
+          !!pendingRef.current,
+          'pin=',
+          !!pinRequestRef.current,
+          'inflight=',
+          h.getInFlightCount(),
+        );
         setTimeout(() => maybeHandoff(channel, challenge), 100);
         return;
       }
       // The main wallet window shares this origin; reach it by its stable name.
       const main = window.open('', MAIN_WALLET_NAME);
-      console.log('[handoff] main window lookup:',
-        main === null ? 'null' : main === window ? 'self' : 'found');
+      console.log(
+        '[handoff] main window lookup:',
+        main === null ? 'null' : main === window ? 'self' : 'found',
+      );
       if (!main || main === window) return; // not found — keep hosting in the popup
       // Safety net: if we accidentally got a blank window, close it and fall back.
       try {
@@ -467,12 +477,15 @@ export function ConnectApp() {
       // Re-check after the lookup: a request may have arrived (and prompted)
       // while we were resolving the window. Transferring now would strand its
       // reply. Retry instead.
-      if (
-        pendingRef.current ||
-        pinRequestRef.current ||
-        h.getInFlightCount() > 0
-      ) {
-        console.log('[handoff] deferring after lookup, pending=', !!pendingRef.current, 'pin=', !!pinRequestRef.current, 'inflight=', h.getInFlightCount());
+      if (pendingRef.current || pinRequestRef.current || h.getInFlightCount() > 0) {
+        console.log(
+          '[handoff] deferring after lookup, pending=',
+          !!pendingRef.current,
+          'pin=',
+          !!pinRequestRef.current,
+          'inflight=',
+          h.getInFlightCount(),
+        );
         setTimeout(() => maybeHandoff(channel, challenge), 100);
         return;
       }
@@ -574,19 +587,34 @@ export function ConnectApp() {
 
   // ── Network switcher ────────────────────────────────────────────────────
   const handleSwitchNetwork = useCallback(
-    async (net: 'devnet' | 'mainnet') => {
+    async (net: NetworkId) => {
       if (net === settings?.network) return;
-      const opt = NETWORK_OPTIONS.find((n) => n.value === net);
-      if (!opt) return;
-      const updated = await patchSettings({ network: net, rpcUrl: opt.rpcUrl });
-      store.setSettings(updated);
-      store.initRpc().catch(() => undefined);
-      handlerRef.current?.emitEvent(EVENTS.NETWORK_CHANGED, {
-        network: net,
-        chainId: `octra:${net}`,
-      });
+      const def = getNetworkDef(net, settings?.customNetworks);
+      if (!def) return;
+      try {
+        // Patch every endpoint field, exactly as the main window's NetworkSwitcher
+        // does. Patching only `rpcUrl` would leave the explorer and relayer
+        // pointing at the previous network.
+        const updated = await patchSettings({
+          network: def.id,
+          rpcUrl: def.rpcUrl,
+          explorerUrl: def.explorerUrl,
+          relayerUrl: def.relayerUrl ?? '',
+        });
+        store.setSettings(updated);
+        store.initRpc().catch(() => undefined);
+        handlerRef.current?.emitEvent(EVENTS.NETWORK_CHANGED, {
+          network: def.id,
+          chainId: `octra:${def.id}`,
+          networkInfo: activeNetworkInfo(def.id, settings?.customNetworks),
+        });
+      } catch (e) {
+        // A failed settings write must not leave the popup showing a network it
+        // never switched to, nor raise an unhandled rejection from the <select>.
+        store.pushToast('error', `Network switch failed: ${(e as Error).message}`);
+      }
     },
-    [settings?.network, store],
+    [settings?.network, settings?.customNetworks, store],
   );
 
   // ── Disconnect (user-initiated from the popup) ──────────────────────────
@@ -643,6 +671,13 @@ export function ConnectApp() {
   }
 
   const activeNetwork = settings?.network ?? 'devnet';
+  // Presets plus whatever the user added by hand in Settings → Network. The
+  // popup reads the same list as the main window, so a custom network is
+  // selectable here the moment it exists.
+  const networkOptions = allNetworks(settings?.customNetworks);
+  // An id with no definition left (custom network deleted while connected)
+  // would otherwise render as a blank <select>.
+  const activeIsKnown = networkOptions.some((n) => n.id === activeNetwork);
 
   const selectStyle: React.CSSProperties = {};
 
@@ -675,14 +710,15 @@ export function ConnectApp() {
         )}
         <select
           value={activeNetwork}
-          onChange={(e) => handleSwitchNetwork(e.target.value as 'devnet' | 'mainnet')}
+          onChange={(e) => void handleSwitchNetwork(e.target.value)}
           className="connect-select"
           style={selectStyle}
-          title="Network"
+          title={settings?.rpcUrl ?? 'Network'}
         >
-          {NETWORK_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
+          {!activeIsKnown && <option value={activeNetwork}>{`${activeNetwork} (unknown)`}</option>}
+          {networkOptions.map((opt) => (
+            <option key={opt.id} value={opt.id}>
+              {`${opt.icon ?? '🌐'} ${opt.name}${opt.custom ? ' (custom)' : ''}`}
             </option>
           ))}
         </select>
