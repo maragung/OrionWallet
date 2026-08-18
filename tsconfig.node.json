@@ -1,6 +1,12 @@
 {
   "compilerOptions": {
     "composite": true,
+    // `composite` forces declaration emit, and without an outDir tsc writes
+    // vite.config.js next to vite.config.ts. Vite resolves the .js sibling
+    // first, so the stale copy silently freezes the real config. Park the
+    // emit somewhere that can never shadow a source file.
+    "outDir": "./node_modules/.tmp/tsconfig-node",
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig-node/tsconfig.node.tsbuildinfo",
     "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",

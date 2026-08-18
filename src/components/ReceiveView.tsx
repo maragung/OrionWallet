@@ -3,6 +3,7 @@ import { useWalletStore } from '../store/wallet-store';
 import { QrCode } from './QrCode';
 import { CopyButton } from './CopyButton';
 import { copyText } from '../utils/clipboard';
+import { buildPaymentUri } from '../wallet/payment-uri';
 import { PanelSkeleton } from './PanelSkeleton';
 
 /**
@@ -15,8 +16,11 @@ export function ReceiveView() {
 
   if (!wallet) return <PanelSkeleton title="Receive" rows={2} />;
 
-  // Encode as a URI when an amount is requested so scanners can prefill it.
-  const payload = amount.trim() ? `octra:${wallet.addr}?amount=${amount.trim()}` : wallet.addr;
+  // Encode as a URI when an amount is requested so scanners can prefill it —
+  // via the same builder the in-wallet scanner parses, so the two cannot drift.
+  // With no amount the payload stays a bare address: it is what other wallets
+  // and explorers accept when pasted, and every scanner understands it.
+  const payload = amount.trim() ? buildPaymentUri(wallet.addr, amount.trim()) : wallet.addr;
 
   const canShare = typeof navigator !== 'undefined' && !!navigator.share;
 

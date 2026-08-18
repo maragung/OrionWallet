@@ -31,6 +31,7 @@ import {
   type Manifest,
 } from '../wallet/storage';
 import { assertValidPin } from '../wallet/pin';
+import { WATCH_ONLY_INDEX, assertCanSign, makeWatchOnlyWallet } from '../wallet/watch-only';
 import { withTimeout } from '../utils/withTimeout';
 
 /**
@@ -162,6 +163,7 @@ export async function removeStoredWallet(id: string): Promise<void> {
 
 /** Change PIN: re-encrypt the wallet blob with a new PIN. */
 export async function changePin(wallet: Wallet, oldPin: string, newPin: string): Promise<void> {
+  assertCanSign(wallet, 'change its PIN — it has no keystore');
   assertValidPin(newPin);
   // Verify old PIN by attempting decryption
   const entry = await loadWalletEntry('default');
@@ -183,6 +185,7 @@ export async function deriveNewHdAccount(
   name: string,
   pin: string,
 ): Promise<Wallet> {
+  assertCanSign(parent, 'derive new accounts');
   if (parent.hdMaster.length !== 64) {
     throw new Error('Current wallet has no HD master seed (imported via private key)');
   }
@@ -215,6 +218,50 @@ export async function listAccounts(): Promise<ManifestEntry[]> {
   return m.accounts;
 }
 
+/**
+ * Track an address without keys. Nothing is encrypted or derived: the address
+ * goes into the manifest with `watchOnly: true`, and every signing path refuses
+ * it (see `wallet/watch-only.ts`).
+ *
+ * Re-adding an address that is already tracked just renames it. Refusing to
+ * shadow an account that *does* have keys is deliberate — turning a spendable
+ * account into a watch-only one would silently disable sending.
+ */
+export async function addWatchOnlyAccount(addr: string, name: string): Promise<ManifestEntry> {
+  const trimmed = addr.trim();
+  if (!isValidAddress(trimmed)) throw new Error(`Invalid address: ${trimmed}`);
+  const manifest = await loadManifest();
+  const existing = manifest.accounts.find((a) => a.addr === trimmed);
+  if (existing && !existing.watchOnly) {
+    throw new Error('That address is already one of your key-holding accounts');
+  }
+  const entry: ManifestEntry = {
+    addr: trimmed,
+    name: name.trim() || 'Watch-only',
+    index: WATCH_ONLY_INDEX,
+    pubB64: '',
+    createdAt: existing?.createdAt ?? Date.now(),
+    watchOnly: true,
+  };
+  await addAccountToManifest(entry);
+  return entry;
+}
+
+/**
+ * Make a watch-only account active. No PIN: there is nothing to decrypt.
+ * Throws if the address is not a watch-only entry, so this can never be used to
+ * open a key-holding account without its PIN.
+ */
+export async function openWatchOnlyAccount(addr: string): Promise<Wallet> {
+  const manifest = await loadManifest();
+  const entry = manifest.accounts.find((a) => a.addr === addr);
+  if (!entry) throw new Error(`Account ${addr} is not in the manifest`);
+  if (!entry.watchOnly) throw new Error('That account holds keys — unlock it with your PIN');
+  const wallet = makeWatchOnlyWallet(entry);
+  await setActiveAccount(addr);
+  return wallet;
+}
+
 /** Switch active account. */
 export async function switchAccount(addr: string): Promise<Manifest> {
   if (!isValidAddress(addr)) throw new Error(`Invalid address: ${addr}`);
@@ -239,9 +286,16 @@ export async function switchAccount(addr: string): Promise<Manifest> {
  */
 export async function unlockAccount(addr: string, pin: string): Promise<Wallet> {
   if (!isValidAddress(addr)) throw new Error(`Invalid address: ${addr}`);
+
+  const preflight = await loadManifest();
+  // A watch-only account has no blob and no PIN. Handled before the PIN is even
+  // validated, so callers that always prompt still work.
+  const tracked = preflight.accounts.find((a) => a.addr === addr);
+  if (tracked?.watchOnly) return openWatchOnlyAccount(addr);
+
   assertValidPin(pin);
 
-  const manifest = await loadManifest();
+  const manifest = preflight;
   const entry = manifest.accounts.find((a) => a.addr === addr);
   if (!entry) throw new Error(`Account ${addr} is not in the manifest`);
 
@@ -314,11 +368,30 @@ export async function getActiveAddress(): Promise<string | null> {
 
 /** Export the private key (64-byte secret key) as base64. Requires PIN. */
 export async function exportPrivateKey(wallet: Wallet, pin: string): Promise<string> {
+  assertCanSign(wallet, 'export a private key');
   // Verify PIN by re-decrypting the stored blob
   const entry = await loadWalletEntry('default');
   if (!entry) throw new Error('No stored wallet');
   await loadWalletEncrypted(entry.blob, pin); // throws on wrong PIN
   return wallet.privB64;
+}
+
+/**
+ * Reveal the BIP39 recovery phrase. Requires the PIN, verified the same way as
+ * `exportPrivateKey`: by re-decrypting the stored keystore.
+ *
+ * Throws when the wallet was imported from a raw private key, since there is no
+ * phrase to show in that case.
+ */
+export async function exportMnemonic(wallet: Wallet, pin: string): Promise<string> {
+  assertCanSign(wallet, 'show a recovery phrase');
+  const entry = await loadWalletEntry('default');
+  if (!entry) throw new Error('No stored wallet');
+  await loadWalletEncrypted(entry.blob, pin); // throws on wrong PIN
+  if (!wallet.mnemonic) {
+    throw new Error('This account has no recovery phrase (it was imported from a private key)');
+  }
+  return wallet.mnemonic;
 }
 
 /** Decode a base64-encoded private key (for import). */

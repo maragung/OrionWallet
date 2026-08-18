@@ -63,10 +63,48 @@ describe('docs markdown → HTML', () => {
   it('renders headings and horizontal rules', () => {
     const html = toHtml(['# Title', '', '## Section', '', '---', '', 'Body text'].join('\n'));
 
-    expect(html).toContain('<h1>Title</h1>');
-    expect(html).toContain('<h2>Section</h2>');
+    expect(html).toContain('<h1 id="title">Title</h1>');
+    expect(html).toContain('<h2 id="section">Section</h2>');
     expect(html).toContain('<hr />');
     expect(html).toContain('<p>Body text</p>');
+  });
+
+  it('gives every heading an id so the Contents links resolve', () => {
+    // The exact slugs the guides link to. Without these the `## Contents` list
+    // at the top of each page is 17 dead links.
+    const html = toHtml(
+      [
+        '## Contacts (address book)',
+        '',
+        '## Watch-only accounts',
+        '',
+        '## Encrypted balance (FHE)',
+        '',
+        '## Connecting to a dApp',
+      ].join('\n'),
+    );
+
+    expect(html).toContain('id="contacts-address-book"');
+    expect(html).toContain('id="watch-only-accounts"');
+    expect(html).toContain('id="encrypted-balance-fhe"');
+    expect(html).toContain('id="connecting-to-a-dapp"');
+  });
+
+  it('drops emoji and inline markup from a slug without leaving stray hyphens', () => {
+    const html = toHtml(
+      ['### The header shows "Insecure RPC"', '', '### `npm run docs:build`'].join('\n'),
+    );
+
+    expect(html).toContain('id="the-header-shows-insecure-rpc"');
+    expect(html).toContain('id="npm-run-docsbuild"');
+  });
+
+  it('deduplicates repeated headings instead of emitting the same id twice', () => {
+    const html = toHtml(['## Exporting', '', '## Exporting', '', '## Exporting'].join('\n'));
+
+    expect(html).toContain('id="exporting"');
+    expect(html).toContain('id="exporting-1"');
+    expect(html).toContain('id="exporting-2"');
   });
 
   it('renders links', () => {

@@ -22,6 +22,7 @@ import {
   clearUnlockSession,
 } from '../wallet/unlock-session';
 import { getPvacBridge, isPvacWasmAvailable } from '../pvac';
+import { endpointWarning } from '../wallet/endpoint-policy';
 
 export type ToastLevel = 'info' | 'success' | 'error' | 'warning';
 export interface Toast {
@@ -47,6 +48,11 @@ interface WalletStoreState {
   // RPC
   rpc: RpcClient | null;
   settings: Settings | null;
+  /**
+   * Why the active RPC endpoint is unencrypted or unreachable, or null when
+   * there is nothing to say. Drives the header badge; see wallet/endpoint-policy.ts.
+   */
+  rpcWarning: string | null;
 
   // PVAC (FHE) state
   pvacStatus: PvacStatus;
@@ -74,6 +80,14 @@ interface WalletStoreState {
 }
 
 let toastId = 1;
+
+/** Warning for the RPC endpoint these settings point at, or null when it is fine. */
+function rpcWarningFor(s: Settings): string | null {
+  return endpointWarning(s.rpcUrl, {
+    allowlist: s.allowedInsecureOrigins,
+    proxyUrl: s.rpcProxyUrl?.trim() || undefined,
+  });
+}
 
 /**
  * In-flight session restore, shared by every caller.
@@ -158,6 +172,7 @@ export const useWalletStore = create<WalletStoreState>((set, get) => ({
   isRestoringSession: hasUnlockSession(),
   rpc: null,
   settings: null,
+  rpcWarning: null,
 
   pvacStatus: 'idle',
   pvacError: null,
@@ -276,17 +291,32 @@ export const useWalletStore = create<WalletStoreState>((set, get) => ({
       settings = await loadSettings();
       set({ settings });
     }
+    const warning = rpcWarningFor(settings);
     const rpc = new RpcClient({
       url: settings.rpcUrl,
+      proxyUrl: settings.rpcProxyUrl?.trim() || undefined,
       timeoutMs: 15_000,
+      unreachableHint: warning ?? undefined,
     });
-    set({ rpc });
+    // The client is built either way: a blocked endpoint has to leave the app
+    // usable, or the user cannot reach Settings to fix it. The warning is what
+    // turns an opaque network failure into something actionable.
+    set({ rpc, rpcWarning: warning });
     return rpc;
   },
 
   setSettings: async (s) => {
     await saveSettings(s);
-    set({ settings: s, rpc: new RpcClient({ url: s.rpcUrl }) });
+    const warning = rpcWarningFor(s);
+    set({
+      settings: s,
+      rpc: new RpcClient({
+        url: s.rpcUrl,
+        proxyUrl: s.rpcProxyUrl?.trim() || undefined,
+        unreachableHint: warning ?? undefined,
+      }),
+      rpcWarning: warning,
+    });
     // Auto-lock timing and the keep-unlocked switch live in settings, so the
     // sealed session has to be re-minted for a change to apply to the session
     // already in flight rather than only to the next unlock.

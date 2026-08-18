@@ -121,6 +121,56 @@ describe('RpcClient (JSON-RPC)', () => {
     expect(r.error).toBe('Network unavailable');
   });
 
+  it('appends the unreachable hint when the request never left the browser', async () => {
+    // A blocked fetch (CSP, mixed content) throws a TypeError with nothing but
+    // "Failed to fetch" — the hint is what makes that actionable.
+    const fetchImpl = (async () => {
+      throw new TypeError('Failed to fetch');
+    }) as typeof fetch;
+    const c = new RpcClient({
+      url: 'http://10.0.0.5:8080/rpc',
+      fetchImpl,
+      unreachableHint: 'http://10.0.0.5:8080 is not on your trusted list',
+    });
+    const r = await c.rpcCall('node_status', []);
+    expect(r.ok).toBe(false);
+    expect(r.error).toBe('Failed to fetch — http://10.0.0.5:8080 is not on your trusted list');
+  });
+
+  it('does not append the hint to an error the server did answer with', async () => {
+    // Only a thrown fetch means "never sent"; a real error from the far end
+    // must not be blamed on the endpoint policy.
+    const fetchImpl = (async () => {
+      throw new Error('socket hang up');
+    }) as typeof fetch;
+    const c = new RpcClient({
+      url: 'http://10.0.0.5:8080/rpc',
+      fetchImpl,
+      unreachableHint: 'should not appear',
+    });
+    const r = await c.rpcCall('node_status', []);
+    expect(r.error).toBe('socket hang up');
+  });
+
+  it('keeps the timeout message even with a hint set', async () => {
+    const fetchImpl = ((_url: string | URL | Request, init?: RequestInit) => {
+      return new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () =>
+          reject(new DOMException('aborted', 'AbortError')),
+        );
+      });
+    }) as unknown as typeof fetch;
+    const c = new RpcClient({
+      url: 'http://10.0.0.5:8080/rpc',
+      fetchImpl,
+      timeoutMs: 50,
+      unreachableHint: 'should not appear',
+    });
+    const r = await c.rpcCall('node_status', []);
+    expect(r.error).toContain('timed out');
+    expect(r.error).not.toContain('should not appear');
+  });
+
   it('applies proxy URL when set', async () => {
     let calledUrl = '';
     const fetchImpl = (async (url: string | URL | Request) => {

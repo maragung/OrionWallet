@@ -58,6 +58,31 @@ function cellAttr(alignments, index) {
 }
 
 /**
+ * GitHub-compatible heading slug, so the `## Contents` links in the markdown
+ * resolve in the generated page too. Matches GitHub's rules: lowercase, drop
+ * punctuation and emoji outright (no hyphen in their place), spaces to hyphens.
+ * Input is already HTML-escaped, hence the entity strip.
+ */
+function slugify(text) {
+  const slug = text
+    .replace(/&(?:[a-z]+|#\d+);/gi, '')
+    .replace(/`([^`]*)`/g, '$1')
+    .replace(/\*\*([^*]*)\*\*/g, '$1')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s-]/gu, '')
+    .trim()
+    .replace(/\s+/g, '-');
+  return slug || 'section';
+}
+
+/** Deduplicate repeated slugs the way GitHub does: `-1`, `-2`, … */
+function uniqueSlug(seen, base) {
+  const count = seen.get(base) ?? 0;
+  seen.set(base, count + 1);
+  return count === 0 ? base : `${base}-${count}`;
+}
+
+/**
  * Markdown → HTML.
  *
  * A line-oriented block parser rather than a pile of global regexes: pipe
@@ -76,6 +101,7 @@ export function mdToHtml(md) {
 
   const lines = escapeHtml(withoutFences).split('\n');
   const out = [];
+  const slugs = new Map();
   let i = 0;
 
   while (i < lines.length) {
@@ -101,11 +127,12 @@ export function mdToHtml(md) {
       continue;
     }
 
-    // Heading
+    // Heading. The id is what makes in-page `#anchor` links work.
     const heading = /^(#{1,4})\s+(.*)$/.exec(trimmed);
     if (heading) {
       const level = heading[1].length;
-      out.push(`<h${level}>${inline(heading[2])}</h${level}>`);
+      const id = uniqueSlug(slugs, slugify(heading[2]));
+      out.push(`<h${level} id="${id}">${inline(heading[2])}</h${level}>`);
       i++;
       continue;
     }

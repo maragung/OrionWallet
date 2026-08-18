@@ -7,6 +7,7 @@ import { Tooltip } from './Tooltip';
 import { PanelSkeleton } from './PanelSkeleton';
 import { ProcessingModal } from './ProcessingModal';
 import { usePanelLoading } from '../hooks/usePanelLoading';
+import { downloadCsv, exportFilename } from '../utils/csv';
 
 /**
  * A history row that is safe to render.
@@ -173,6 +174,48 @@ export function HistoryView() {
     return <PanelSkeleton title="📜 Transaction History" message="Waiting for wallet…" rows={3} />;
   }
 
+  /**
+   * Export the rows currently loaded in the table.
+   *
+   * Deliberately not a fresh full-history fetch: what the user sees is what
+   * they get, so a 20k-transaction account cannot turn a click into a very long
+   * silent download. "Load more" first to widen the export.
+   */
+  const exportCsv = () => {
+    if (!wallet || entries.length === 0) return;
+    const rows: unknown[][] = [
+      [
+        'Time (ISO)',
+        'Timestamp',
+        'Hash',
+        'Type',
+        'From',
+        'To',
+        'Direction',
+        'Amount (OCT)',
+        'Fee (OCT)',
+        'Status',
+      ],
+      ...entries.map((tx) => [
+        tx.timestamp === null ? '' : new Date(tx.timestamp * 1000).toISOString(),
+        tx.timestamp ?? '',
+        tx.hash,
+        tx.opType,
+        tx.from,
+        tx.recipient,
+        tx.recipient === wallet.addr ? 'in' : tx.from === wallet.addr ? 'out' : '',
+        tx.amount,
+        tx.fee,
+        tx.status,
+      ]),
+    ];
+    downloadCsv(exportFilename('history', wallet.addr), rows);
+    pushToast(
+      'success',
+      `Exported ${entries.length} transaction${entries.length === 1 ? '' : 's'} to CSV`,
+    );
+  };
+
   const showSkeleton = !hasLoadedOnce && entries.length === 0 && !error;
 
   return (
@@ -195,6 +238,19 @@ export function HistoryView() {
                 {usingCache ? '⚠ Cached' : `Updated ${lastUpdated.toLocaleTimeString()}`}
               </span>
             )}
+            <button
+              className="ghost icon"
+              onClick={exportCsv}
+              title={
+                entries.length === 0
+                  ? 'Nothing to export yet'
+                  : `Export the ${entries.length} loaded row${entries.length === 1 ? '' : 's'} as CSV`
+              }
+              aria-label="Export history as CSV"
+              disabled={entries.length === 0 || panelLoading.loading}
+            >
+              ⤓
+            </button>
             <button
               className="ghost icon"
               onClick={refresh}

@@ -3,6 +3,12 @@ import { useWalletStore } from '../store/wallet-store';
 import { unlockWallet, listStoredWallets } from '../api/wallet-api';
 import { recordPinAttempt, resetPinAttempts } from '../wallet/pin';
 import { isWebCryptoAvailable } from '../crypto/aes';
+import {
+  getPasskeyInfo,
+  isPasskeySupported,
+  unlockWithPasskey,
+  type PasskeyInfo,
+} from '../wallet/passkey';
 import { ProcessingModal, type ProcessingStage } from './ProcessingModal';
 import { Tooltip } from './Tooltip';
 import type { StoredWalletEntry } from '../wallet/storage';
@@ -16,6 +22,9 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
   const [showPin, setShowPin] = useState(false);
   // Insecure contexts have no crypto.subtle: PBKDF2 runs in JS and unlock is slow.
   const webCryptoOk = isWebCryptoAvailable();
+  // Passkey unlock, when the user set one up on this device.
+  const [passkey, setPasskey] = useState<PasskeyInfo | null>(null);
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
 
   // Processing modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -35,6 +44,30 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
       })
       .catch(() => setHasStored(false));
   }, []);
+
+  useEffect(() => {
+    if (!isPasskeySupported()) return;
+    getPasskeyInfo()
+      .then(setPasskey)
+      .catch(() => setPasskey(null));
+  }, []);
+
+  const handlePasskeyUnlock = async () => {
+    setPasskeyBusy(true);
+    try {
+      const wallet = await unlockWithPasskey();
+      pushToast('success', `Unlocked ${wallet.name || 'wallet'} with your passkey`);
+      setWallet(wallet);
+      resetPinAttempts('unlock');
+    } catch (e) {
+      pushToast('error', `Passkey unlock failed: ${(e as Error).message}`);
+      // The record self-destructs when it can no longer be opened, so re-read
+      // it instead of leaving a button that will fail the same way again.
+      setPasskey(await getPasskeyInfo().catch(() => null));
+    } finally {
+      setPasskeyBusy(false);
+    }
+  };
 
   const updateStage = (id: string, status: ProcessingStage['status'], desc?: string) => {
     setModalStages((prev) =>
@@ -282,6 +315,28 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
             >
               🔓 Unlock Wallet
             </button>
+            {passkey && (
+              <button
+                className="ghost"
+                onClick={() => void handlePasskeyUnlock()}
+                disabled={passkeyBusy}
+                title={`Unlock ${passkey.name} (${passkey.addr.slice(0, 12)}…) with this device`}
+                style={{
+                  width: '100%',
+                  marginTop: 'var(--sp-2)',
+                  borderColor: 'var(--accent)',
+                  color: 'var(--accent)',
+                }}
+              >
+                {passkeyBusy ? (
+                  <>
+                    <span className="spinner" /> Waiting for your device…
+                  </>
+                ) : (
+                  <>👆 Unlock with passkey</>
+                )}
+              </button>
+            )}
             <button
               className="ghost"
               onClick={onCreate}

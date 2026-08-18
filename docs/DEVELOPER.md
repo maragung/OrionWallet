@@ -52,8 +52,9 @@ src/
 ├── stealth/      Stealth address derivation
 ├── store/        Zustand store
 ├── tx/           Canonical JSON, signing, ABI helpers
-├── utils/        Clipboard, progress reporting
-└── wallet/       Keystore, IndexedDB storage, PIN
+├── utils/        Clipboard, progress reporting, CSV export
+└── wallet/       Keystore, IndexedDB storage, PIN, passkey unlock, watch-only
+                  guard, endpoint policy, payment URIs, mnemonic backup check
 
 public/
   demo/           Standalone dApp integration demo (dapp.html)
@@ -111,9 +112,25 @@ TypeScript config files are the **single source of truth**:
 - `playwright.config.ts`
 
 > **Do not add `.js` siblings for these.** Vite resolves `vite.config.js` ahead of
-> `vite.config.ts`. Stale transpiled copies previously shadowed the `.ts` files, so edits
-> to the `.ts` configs had no effect. Those three filenames are now in `.gitignore`.
+> `vite.config.ts`, so a stale transpiled copy silently shadows the real config and edits
+> to the `.ts` file do nothing. Those three filenames are in `.gitignore`.
 > `eslint.config.js` is genuine flat config and is intentionally kept.
+
+Ignoring them was not enough on its own, because nothing stopped them being _created_:
+`tsconfig.node.json` is a `composite` project, which forces declaration emit, and with no
+`outDir` any `tsc -b` wrote `vite.config.js` straight next to the source. It happened twice.
+Emit for that project now goes to `node_modules/.tmp/tsconfig-node/`, where it cannot shadow
+anything. If you add a config file to that project, leave the `outDir` alone.
+
+### Environment flags
+
+| Flag                          | Effect                                                                                                                                                                                                |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_ALLOW_HTTP_ENDPOINTS=1` | Appends `http:` to the `connect-src` CSP directive at build time, so a self-hosted build can reach a plain-http RPC node. Per-origin user consent still applies — see `src/wallet/endpoint-policy.ts` |
+
+Set at build time only. It is read in `vite.config.ts` by the `allowHttpEndpointsCsp` plugin
+and rewrites `index.html`; it has no runtime effect, because a meta-tag CSP cannot be widened
+once the document is parsed.
 
 ### Headers
 
@@ -128,6 +145,15 @@ Defined in `index.html`. `script-src` must include `'wasm-unsafe-eval'` — Chro
 `WebAssembly.instantiate()` without it, which is exactly what made the PVAC module fail to
 load silently. That directive permits WebAssembly compilation only; it does not re-enable
 JavaScript `eval()`.
+
+`connect-src` is `'self' https:` plus loopback (`http://localhost:*`, `http://127.0.0.1:*`,
+`http://[::1]:*`) so a locally-run node works without opening plaintext in general. Anything
+else over `http://` is gated by `src/wallet/endpoint-policy.ts`, which is the only place that
+decides — a pure function of the URL plus an explicit context, so the store, the Settings UI
+and the tests cannot disagree. Do not add ad-hoc URL checks elsewhere. Three independent
+blockers apply (mixed content → CSP → user consent) and the verdict reports the most
+fundamental one first, so the user is never told to fix the allowlist when the browser is the
+one refusing.
 
 ---
 
@@ -233,9 +259,15 @@ navigating away mid-flight cannot leave a modal stuck on screen.
 
 ## Storage and migrations
 
-IndexedDB via `idb`, database `orion-wallet`, version 2. Stores are declared once in the
+IndexedDB via `idb`, database `orion-wallet`, version 6. Stores are declared once in the
 `OBJECT_STORES` array in `src/wallet/storage.ts`; add new ones there so creation and
-migration stay consistent.
+migration stay consistent — that array also drives `wipeEverything()`, so a store added
+anywhere else would survive a wipe.
+
+Migrations are **additive only**: bump `DB_VERSION`, append to the array, and note the
+version in a comment beside the new entries. Existing stores are never renamed or dropped.
+The versions so far: v2 SDK stores, v3 OCS01 tokens, v4 `oct://` bookmarks, v5
+`unlock-session-keys`, v6 `contacts` + `passkey-unlock`.
 
 ### The rebrand migration
 
@@ -456,7 +488,7 @@ IndexedDB, so reconnecting after expiry does not require the user to re-import t
 ## Testing
 
 ```bash
-npm test                 # 350 unit tests, 30 files
+npm test                 # 676 unit tests, 56 files
 npm run test:coverage    # V8 coverage, 60% threshold
 npm run test:e2e         # 7 Playwright specs (needs npm run build first)
 npm run autofix          # typecheck → format → lint --fix → test → build
@@ -466,6 +498,27 @@ npm run check            # same, read-only (CI)
 Unit tests run under jsdom with `fake-indexeddb`. Component tests use
 `renderToStaticMarkup` rather than a DOM testing library — see
 `tests/unit/processing-modal.test.tsx`.
+
+WebAuthn has no jsdom implementation, so `tests/unit/passkey.test.ts` installs a
+`FakeAuthenticator` that models the PRF extension (including an authenticator that lacks it,
+a dismissed prompt, and a rotated secret). It asserts what the stored record must _not_
+contain, which is the property that actually matters.
+
+E2E note: before believing a wall of Playwright failures, check the machine, not the diff.
+Two environment limits produce failures that look exactly like real regressions:
+
+- **Temp space.** Chromium puts each browser profile under `TMPDIR` (`/tmp` by default). If
+  that filesystem is full — easy when `/tmp` is a small tmpfs shared with other processes —
+  contexts die on launch and unrelated tests fail in milliseconds, or hang to the 30 s
+  timeout. `df -h /tmp` first; re-run with `TMPDIR=$HOME/.cache/e2e-tmp` on a roomy
+  filesystem and the same specs go from timing out to passing in ~4 s.
+- **Memory.** Roughly 2 GB of free memory per worker. When it runs out Chromium is killed
+  mid-test and Playwright reports `Target crashed`; re-run with `--workers=1`.
+
+`playwright.config.ts` sets `reuseExistingServer: !isCI`, so a leftover `npm run preview` on
+port 4173 is silently reused — including one started from a _different_ checkout. When
+comparing two trees, kill the listener between runs (`ss -lptn | grep 4173`) or the second
+run tests the first one's build.
 
 When fixing a bug, add a test that documents the failure mode, not just the fix.
 `tests/unit/history-view.test.ts` and `error-boundary.test.tsx` follow this: each names the

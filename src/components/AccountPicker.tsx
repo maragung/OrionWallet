@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useWalletStore } from '../store/wallet-store';
 import { ProcessingModal } from './ProcessingModal';
 import { usePanelLoading } from '../hooks/usePanelLoading';
-import { listAccounts, unlockAccount } from '../api/wallet-api';
+import { listAccounts, unlockAccount, openWatchOnlyAccount } from '../api/wallet-api';
 import type { ManifestEntry } from '../wallet/storage';
 import { PinModal } from './PinModal';
 
@@ -46,9 +46,23 @@ export function AccountPicker({ onManage }: { onManage?: () => void } = {}) {
   const active = accounts.find((a) => a.addr === wallet.addr);
   const activeLabel = active?.name || wallet.name || 'Account';
 
-  const handleSwitch = (acct: ManifestEntry) => {
+  const handleSwitch = async (acct: ManifestEntry) => {
     setOpen(false);
     if (acct.addr === wallet.addr) return;
+    // Watch-only accounts have no keystore, so no PIN is involved.
+    if (acct.watchOnly) {
+      panelLoading.show('Switching account', `Loading ${acct.name}…`);
+      try {
+        setWallet(await openWatchOnlyAccount(acct.addr));
+        pushToast('success', `Switched to ${acct.name} (watch-only)`);
+        await refresh();
+      } catch (e) {
+        pushToast('error', `Switch failed: ${(e as Error).message}`);
+      } finally {
+        panelLoading.hide();
+      }
+      return;
+    }
     setPendingSwitch(acct);
   };
 
@@ -89,7 +103,12 @@ export function AccountPicker({ onManage }: { onManage?: () => void } = {}) {
             maxWidth: 200,
           }}
         >
-          <span style={{ fontSize: 14 }}>👤</span>
+          <span
+            style={{ fontSize: 14 }}
+            title={wallet.watchOnly ? 'Watch-only account' : undefined}
+          >
+            {wallet.watchOnly ? '👁' : '👤'}
+          </span>
           <span
             style={{
               fontWeight: 'var(--fw-semibold)',
@@ -154,7 +173,7 @@ export function AccountPicker({ onManage }: { onManage?: () => void } = {}) {
                   <button
                     key={a.addr}
                     className="ghost"
-                    onClick={() => handleSwitch(a)}
+                    onClick={() => void handleSwitch(a)}
                     title={a.addr}
                     style={{
                       width: '100%',
@@ -180,6 +199,15 @@ export function AccountPicker({ onManage }: { onManage?: () => void } = {}) {
                         }}
                       >
                         {a.name}
+                        {a.watchOnly && (
+                          <span
+                            className="tag warn"
+                            style={{ marginLeft: 6, fontSize: 10 }}
+                            title="No keys — cannot sign"
+                          >
+                            👁
+                          </span>
+                        )}
                       </span>
                       <span
                         className="mono"

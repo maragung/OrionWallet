@@ -53,13 +53,13 @@
   </script>
 </head>
 <body>
-<h1>Security</h1>
+<h1 id="security">Security</h1>
 <blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Source code, issues, and releases.<br /><strong>Report vulnerabilities:</strong> <a href="https://github.com/maragung/OrionWallet/security/advisories/new">GitHub Security Advisories</a></blockquote>
-<h2>Audit status</h2>
+<h2 id="audit-status">Audit status</h2>
 <p><strong>Orion Wallet has not undergone an independent third-party security audit.</strong></p>
 <p>The cryptographic design follows the reference <code>octra-labs/webcli</code> implementation, and the<br />primitives come from well-reviewed libraries. But the integration itself is unaudited.<br />Please weigh that before storing significant value.</p>
 <hr />
-<h2>Reporting a vulnerability</h2>
+<h2 id="reporting-a-vulnerability">Reporting a vulnerability</h2>
 <p><strong>Do not open a public issue for a security problem.</strong></p>
 <p>Report privately to the maintainers, including:</p>
 <ul>
@@ -70,8 +70,8 @@
 </ul>
 <p>Please allow a reasonable window for a fix before public disclosure. Reports are welcome<br />and credited unless you prefer otherwise.</p>
 <hr />
-<h2>Threat model</h2>
-<h3>What Orion Wallet protects against</h3>
+<h2 id="threat-model">Threat model</h2>
+<h3 id="what-orion-wallet-protects-against">What Orion Wallet protects against</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>Threat</th><th>Mitigation</th></tr></thead>
@@ -83,10 +83,13 @@
 <tr><td>Message replay</td><td>CSPRNG challenge and nonce per session</td></tr>
 <tr><td>XSS via injected markup</td><td>No <code>innerHTML</code> / <code>dangerouslySetInnerHTML</code>; CSP restricts sources</td></tr>
 <tr><td>Malformed RPC data crashing the app</td><td>Defensive normalisation plus error boundaries</td></tr>
+<tr><td>A recovery phrase never actually written down</td><td>Creation is gated on retyping 3 random words</td></tr>
+<tr><td>Signing from an account with no keys</td><td><code>assertCanSign</code> refuses at the API boundary, not just in the UI</td></tr>
+<tr><td>Silently eavesdropped RPC traffic</td><td>Plaintext endpoints need explicit per-origin consent</td></tr>
 </tbody>
 </table>
 </div>
-<h3>What it cannot protect against</h3>
+<h3 id="what-it-cannot-protect-against">What it cannot protect against</h3>
 <p>Be explicit with yourself about these:</p>
 <ul>
 <li><strong>A compromised device.</strong> Malware, a keylogger, or a hostile browser extension can read</li>
@@ -106,8 +109,8 @@
 <li><strong>Physical access</strong> to an unlocked device with the wallet unlocked.</li>
 </ul>
 <hr />
-<h2>Cryptographic design</h2>
-<h3>Key derivation and storage</h3>
+<h2 id="cryptographic-design">Cryptographic design</h2>
+<h3 id="key-derivation-and-storage">Key derivation and storage</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>Purpose</th><th>Algorithm</th></tr></thead>
@@ -123,20 +126,91 @@
 </table>
 </div>
 <p>The keystore format matches the C++ original: <code>OCT1</code> magic, version, PBKDF2 iteration<br />count, salt, nonce, then AES-GCM ciphertext with its authentication tag.</p>
-<h3>PIN handling</h3>
+<h3 id="pin-handling">PIN handling</h3>
 <p>The PIN is <strong>never persisted</strong>, in any form. It derives the decryption key at unlock time<br />and is then discarded. There is no "remember my PIN" — by design. Consequently, a forgotten<br />PIN can only be resolved by restoring from the recovery phrase.</p>
-<h3>Randomness</h3>
+<h3 id="unlock-session">Unlock session</h3>
+<p>The PIN is not persisted, but the <em>result</em> of unlocking is, for as long as the session lasts:<br />refreshing the page must not throw the user back to the PIN screen. <code>src/wallet/unlock-session.ts</code><br />seals the decrypted wallet with AES-256-GCM and splits it across two stores:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Half</th><th>Where</th><th>Lifetime</th></tr></thead>
+<tbody>
+<tr><td>Ciphertext (<code>orion:unlock-session</code>)</td><td><code>sessionStorage</code></td><td>One tab. Gone when that tab closes</td></tr>
+<tr><td>Sealing key</td><td>IndexedDB <code>unlock-session-keys</code>, as a <strong>non-extractable</strong> <code>CryptoKey</code></td><td>Deleted on lock; orphans pruned by age</td></tr>
+</tbody>
+</table>
+</div>
+<p>Neither half is usable alone. IndexedDB survives a tab closing but holds no ciphertext;<br /><code>sessionStorage</code> holds ciphertext but no key, and a second tab or another origin cannot read<br />it. The key is generated with <code>extractable: false</code>, so it can be <em>used</em> by this origin but its<br />bytes cannot be read out — not by our own code, and not by anything that manages to run in the<br />page. The session rotates (fresh key, fresh nonce) on every restore, and carries <code>createdAt</code><br />forward so refreshing cannot extend the absolute cap.</p>
+<p>Expiry: <strong>30 minutes idle</strong> (configurable, <code>autoLockMinutes</code>; <code>0</code> disables it) and an **8-hour<br />absolute cap** from the original unlock. Both are enforced on restore, and the idle window is<br />also enforced live by <code>useAutoLock</code>, so a tab left open locks itself.</p>
+<p>What this does <em>not</em> defend against — the honest part:</p>
+<ul>
+<li><strong>Script execution in the tab.</strong> Code running in the page during a live session can ask the</li>
+</ul>
+<p>browser to decrypt the session and then sign with the keys, exactly as the wallet does. It<br />cannot exfiltrate the sealing key, so the compromise ends with the tab; it does not become a<br />stolen key usable elsewhere.</p>
+<ul>
+<li><strong>A compromised device.</strong> Unchanged from the threat model above: local malware can read</li>
+</ul>
+<p>IndexedDB and <code>sessionStorage</code> together.</p>
+<ul>
+<li><strong>Insecure contexts.</strong> Without <code>crypto.subtle</code> (plain <code>http://</code>, see below), the sealing key</li>
+</ul>
+<p>falls back to raw bytes in IndexedDB and the non-extractability guarantee is lost. The split<br />and the expiry still hold.</p>
+<p>To opt out entirely, turn off <strong>Settings → Security → Stay unlocked after a page refresh</strong><br />(<code>keepUnlocked: false</code>). Nothing is written, and every reload asks for the PIN — the behaviour<br />before this feature existed. An explicit lock (🔒) destroys both halves immediately.</p>
+<h3 id="passkey-unlock">Passkey unlock</h3>
+<p>Optional, off by default, and additive: it is a second way to open an existing wallet, never<br />a replacement for the PIN. <code>src/wallet/passkey.ts</code>.</p>
+<p>Registration creates a platform credential with <code>userVerification: 'required'</code> and the<br />WebAuthn <strong>PRF</strong> extension. PRF gives the page a secret derived from the credential and a<br />stored 32-byte salt, which the browser will only produce after the user verifies. The<br />wallet takes <code>sha256("orion-passkey-unlock-v1" || prf)</code> as an AES-256 key, seals the<br />serialized wallet with AES-256-GCM, zeroes the key, and stores the sealed blob in IndexedDB<br />next to the credential ID and salt.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Stored</th><th>Not stored</th></tr></thead>
+<tbody>
+<tr><td>Credential ID, PRF salt, IV, ciphertext of the wallet</td><td>The PRF output, the derived key, the PIN, any plaintext key material</td></tr>
+</tbody>
+</table>
+</div>
+<p>Consequences worth stating plainly:</p>
+<ul>
+<li><strong>PRF is required, never degraded.</strong> If the authenticator does not support it,</li>
+</ul>
+<p>registration throws and stores nothing. The alternative — keeping a readable key<br />alongside the ciphertext — would make the record self-decrypting, which is worse than not<br />offering the feature.</p>
+<ul>
+<li><strong>The record is inert on its own.</strong> Without a successful user-verified gesture on that</li>
+</ul>
+<p>authenticator, there is no way to derive the key from what is on disk.</p>
+<ul>
+<li><strong>It seals the wallet, not the PIN.</strong> The PIN is still the only thing that exports keys,</li>
+</ul>
+<p>reveals the phrase, changes the PIN, or derives an account. Passkey unlock therefore<br />cannot be used to escalate to those, and the stored record leaks strictly less than a<br />stored PIN would.</p>
+<ul>
+<li><strong>Same session model as a PIN unlock.</strong> A passkey unlock produces the same unlock session</li>
+</ul>
+<p>with the same idle and absolute caps; it does not extend either.</p>
+<ul>
+<li><strong>Scoped to the device and browser.</strong> Bound to the origin's <code>rpId</code> and stored locally. It</li>
+</ul>
+<p>is not part of a wallet export and is not derived from the recovery phrase.</p>
+<ul>
+<li><strong>A stale credential fails closed.</strong> If decryption fails — a rotated or re-registered</li>
+</ul>
+<p>credential, a restored device — the record is deleted and the PIN is required. A<br /><em>dismissed or timed-out gesture</em> deliberately does <strong>not</strong> delete it, so a cancelled<br />prompt cannot silently disable the feature.</p>
+<ul>
+<li><strong>Refused for watch-only accounts.</strong> There is no key material to seal.</li>
+</ul>
+<p>What it does not defend against is unchanged: a compromised device, and script execution in<br />a live session, exactly as for the unlock session above. It does remove one real exposure —<br />the PIN being typed and observed on every unlock.</p>
+<h3 id="watch-only-accounts">Watch-only accounts</h3>
+<p>An account can be added by address alone, with no keystore. The invariant is that such an<br />account can never sign, and it is enforced where the signing happens, not in the UI:<br /><code>assertCanSign</code> (<code>src/wallet/watch-only.ts</code>) is called by the send, encrypt, stealth,<br />contract, and dApp-request paths, and throws naming both the action and the fix.</p>
+<p>It fails closed by construction: the check refuses any wallet whose secret key is not a<br />full 64-byte Ed25519 key, so a truncated or missing key is refused even if the <code>watchOnly</code><br />flag were somehow lost. The flag is carried through <code>serializeWallet</code>/<code>deserializeWallet</code>,<br />so a wallet restored from an unlock session is still watch-only.</p>
+<h3 id="randomness">Randomness</h3>
 <p>All security-relevant values use <code>crypto.getRandomValues</code> via <code>src/crypto/random.ts</code>.</p>
 <p><code>makeId</code> in <code>src/sdk/protocol.ts</code> has a <code>Math.random</code> fallback. It is used <strong>only</strong> for<br />message correlation IDs, never for security values, and is annotated as such. Do not reuse<br />it for challenges, nonces, keys, or salts.</p>
 <hr />
-<h2>Browser security posture</h2>
-<h3>Content-Security-Policy</h3>
+<h2 id="browser-security-posture">Browser security posture</h2>
+<h3 id="content-security-policy">Content-Security-Policy</h3>
 <p>Set in <code>index.html</code>:</p>
 <pre><code class="language-">default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline';
-img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https:;
+img-src 'self' data: blob:; font-src 'self' data:;
+connect-src 'self' https: http://localhost:* http://127.0.0.1:* http://[::1]:*;
 frame-src 'self' https:; worker-src 'self' blob:; object-src 'none';
 base-uri 'self'; form-action 'self';</code></pre>
-<p>Two entries deserve explanation:</p>
+<p>Three entries deserve explanation:</p>
 <ul>
 <li><strong><code>'wasm-unsafe-eval'</code></strong> is required for the PVAC FHE module. Chromium blocks</li>
 </ul>
@@ -145,10 +219,49 @@ base-uri 'self'; form-action 'self';</code></pre>
 <li><strong><code>'unsafe-inline'</code> for styles</strong> is needed for the pre-paint critical CSS that avoids a</li>
 </ul>
 <p>flash of unstyled content. It applies to styles only, never to scripts.</p>
-<h3>Cross-origin isolation</h3>
+<ul>
+<li><strong>Loopback in <code>connect-src</code></strong> lets a locally-run node be used without widening the policy</li>
+</ul>
+<p>to plaintext in general. Traffic to <code>localhost</code> / <code>127.0.0.0/8</code> / <code>[::1]</code> never leaves the<br />machine, so there is nothing on the wire to intercept.</p>
+<h3 id="plaintext-http-rpc-endpoints">Plaintext (http) RPC endpoints</h3>
+<p>Anything else over plain <code>http://</code> is refused by default, and <code>src/wallet/endpoint-policy.ts</code><br />is the single place that decides. It is a pure function of the URL plus an explicit context,<br />so the store, the Settings UI and the tests cannot disagree about what is allowed.</p>
+<p>Three independent blockers apply, and the verdict names the most fundamental one first so<br />the user is never told to fix the allowlist when mixed content is the real cause:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Blocker</th><th>Who enforces it</th><th>How it is lifted</th></tr></thead>
+<tbody>
+<tr><td>Mixed content</td><td>The browser, unconditionally</td><td>Not liftable. Use TLS or a proxy</td></tr>
+<tr><td>Content-Security-Policy</td><td>The shipped meta-tag CSP</td><td>Rebuild with <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code></td></tr>
+<tr><td>User consent</td><td><code>allowedInsecureOrigins</code> in settings</td><td><strong>Trust</strong> the origin in Settings → Network</td></tr>
+</tbody>
+</table>
+</div>
+<p>Notes on the design:</p>
+<ul>
+<li>The CSP is a meta tag, so it <strong>cannot be widened at runtime</strong> — no setting could grant</li>
+</ul>
+<p>this, which is why it is a build flag. <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code> appends <code>http:</code> to<br /><code>connect-src</code> at build time and nothing else; user consent is still required on top.</p>
+<ul>
+<li>Consent is <strong>per origin</strong> — scheme, host and port. It is not a hostname match and not a</li>
+</ul>
+<p>URL prefix, so trusting <code>http://node.lan:8080</code> does not trust another port on that host,<br />and <code>http://127.0.0.1.evil.com</code> is not treated as loopback.</p>
+<ul>
+<li><strong>Explorer URLs are exempt</strong> because they are only ever <code>&lt;a href&gt;</code> navigations, not</li>
+</ul>
+<p>fetches. <code>connect-src</code> and mixed content do not apply to them. <code>relayerUrl</code> is stored but<br />never fetched. Only <code>rpcUrl</code> is subject to this policy.</p>
+<ul>
+<li>A blocked endpoint still builds an <code>RpcClient</code>, deliberately: refusing to construct one</li>
+</ul>
+<p>would leave the user unable to reach Settings to fix it. The reason surfaces instead as an<br /><strong>⚠️ Insecure RPC</strong> badge in the header and as <code>RpcClient.unreachableHint</code>, which is<br />appended only to a thrown <code>TypeError</code> — never to a real server error or a timeout, which<br />would be misleading.</p>
+<ul>
+<li><strong><code>rpcProxyUrl</code></strong> moves the decision to the proxy: the endpoint is judged by the proxy's</li>
+</ul>
+<p>own scheme, since that is what the browser actually connects to. The proxy sees every<br />request, so the UI says to run your own. It cannot reach keys or sign.</p>
+<p>Plaintext RPC is a confidentiality <em>and</em> integrity exposure — a node on the path can read<br />every lookup and alter the replies — but not a key-compromise one: signatures are produced<br />locally and the wallet verifies nothing it receives into key material.</p>
+<h3 id="cross-origin-isolation">Cross-origin isolation</h3>
 <p>COOP/COEP are <code>same-origin</code> / <code>require-corp</code> application-wide, with <code>unsafe-none</code><br />overrides on <code>/connect</code> so the approval popup can exchange a MessagePort with the opener.<br />This narrowing is deliberate and limited to that single route.</p>
 <hr />
-<h2>dApp connection security</h2>
+<h2 id="dapp-connection-security">dApp connection security</h2>
 <p>When a site requests a connection:</p>
 <ol>
 <li>The popup shows the requesting origin prominently.</li>
@@ -159,12 +272,12 @@ base-uri 'self'; form-action 'self';</code></pre>
 <p>"Trust this site" suppresses prompts for <strong>read-only</strong> requests (balance, accounts,<br />network) only. It never grants silent signing.</p>
 <p>Connections can be reviewed and revoked under <strong>Settings → Connected Sites</strong>.</p>
 <hr />
-<h2>Dependency status</h2>
+<h2 id="dependency-status">Dependency status</h2>
 <p>Production dependencies: <strong>zero known vulnerabilities</strong> (<code>npm audit --omit=dev</code>).</p>
 <p>Development dependencies carry advisories in vitest, vite, esbuild, and related packages.<br />Each remaining fix requires a major upgrade (vite 5→8, vitest 2→4) that risks breaking the<br />build. These packages are build tooling — they are not shipped to users and cannot affect a<br />deployed wallet.</p>
 <p>This is a deliberate trade-off, revisited at each release. Run <code>npm audit --omit=dev</code> to<br />confirm the shipped surface stays clean.</p>
 <hr />
-<h2>Guidance for users</h2>
+<h2 id="guidance-for-users">Guidance for users</h2>
 <p><strong>Do</strong></p>
 <ul>
 <li>Keep your recovery phrase offline, on paper, in more than one location</li>
@@ -181,7 +294,7 @@ base-uri 'self'; form-action 'self';</code></pre>
 <li>Use a wallet holding real funds on a shared or untrusted computer</li>
 </ul>
 <hr />
-<h2>For contributors</h2>
+<h2 id="for-contributors">For contributors</h2>
 <p>Security-sensitive invariants that must not be weakened:</p>
 <ul>
 <li>Origin validation on every inbound <code>postMessage</code></li>
@@ -189,6 +302,9 @@ base-uri 'self'; form-action 'self';</code></pre>
 <li>No secrets in <code>localStorage</code>, <code>sessionStorage</code>, logs, or error messages</li>
 <li>No <code>innerHTML</code> or <code>dangerouslySetInnerHTML</code></li>
 <li>The PIN is never persisted</li>
+<li>Passkey unlock requires PRF; never fall back to storing a readable key</li>
+<li><code>assertCanSign</code> guards every signing path — a watch-only account must never sign</li>
+<li>Plaintext endpoint policy stays in <code>endpoint-policy.ts</code>; no ad-hoc URL checks elsewhere</li>
 <li>Canonical JSON stays byte-exact — signatures depend on it</li>
 </ul>
 <p>Any change touching crypto, key handling, storage, or the connect flow should say so<br />explicitly in the pull request.</p>

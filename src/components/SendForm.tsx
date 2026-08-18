@@ -1,12 +1,15 @@
 import { copyText } from '../utils/clipboard';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useWalletStore } from '../store/wallet-store';
 import { sendStandard } from '../api/send';
 import { fetchNextNonce } from '../api/nonce';
 import { formatAmount, parseAmountRaw } from '../tx/builder';
 import { isValidAddress } from '../crypto/address';
+import { parsePaymentUri } from '../wallet/payment-uri';
+import { listContacts, upsertContact, type ContactEntry } from '../wallet/storage';
 import { ProcessingModal, type ProcessingStage } from './ProcessingModal';
 import { ConfirmDialog } from './ConfirmDialog';
+import { QrScanner } from './QrScanner';
 import { Tooltip } from './Tooltip';
 import { PanelSkeleton } from './PanelSkeleton';
 
@@ -22,12 +25,24 @@ export function SendForm() {
   const [nextNonce, setNextNonce] = useState<number | null>(null);
   const [nonceStatus, setNonceStatus] = useState<'loading' | 'ready' | 'error'>('loading');
 
+  // Address book: pick a saved recipient, or save the one just typed.
+  const [contacts, setContacts] = useState<ContactEntry[]>([]);
+  const [showScan, setShowScan] = useState(false);
+  const [saveName, setSaveName] = useState('');
+  const [showSave, setShowSave] = useState(false);
+
   // Processing modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [modalStages, setModalStages] = useState<ProcessingStage[]>([]);
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalSuccess, setModalSuccess] = useState(false);
   const [modalSuccessMsg, setModalSuccessMsg] = useState('');
+
+  useEffect(() => {
+    listContacts()
+      .then(setContacts)
+      .catch(() => setContacts([]));
+  }, []);
 
   if (!wallet) return <PanelSkeleton title="Send" rows={3} />;
 
@@ -46,6 +61,39 @@ export function SendForm() {
     setModalStages((prev) =>
       prev.map((s) => (s.id === id ? { ...s, status, description: desc ?? s.description } : s)),
     );
+  };
+
+  const knownContact = contacts.find((c) => c.addr === to) ?? null;
+
+  // A scanned QR may be a bare address or an octra: payment URI carrying an
+  // amount. Both are accepted; anything else is reported rather than pasted.
+  const handleScan = (text: string) => {
+    setShowScan(false);
+    const parsed = parsePaymentUri(text);
+    if (!parsed) {
+      pushToast('error', 'That QR code does not contain a valid Octra address');
+      return;
+    }
+    setTo(parsed.addr);
+    if (parsed.amount) setAmount(parsed.amount);
+    pushToast(
+      'success',
+      parsed.amount ? `Scanned address and amount (${parsed.amount} OCT)` : 'Scanned address',
+    );
+  };
+
+  const saveRecipient = async () => {
+    const name = saveName.trim();
+    if (!name) return pushToast('error', 'Give the contact a name');
+    try {
+      await upsertContact(to, name);
+      setContacts(await listContacts());
+      setShowSave(false);
+      setSaveName('');
+      pushToast('success', `Saved ${name} to contacts`);
+    } catch (e) {
+      pushToast('error', e instanceof Error ? e.message : 'Could not save contact');
+    }
   };
 
   const requestSend = async () => {
@@ -179,13 +227,68 @@ export function SendForm() {
           </Tooltip>
         </div>
 
+        {wallet.watchOnly && (
+          <div
+            style={{
+              marginBottom: 'var(--sp-4)',
+              padding: 'var(--sp-3)',
+              background: 'var(--warning-soft)',
+              border: '1px solid var(--warning)',
+              borderRadius: 'var(--r-md)',
+              fontSize: 'var(--fs-xs)',
+            }}
+          >
+            👁 This is a <strong>watch-only</strong> account. It holds no private key, so it cannot
+            sign or send. Switch to an account with keys, or import the recovery phrase for this
+            address.
+          </div>
+        )}
+
         <div className="form-row">
-          <label htmlFor="to">
-            Recipient Address{' '}
-            <Tooltip text="The Octra address of the recipient. Must start with 'oct' and be 47 characters long.">
-              <span style={{ color: 'var(--text-muted)', cursor: 'help' }}>ⓘ</span>
-            </Tooltip>
-          </label>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 'var(--sp-2)',
+              flexWrap: 'wrap',
+            }}
+          >
+            <label htmlFor="to" style={{ marginBottom: 0 }}>
+              Recipient Address{' '}
+              <Tooltip text="The Octra address of the recipient. Must start with 'oct' and be 47 characters long.">
+                <span style={{ color: 'var(--text-muted)', cursor: 'help' }}>ⓘ</span>
+              </Tooltip>
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
+              {contacts.length > 0 && (
+                <select
+                  aria-label="Pick a saved contact"
+                  value={knownContact?.addr ?? ''}
+                  onChange={(e) => {
+                    if (e.target.value) setTo(e.target.value);
+                  }}
+                  style={{ maxWidth: 180, fontSize: 'var(--fs-xs)' }}
+                >
+                  <option value="">📇 Contacts…</option>
+                  {contacts.map((c) => (
+                    <option key={c.addr} value={c.addr}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => setShowScan(true)}
+                aria-label="Scan a QR code for the recipient"
+                style={{ fontSize: 'var(--fs-xs)', padding: 'var(--sp-1) var(--sp-2)' }}
+              >
+                📷 Scan
+              </button>
+            </div>
+          </div>
           <input
             id="to"
             className="mono"
@@ -207,12 +310,63 @@ export function SendForm() {
           {validTo && (
             <div
               style={{
-                color: 'var(--success)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--sp-2)',
+                flexWrap: 'wrap',
                 fontSize: 'var(--fs-xs)',
                 marginTop: 'var(--sp-1)',
               }}
             >
-              ✓ Valid Octra address
+              <span style={{ color: 'var(--success)' }}>✓ Valid Octra address</span>
+              {knownContact ? (
+                <span style={{ color: 'var(--text-secondary)' }}>— 📇 {knownContact.name}</span>
+              ) : showSave ? (
+                <>
+                  <input
+                    value={saveName}
+                    onChange={(e) => setSaveName(e.target.value)}
+                    placeholder="Contact name"
+                    aria-label="Contact name"
+                    maxLength={64}
+                    style={{ maxWidth: 160, fontSize: 'var(--fs-xs)' }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        void saveRecipient();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => void saveRecipient()}
+                    style={{ fontSize: 'var(--fs-xs)', padding: 'var(--sp-1) var(--sp-2)' }}
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => {
+                      setShowSave(false);
+                      setSaveName('');
+                    }}
+                    style={{ fontSize: 'var(--fs-xs)', padding: 'var(--sp-1) var(--sp-2)' }}
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => setShowSave(true)}
+                  style={{ fontSize: 'var(--fs-xs)', padding: 'var(--sp-1) var(--sp-2)' }}
+                >
+                  ＋ Save to contacts
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -331,7 +485,8 @@ export function SendForm() {
           <button
             className="primary"
             onClick={requestSend}
-            disabled={!validTo || !validAmount || !pin}
+            disabled={!validTo || !validAmount || !pin || wallet.watchOnly === true}
+            title={wallet.watchOnly ? 'Watch-only accounts cannot sign transactions' : undefined}
           >
             🔏 Sign & Send
           </button>
@@ -379,6 +534,14 @@ export function SendForm() {
           </div>
         )}
       </div>
+
+      <QrScanner
+        open={showScan}
+        title="Scan recipient"
+        hint="Point the camera at an Octra address QR code. Decoding happens on-device; nothing is uploaded."
+        onResult={handleScan}
+        onClose={() => setShowScan(false)}
+      />
 
       <ConfirmDialog
         open={showConfirm}

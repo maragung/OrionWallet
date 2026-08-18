@@ -2,6 +2,7 @@ import { copyText } from '../utils/clipboard';
 import { useState } from 'react';
 import { useWalletStore } from '../store/wallet-store';
 import { createNewWallet, importMnemonic } from '../api/wallet-api';
+import { checkQuizAnswers, pickQuizIndexes } from '../wallet/mnemonic-quiz';
 import { ThemeToggle } from './ThemeToggle';
 import { ProcessingModal, type ProcessingStage } from './ProcessingModal';
 import { Tooltip } from './Tooltip';
@@ -18,6 +19,15 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
   const [generatedMnemonic, setGeneratedMnemonic] = useState<string | null>(null);
   const [showPin, setShowPin] = useState(false);
   const [showMnemonic, setShowMnemonic] = useState(false);
+
+  // Backup confirmation: a freshly created wallet is not opened until the user
+  // has proved they wrote the phrase down. `pendingWallet` holds it meanwhile —
+  // it is already encrypted in IndexedDB at this point, only not yet active.
+  const [pendingWallet, setPendingWallet] = useState<Wallet | null>(null);
+  const [backupStep, setBackupStep] = useState<'show' | 'verify'>('show');
+  const [quizIdx, setQuizIdx] = useState<number[]>([]);
+  const [quizInput, setQuizInput] = useState<string[]>([]);
+  const [quizFails, setQuizFails] = useState(0);
 
   // Processing modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -93,12 +103,17 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
       updateStage('save', 'done', 'Wallet persisted to browser storage');
 
       setGeneratedMnemonic(mn);
+      setPendingWallet(wallet);
+      setBackupStep('show');
+      setQuizFails(0);
+      const idx = pickQuizIndexes(mn.trim().split(/\s+/).length);
+      setQuizIdx(idx);
+      setQuizInput(idx.map(() => ''));
       setModalSuccess(true);
       setModalSuccessMsg(
-        `Wallet created successfully!\n\nAddress: ${wallet.addr}\n\n⚠️ Save your mnemonic — it's shown only once!`,
+        `Wallet created successfully!\n\nAddress: ${wallet.addr}\n\n⚠️ Write down your recovery phrase now — the wallet opens once you confirm it.`,
       );
-      pushToast('success', 'Wallet created. Opening…');
-      setTimeout(() => activateWallet(wallet), 600);
+      pushToast('success', 'Wallet created — confirm your recovery phrase to continue');
     } catch (e) {
       setModalError((e as Error).message);
       pushToast('error', `Create failed: ${(e as Error).message}`);
@@ -184,6 +199,22 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
   };
 
   /**
+   * Check the retyped words against the generated phrase, then open the wallet.
+   * Comparison is case- and whitespace-insensitive: BIP39 words are lowercase
+   * ASCII, and a stray capital or space is a typing artefact, not a wrong word.
+   */
+  const confirmBackup = () => {
+    if (!generatedMnemonic || !pendingWallet) return;
+    if (!checkQuizAnswers(generatedMnemonic, quizIdx, quizInput)) {
+      setQuizFails((n) => n + 1);
+      pushToast('error', 'Those words do not match the phrase');
+      return;
+    }
+    pushToast('success', 'Recovery phrase confirmed');
+    activateWallet(pendingWallet);
+  };
+
+  /**
    * Activate a wallet immediately: clears local state, then hands the wallet to
    * the store, which flips Layout over to the main wallet view. No page
    * refresh is involved.
@@ -193,6 +224,10 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
     setModalError(null);
     setModalSuccess(false);
     setGeneratedMnemonic(null);
+    setPendingWallet(null);
+    setQuizIdx([]);
+    setQuizInput([]);
+    setShowMnemonic(false);
     setWallet(w);
     pushToast('success', 'Wallet activated — PVAC WASM loading in background');
   };
@@ -418,7 +453,7 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
             </button>
           </div>
 
-          {generatedMnemonic && (
+          {generatedMnemonic && backupStep === 'show' && (
             <div
               style={{
                 marginTop: 'var(--sp-5)',
@@ -451,6 +486,7 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
               </div>
               <div
                 className="mono"
+                data-testid="mnemonic-words"
                 style={{
                   fontSize: 'var(--fs-sm)',
                   wordBreak: 'break-word',
@@ -462,16 +498,127 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
               >
                 {generatedMnemonic}
               </div>
-              <button
-                className="ghost"
-                style={{ marginTop: 'var(--sp-2)', width: '100%', minHeight: 36 }}
-                onClick={() => {
-                  copyText(generatedMnemonic);
-                  pushToast('success', 'Mnemonic copied to clipboard');
+              <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 'var(--sp-2)' }}>
+                <button
+                  className="ghost"
+                  style={{ flex: 1, minHeight: 36 }}
+                  onClick={() => {
+                    copyText(generatedMnemonic);
+                    pushToast('success', 'Mnemonic copied to clipboard');
+                  }}
+                >
+                  📋 Copy Mnemonic
+                </button>
+                <button
+                  className="primary"
+                  style={{ flex: 1, minHeight: 36 }}
+                  onClick={() => {
+                    setShowMnemonic(false);
+                    setBackupStep('verify');
+                  }}
+                >
+                  I&rsquo;ve Written It Down →
+                </button>
+              </div>
+              <div
+                style={{
+                  fontSize: 'var(--fs-xs)',
+                  color: 'var(--text-secondary)',
+                  marginTop: 'var(--sp-2)',
                 }}
               >
-                📋 Copy Mnemonic
-              </button>
+                The wallet opens once you confirm a few words from the phrase. You can reveal it
+                again later under Settings → Security with your PIN.
+              </div>
+            </div>
+          )}
+
+          {generatedMnemonic && backupStep === 'verify' && (
+            <div
+              style={{
+                marginTop: 'var(--sp-5)',
+                padding: 'var(--sp-4)',
+                background: 'var(--bg-elevated-2)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--r-md)',
+              }}
+            >
+              <strong style={{ fontSize: 'var(--fs-sm)' }}>✔ Confirm your recovery phrase</strong>
+              <div
+                style={{
+                  fontSize: 'var(--fs-xs)',
+                  color: 'var(--text-secondary)',
+                  margin: 'var(--sp-1) 0 var(--sp-3)',
+                }}
+              >
+                Type the words at these positions, counting from 1. This is the only check that you
+                really have the phrase.
+              </div>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${Math.max(1, quizIdx.length)}, minmax(0, 1fr))`,
+                  gap: 'var(--sp-2)',
+                }}
+              >
+                {quizIdx.map((wordIndex, slot) => (
+                  <div key={wordIndex} className="form-row" style={{ marginBottom: 0 }}>
+                    <label htmlFor={`verify-word-${slot}`}>Word #{wordIndex + 1}</label>
+                    <input
+                      id={`verify-word-${slot}`}
+                      data-word-index={wordIndex}
+                      className="mono"
+                      value={quizInput[slot] ?? ''}
+                      onChange={(e) => {
+                        const next = [...quizInput];
+                        next[slot] = e.target.value;
+                        setQuizInput(next);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          confirmBackup();
+                        }
+                      }}
+                      autoComplete="off"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                    />
+                  </div>
+                ))}
+              </div>
+              {quizFails > 0 && (
+                <div
+                  style={{
+                    color: 'var(--error)',
+                    fontSize: 'var(--fs-xs)',
+                    marginTop: 'var(--sp-2)',
+                  }}
+                >
+                  ⚠{' '}
+                  {quizFails === 1
+                    ? 'That did not match.'
+                    : `That did not match (${quizFails} tries).`}{' '}
+                  Check the phrase again if you need to.
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 'var(--sp-3)' }}>
+                <button
+                  className="ghost"
+                  style={{ flex: 1, minHeight: 36 }}
+                  onClick={() => setBackupStep('show')}
+                >
+                  ← Show Phrase Again
+                </button>
+                <button
+                  className="primary"
+                  style={{ flex: 1, minHeight: 36 }}
+                  onClick={confirmBackup}
+                  disabled={quizInput.some((w) => !w.trim())}
+                >
+                  Confirm &amp; Open Wallet
+                </button>
+              </div>
             </div>
           )}
         </div>

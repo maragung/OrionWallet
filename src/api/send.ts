@@ -23,6 +23,7 @@ import {
 import { isValidAddress } from '../crypto/address';
 import { putTxCache, listTxCache } from '../wallet/storage';
 import { fetchNextNonce } from './nonce';
+import { assertCanSign } from '../wallet/watch-only';
 
 export interface SendInputs {
   to: string;
@@ -55,6 +56,9 @@ export async function sendStandard(
   rpc: RpcClient,
   inputs: SendInputs,
 ): Promise<SendResult> {
+  // Refused before any network call: a watch-only account has no keys, and the
+  // failure should read as "this account cannot spend", not as a crypto error.
+  assertCanSign(wallet, 'send transactions');
   if (!isValidAddress(inputs.to)) {
     throw new Error(`Invalid recipient address: ${inputs.to}`);
   }

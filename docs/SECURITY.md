@@ -42,6 +42,9 @@ and credited unless you prefer otherwise.
 | Message replay | CSPRNG challenge and nonce per session |
 | XSS via injected markup | No `innerHTML` / `dangerouslySetInnerHTML`; CSP restricts sources |
 | Malformed RPC data crashing the app | Defensive normalisation plus error boundaries |
+| A recovery phrase never actually written down | Creation is gated on retyping 3 random words |
+| Signing from an account with no keys | `assertCanSign` refuses at the API boundary, not just in the UI |
+| Silently eavesdropped RPC traffic | Plaintext endpoints need explicit per-origin consent |
 
 ### What it cannot protect against
 
@@ -120,6 +123,60 @@ To opt out entirely, turn off **Settings → Security → Stay unlocked after a 
 (`keepUnlocked: false`). Nothing is written, and every reload asks for the PIN — the behaviour
 before this feature existed. An explicit lock (🔒) destroys both halves immediately.
 
+### Passkey unlock
+
+Optional, off by default, and additive: it is a second way to open an existing wallet, never
+a replacement for the PIN. `src/wallet/passkey.ts`.
+
+Registration creates a platform credential with `userVerification: 'required'` and the
+WebAuthn **PRF** extension. PRF gives the page a secret derived from the credential and a
+stored 32-byte salt, which the browser will only produce after the user verifies. The
+wallet takes `sha256("orion-passkey-unlock-v1" || prf)` as an AES-256 key, seals the
+serialized wallet with AES-256-GCM, zeroes the key, and stores the sealed blob in IndexedDB
+next to the credential ID and salt.
+
+| Stored | Not stored |
+|---|---|
+| Credential ID, PRF salt, IV, ciphertext of the wallet | The PRF output, the derived key, the PIN, any plaintext key material |
+
+Consequences worth stating plainly:
+
+- **PRF is required, never degraded.** If the authenticator does not support it,
+  registration throws and stores nothing. The alternative — keeping a readable key
+  alongside the ciphertext — would make the record self-decrypting, which is worse than not
+  offering the feature.
+- **The record is inert on its own.** Without a successful user-verified gesture on that
+  authenticator, there is no way to derive the key from what is on disk.
+- **It seals the wallet, not the PIN.** The PIN is still the only thing that exports keys,
+  reveals the phrase, changes the PIN, or derives an account. Passkey unlock therefore
+  cannot be used to escalate to those, and the stored record leaks strictly less than a
+  stored PIN would.
+- **Same session model as a PIN unlock.** A passkey unlock produces the same unlock session
+  with the same idle and absolute caps; it does not extend either.
+- **Scoped to the device and browser.** Bound to the origin's `rpId` and stored locally. It
+  is not part of a wallet export and is not derived from the recovery phrase.
+- **A stale credential fails closed.** If decryption fails — a rotated or re-registered
+  credential, a restored device — the record is deleted and the PIN is required. A
+  *dismissed or timed-out gesture* deliberately does **not** delete it, so a cancelled
+  prompt cannot silently disable the feature.
+- **Refused for watch-only accounts.** There is no key material to seal.
+
+What it does not defend against is unchanged: a compromised device, and script execution in
+a live session, exactly as for the unlock session above. It does remove one real exposure —
+the PIN being typed and observed on every unlock.
+
+### Watch-only accounts
+
+An account can be added by address alone, with no keystore. The invariant is that such an
+account can never sign, and it is enforced where the signing happens, not in the UI:
+`assertCanSign` (`src/wallet/watch-only.ts`) is called by the send, encrypt, stealth,
+contract, and dApp-request paths, and throws naming both the action and the fix.
+
+It fails closed by construction: the check refuses any wallet whose secret key is not a
+full 64-byte Ed25519 key, so a truncated or missing key is refused even if the `watchOnly`
+flag were somehow lost. The flag is carried through `serializeWallet`/`deserializeWallet`,
+so a wallet restored from an unlock session is still watch-only.
+
 ### Randomness
 
 All security-relevant values use `crypto.getRandomValues` via `src/crypto/random.ts`.
@@ -138,18 +195,61 @@ Set in `index.html`:
 
 ```
 default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline';
-img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https:;
+img-src 'self' data: blob:; font-src 'self' data:;
+connect-src 'self' https: http://localhost:* http://127.0.0.1:* http://[::1]:*;
 frame-src 'self' https:; worker-src 'self' blob:; object-src 'none';
 base-uri 'self'; form-action 'self';
 ```
 
-Two entries deserve explanation:
+Three entries deserve explanation:
 
 - **`'wasm-unsafe-eval'`** is required for the PVAC FHE module. Chromium blocks
   `WebAssembly.instantiate()` without it. It permits WebAssembly compilation only — it does
   **not** re-enable JavaScript `eval()`.
 - **`'unsafe-inline'` for styles** is needed for the pre-paint critical CSS that avoids a
   flash of unstyled content. It applies to styles only, never to scripts.
+- **Loopback in `connect-src`** lets a locally-run node be used without widening the policy
+  to plaintext in general. Traffic to `localhost` / `127.0.0.0/8` / `[::1]` never leaves the
+  machine, so there is nothing on the wire to intercept.
+
+### Plaintext (http) RPC endpoints
+
+Anything else over plain `http://` is refused by default, and `src/wallet/endpoint-policy.ts`
+is the single place that decides. It is a pure function of the URL plus an explicit context,
+so the store, the Settings UI and the tests cannot disagree about what is allowed.
+
+Three independent blockers apply, and the verdict names the most fundamental one first so
+the user is never told to fix the allowlist when mixed content is the real cause:
+
+| Blocker | Who enforces it | How it is lifted |
+|---|---|---|
+| Mixed content | The browser, unconditionally | Not liftable. Use TLS or a proxy |
+| Content-Security-Policy | The shipped meta-tag CSP | Rebuild with `VITE_ALLOW_HTTP_ENDPOINTS=1` |
+| User consent | `allowedInsecureOrigins` in settings | **Trust** the origin in Settings → Network |
+
+Notes on the design:
+
+- The CSP is a meta tag, so it **cannot be widened at runtime** — no setting could grant
+  this, which is why it is a build flag. `VITE_ALLOW_HTTP_ENDPOINTS=1` appends `http:` to
+  `connect-src` at build time and nothing else; user consent is still required on top.
+- Consent is **per origin** — scheme, host and port. It is not a hostname match and not a
+  URL prefix, so trusting `http://node.lan:8080` does not trust another port on that host,
+  and `http://127.0.0.1.evil.com` is not treated as loopback.
+- **Explorer URLs are exempt** because they are only ever `<a href>` navigations, not
+  fetches. `connect-src` and mixed content do not apply to them. `relayerUrl` is stored but
+  never fetched. Only `rpcUrl` is subject to this policy.
+- A blocked endpoint still builds an `RpcClient`, deliberately: refusing to construct one
+  would leave the user unable to reach Settings to fix it. The reason surfaces instead as an
+  **⚠️ Insecure RPC** badge in the header and as `RpcClient.unreachableHint`, which is
+  appended only to a thrown `TypeError` — never to a real server error or a timeout, which
+  would be misleading.
+- **`rpcProxyUrl`** moves the decision to the proxy: the endpoint is judged by the proxy's
+  own scheme, since that is what the browser actually connects to. The proxy sees every
+  request, so the UI says to run your own. It cannot reach keys or sign.
+
+Plaintext RPC is a confidentiality *and* integrity exposure — a node on the path can read
+every lookup and alter the replies — but not a key-compromise one: signatures are produced
+locally and the wallet verifies nothing it receives into key material.
 
 ### Cross-origin isolation
 
@@ -217,6 +317,9 @@ Security-sensitive invariants that must not be weakened:
 - No secrets in `localStorage`, `sessionStorage`, logs, or error messages
 - No `innerHTML` or `dangerouslySetInnerHTML`
 - The PIN is never persisted
+- Passkey unlock requires PRF; never fall back to storing a readable key
+- `assertCanSign` guards every signing path — a watch-only account must never sign
+- Plaintext endpoint policy stays in `endpoint-policy.ts`; no ad-hoc URL checks elsewhere
 - Canonical JSON stays byte-exact — signatures depend on it
 
 Any change touching crypto, key handling, storage, or the connect flow should say so

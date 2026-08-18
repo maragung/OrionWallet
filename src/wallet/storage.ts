@@ -9,6 +9,8 @@
  *     - manifest:   { id: 0, accounts: [{addr, name, index, pubB64}] }
  *     - tx-cache:   key by `${addr}:${txHash}`, value = JSON tx
  *     - settings:   { id: "settings", rpcUrl, network, ... }
+ *     - contacts:   { addr, name, note?, ... }        (address book)
+ *     - passkey-unlock: { id: "default", credentialId, iv, ct, ... }
  */
 import { openDB, type IDBPDatabase } from 'idb';
 import type { NetworkId, CustomNetworkDef } from './networks';
@@ -16,7 +18,7 @@ import type { NetworkId, CustomNetworkDef } from './networks';
 const DB_NAME = 'orion-wallet';
 /** Pre-rebrand database name. Data is copied forward on first launch. */
 const LEGACY_DB_NAME = 'webcli-react';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 /** How long an IndexedDB open/upgrade may take before we fail loudly. */
 const DB_OPEN_TIMEOUT_MS = 8_000;
 
@@ -39,6 +41,9 @@ const OBJECT_STORES: { name: string; keyPath: string }[] = [
   // v5: unlock-session keys (additive migration). Holds the key that seals the
   // unlock session, never the session itself — see wallet/unlock-session.ts.
   { name: 'unlock-session-keys', keyPath: 'id' },
+  // v6: address book + passkey unlock (additive migration).
+  { name: 'contacts', keyPath: 'addr' },
+  { name: 'passkey-unlock', keyPath: 'id' },
 ];
 
 export interface StoredWalletEntry {
@@ -55,6 +60,12 @@ export interface ManifestEntry {
   index: number;
   pubB64: string;
   createdAt: number;
+  /**
+   * Watch-only accounts hold no keys: there is no encrypted wallet blob behind
+   * them, so they can be opened without a PIN and can never sign. Absent on
+   * every normal account.
+   */
+  watchOnly?: boolean;
 }
 
 export interface Manifest {
@@ -84,6 +95,18 @@ export interface Settings {
   keepUnlocked?: boolean;
   /** Minutes of inactivity before the wallet locks itself. 0 disables idle lock. */
   autoLockMinutes?: number;
+  /**
+   * `http://` origins the user has explicitly trusted for RPC, e.g.
+   * `http://10.0.0.5:8080`. Loopback needs no entry. See wallet/endpoint-policy.ts
+   * for the other two things that must also permit an http endpoint.
+   */
+  allowedInsecureOrigins?: string[];
+  /**
+   * Optional CORS/TLS-terminating proxy prefix for RPC, e.g.
+   * `https://proxy.example.com/?url=`. The endpoint URL is appended
+   * percent-encoded, so the browser only ever connects to the proxy.
+   */
+  rpcProxyUrl?: string;
 }
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
@@ -649,6 +672,106 @@ export async function pruneUnlockSessionKeys(maxAgeMs: number): Promise<void> {
   for (const rec of all) {
     if (!(rec.createdAt > cutoff)) await db.delete('unlock-session-keys', rec.id);
   }
+}
+
+// ===== Address book =====
+
+/**
+ * One saved recipient.
+ *
+ * Keyed by address, so saving the same address twice updates the label instead
+ * of creating a second entry the user has to reconcile.
+ */
+export interface ContactEntry {
+  addr: string;
+  name: string;
+  note?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export async function saveContact(entry: ContactEntry): Promise<void> {
+  const db = await getDb();
+  await db.put('contacts', entry);
+}
+
+/** Insert or update by address, preserving the original `createdAt`. */
+export async function upsertContact(
+  addr: string,
+  name: string,
+  note?: string,
+): Promise<ContactEntry> {
+  const now = Date.now();
+  const existing = await getContact(addr);
+  const entry: ContactEntry = {
+    addr,
+    name,
+    note: note?.trim() ? note.trim() : undefined,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
+  await saveContact(entry);
+  return entry;
+}
+
+export async function getContact(addr: string): Promise<ContactEntry | null> {
+  const db = await getDb();
+  return ((await db.get('contacts', addr)) as ContactEntry | undefined) ?? null;
+}
+
+/** Every contact, alphabetically by name (case-insensitive). */
+export async function listContacts(): Promise<ContactEntry[]> {
+  const db = await getDb();
+  const all = (await db.getAll('contacts')) as ContactEntry[];
+  return all.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+}
+
+export async function deleteContact(addr: string): Promise<void> {
+  const db = await getDb();
+  await db.delete('contacts', addr);
+}
+
+// ===== Passkey unlock =====
+
+/**
+ * The wallet sealed under a key derived from a passkey (WebAuthn PRF).
+ *
+ * Unlike the unlock session this record is meant to outlive the tab, which is
+ * the whole point: it replaces typing the PIN on a device the user has already
+ * proven they control. The sealing key is never stored — it only exists for the
+ * moment after the authenticator returns the PRF output, so this record alone
+ * decrypts to nothing. See wallet/passkey.ts.
+ */
+export interface PasskeyUnlockRecord {
+  id: string;
+  /** base64url credential id, used as the allowCredentials hint. */
+  credentialId: string;
+  /** Address of the sealed account, shown on the unlock screen. */
+  addr: string;
+  /** Account label, shown on the unlock screen. */
+  name: string;
+  /** Random per-credential PRF salt (base64). */
+  prfSalt: string;
+  iv: Uint8Array;
+  ct: Uint8Array;
+  createdAt: number;
+}
+
+export async function putPasskeyUnlock(rec: PasskeyUnlockRecord): Promise<void> {
+  const db = await getDb();
+  await db.put('passkey-unlock', rec);
+}
+
+export async function getPasskeyUnlock(
+  id: string = 'default',
+): Promise<PasskeyUnlockRecord | null> {
+  const db = await getDb();
+  return ((await db.get('passkey-unlock', id)) as PasskeyUnlockRecord | undefined) ?? null;
+}
+
+export async function deletePasskeyUnlock(id: string = 'default'): Promise<void> {
+  const db = await getDb();
+  await db.delete('passkey-unlock', id);
 }
 
 // ===== Maintenance =====

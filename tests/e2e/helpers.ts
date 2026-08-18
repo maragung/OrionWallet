@@ -9,8 +9,9 @@ import type { Page } from '@playwright/test';
  *   1. Click "Create New Wallet"
  *   2. Fill name, PIN, confirm PIN
  *   3. Click "Create Wallet"
- *   4. Wait for the mnemonic reveal to appear
- *   5. Wait for the main app header to appear (wallet auto-activates)
+ *   4. Dismiss the success modal, read the revealed phrase
+ *   5. Complete the backup check by retyping the requested words
+ *   6. Wait for the main app header to appear (wallet activates on confirm)
  *
  * NOTE: This does NOT clear IndexedDB first. Tests that need a clean state
  * should call clearIndexedDB() in a beforeEach hook.
@@ -38,8 +39,43 @@ export async function createWallet(
   // Wait for the mnemonic reveal to appear (creation succeeded)
   await page.waitForSelector('text=Save this mnemonic', { timeout: 30_000 });
 
-  // The wallet auto-activates after creation; wait for the main app.
+  await completeMnemonicBackup(page);
+
+  // The wallet activates once the backup check passes; wait for the main app.
   await page.waitForSelector('.app-header', { timeout: 30_000 });
+}
+
+/**
+ * Walk the post-creation backup flow: dismiss the success modal, read the
+ * generated phrase, then retype whichever words the quiz asks for.
+ *
+ * The words are chosen at random per run, so the positions are read back from
+ * each input's `data-word-index` instead of being hardcoded.
+ */
+export async function completeMnemonicBackup(page: Page): Promise<void> {
+  // The success modal sits over the card; close it before clicking behind it.
+  const gotIt = page.locator('button:has-text("Got It")');
+  if (await gotIt.count()) await gotIt.first().click();
+
+  const phrase = ((await page.textContent('[data-testid="mnemonic-words"]')) ?? '').trim();
+  if (!phrase) throw new Error('completeMnemonicBackup: no phrase was rendered');
+  const words = phrase.split(/\s+/);
+
+  await page.click('button:has-text("Written It Down")');
+
+  const inputs = page.locator('input[data-word-index]');
+  const count = await inputs.count();
+  if (count === 0) throw new Error('completeMnemonicBackup: no verification inputs rendered');
+  for (let i = 0; i < count; i++) {
+    const input = inputs.nth(i);
+    const attr = await input.getAttribute('data-word-index');
+    const idx = Number(attr);
+    const word = words[idx];
+    if (!word) throw new Error(`completeMnemonicBackup: no word at index ${attr}`);
+    await input.fill(word);
+  }
+
+  await page.click('button:has-text("Confirm")');
 }
 
 /**

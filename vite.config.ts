@@ -1,11 +1,33 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import wasm from 'vite-plugin-wasm';
 import { fileURLToPath, URL } from 'node:url';
 
+/**
+ * Widen the shipped CSP to allow plain-http RPC endpoints.
+ *
+ * `index.html` ships `connect-src 'self' https:` plus loopback, so a node on a
+ * LAN address over http:// is blocked before the request leaves the tab. A
+ * meta-tag CSP cannot be loosened at runtime, so self-hosters who need one build
+ * with `VITE_ALLOW_HTTP_ENDPOINTS=1` and this appends `http:` to that directive.
+ * The runtime still requires the user to trust each origin — see
+ * src/wallet/endpoint-policy.ts.
+ */
+function allowHttpEndpointsCsp(): Plugin {
+  const flag = process.env.VITE_ALLOW_HTTP_ENDPOINTS;
+  const enabled = flag === '1' || flag === 'true';
+  return {
+    name: 'orion-allow-http-endpoints-csp',
+    transformIndexHtml(html) {
+      if (!enabled) return html;
+      return html.replace(/(connect-src[^;"]*)/, '$1 http:');
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), wasm()],
+  plugins: [react(), wasm(), allowHttpEndpointsCsp()],
   base: '/',
   resolve: {
     alias: {

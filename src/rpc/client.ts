@@ -24,6 +24,13 @@ export interface RpcClientOptions {
   proxyUrl?: string;
   /** Request timeout in ms. */
   timeoutMs?: number;
+  /**
+   * Explanation appended when a request never leaves the browser (fetch throws
+   * rather than returning a status). Mixed content and CSP both fail that way
+   * with nothing but "Failed to fetch", so the caller supplies the reason it
+   * already knows — see wallet/endpoint-policy.ts.
+   */
+  unreachableHint?: string;
   /** Fetch implementation (defaults to global fetch). */
   fetchImpl?: typeof fetch;
 }
@@ -68,13 +75,28 @@ export class RpcClient {
   readonly url: string;
   readonly proxyUrl?: string;
   readonly timeoutMs: number;
+  readonly unreachableHint?: string;
   private readonly fetchImpl: typeof fetch;
 
   constructor(opts: RpcClientOptions) {
     this.url = opts.url.replace(/\/+$/, '');
     this.proxyUrl = opts.proxyUrl;
     this.timeoutMs = opts.timeoutMs ?? 15_000;
+    this.unreachableHint = opts.unreachableHint;
     this.fetchImpl = opts.fetchImpl ?? fetch.bind(globalThis);
+  }
+
+  /**
+   * Message for a fetch that threw. A `TypeError` from `fetch` means the
+   * request was never sent — blocked by CSP, mixed content, DNS or a dead
+   * socket — so that is where the caller's hint belongs.
+   */
+  private failureMessage(err: Error): string {
+    if (err.name === 'AbortError') return `Request timed out after ${this.timeoutMs}ms`;
+    if (this.unreachableHint && err.name === 'TypeError') {
+      return `${err.message} — ${this.unreachableHint}`;
+    }
+    return err.message;
   }
 
   /** Build the final URL (with optional proxy prefix). */
@@ -150,8 +172,7 @@ export class RpcClient {
       return {
         ok: false,
         status: 0,
-        error:
-          err.name === 'AbortError' ? `Request timed out after ${this.timeoutMs}ms` : err.message,
+        error: this.failureMessage(err),
       };
     } finally {
       clearTimeout(timer);
@@ -248,11 +269,7 @@ export class RpcClient {
       });
     } catch (e) {
       const err = e as Error;
-      return this.batchFailure<T>(
-        chunk.length,
-        0,
-        err.name === 'AbortError' ? `Request timed out after ${this.timeoutMs}ms` : err.message,
-      );
+      return this.batchFailure<T>(chunk.length, 0, this.failureMessage(err));
     } finally {
       clearTimeout(timer);
     }

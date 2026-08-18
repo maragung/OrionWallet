@@ -2,7 +2,14 @@ import { useEffect, useState } from 'react';
 import { useWalletStore } from '../store/wallet-store';
 import { ProcessingModal } from './ProcessingModal';
 import { usePanelLoading } from '../hooks/usePanelLoading';
-import { listAccounts, unlockAccount, deriveNewHdAccount, removeAccount } from '../api/wallet-api';
+import {
+  listAccounts,
+  unlockAccount,
+  deriveNewHdAccount,
+  removeAccount,
+  addWatchOnlyAccount,
+  openWatchOnlyAccount,
+} from '../api/wallet-api';
 import type { ManifestEntry } from '../wallet/storage';
 import { isValidAddress } from '../crypto/address';
 import { PinModal } from './PinModal';
@@ -12,6 +19,9 @@ export function AccountSwitcher() {
   const panelLoading = usePanelLoading();
   const [accounts, setAccounts] = useState<ManifestEntry[]>([]);
   const [showDerive, setShowDerive] = useState(false);
+  const [showWatch, setShowWatch] = useState(false);
+  const [watchAddr, setWatchAddr] = useState('');
+  const [watchName, setWatchName] = useState('');
   const [newName, setNewName] = useState('');
   const [newIndex, setNewIndex] = useState(0);
   const [pin, setPin] = useState('');
@@ -34,12 +44,43 @@ export function AccountSwitcher() {
 
   if (!wallet) return null;
 
-  const handleSwitch = (acct: ManifestEntry) => {
+  const handleSwitch = async (acct: ManifestEntry) => {
     if (!isValidAddress(acct.addr)) return pushToast('error', 'Invalid address');
+    // A watch-only account has no keystore, so there is nothing to decrypt and
+    // no PIN to ask for.
+    if (acct.watchOnly) {
+      panelLoading.show('Switching account', `Loading ${acct.name}…`);
+      try {
+        setWallet(await openWatchOnlyAccount(acct.addr));
+        pushToast('success', `Switched to ${acct.name} (watch-only)`);
+        await refresh();
+      } catch (e) {
+        pushToast('error', `Switch failed: ${(e as Error).message}`);
+      } finally {
+        panelLoading.hide();
+      }
+      return;
+    }
     // Switching needs the account's signing keys, which only exist after a
     // decrypt, so ask for the PIN in a modal instead of silently updating the
     // manifest and leaving the old account live in memory.
     setPendingSwitch(acct);
+  };
+
+  const handleAddWatch = async () => {
+    panelLoading.show('Adding account', 'Recording the address in your manifest…');
+    try {
+      const entry = await addWatchOnlyAccount(watchAddr, watchName);
+      setShowWatch(false);
+      setWatchAddr('');
+      setWatchName('');
+      await refresh();
+      pushToast('success', `Now watching ${entry.name}`);
+    } catch (e) {
+      pushToast('error', `Could not add: ${(e as Error).message}`);
+    } finally {
+      panelLoading.hide();
+    }
   };
 
   const confirmSwitch = async (enteredPin: string) => {
@@ -111,10 +152,79 @@ export function AccountSwitcher() {
       <div className="card">
         <div className="card-header">
           <div className="card-title">HD Accounts</div>
-          <button className="ghost" onClick={() => setShowDerive(!showDerive)}>
-            {showDerive ? 'Cancel' : '+ Derive New'}
-          </button>
+          <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+            <button
+              className="ghost"
+              onClick={() => {
+                setShowWatch(!showWatch);
+                setShowDerive(false);
+              }}
+            >
+              {showWatch ? 'Cancel' : '👁 Watch Address'}
+            </button>
+            <button
+              className="ghost"
+              onClick={() => {
+                setShowDerive(!showDerive);
+                setShowWatch(false);
+              }}
+            >
+              {showDerive ? 'Cancel' : '+ Derive New'}
+            </button>
+          </div>
         </div>
+
+        {showWatch && (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: 16,
+              background: 'var(--bg-tertiary)',
+              borderRadius: 8,
+            }}
+          >
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+              Track any Octra address without its keys. Balance, tokens and history work; sending
+              and signing are refused.
+            </div>
+            <div className="form-row">
+              <label htmlFor="waddr">Address</label>
+              <input
+                id="waddr"
+                className="mono"
+                value={watchAddr}
+                onChange={(e) => setWatchAddr(e.target.value)}
+                placeholder="oct..."
+                autoComplete="off"
+                spellCheck={false}
+                style={
+                  watchAddr && !isValidAddress(watchAddr.trim())
+                    ? { borderColor: 'var(--error)' }
+                    : undefined
+                }
+              />
+            </div>
+            <div className="form-row">
+              <label htmlFor="wname">Label</label>
+              <input
+                id="wname"
+                value={watchName}
+                onChange={(e) => setWatchName(e.target.value)}
+                placeholder="Cold storage"
+                maxLength={64}
+              />
+            </div>
+            <div className="form-actions">
+              <button
+                className="primary"
+                onClick={handleAddWatch}
+                disabled={!isValidAddress(watchAddr.trim()) || !watchName.trim()}
+              >
+                Add Watch-Only Account
+              </button>
+            </div>
+          </div>
+        )}
 
         {showDerive && (
           <div
@@ -182,16 +292,27 @@ export function AccountSwitcher() {
               <tbody>
                 {accounts.map((a) => (
                   <tr key={a.addr}>
-                    <td>{a.name}</td>
+                    <td>
+                      {a.name}
+                      {a.watchOnly && (
+                        <span
+                          className="tag warn"
+                          style={{ marginLeft: 6 }}
+                          title="No keys — cannot sign"
+                        >
+                          👁 watch-only
+                        </span>
+                      )}
+                    </td>
                     <td className="mono" title={a.addr}>
                       {a.addr.slice(0, 12)}…{a.addr.slice(-8)}
                     </td>
-                    <td className="mono">{a.index}</td>
+                    <td className="mono">{a.watchOnly ? '—' : a.index}</td>
                     <td>
                       {a.addr === wallet.addr ? (
                         <span className="tag ok">active</span>
                       ) : (
-                        <button className="ghost" onClick={() => handleSwitch(a)}>
+                        <button className="ghost" onClick={() => void handleSwitch(a)}>
                           Switch
                         </button>
                       )}
@@ -223,7 +344,8 @@ export function AccountSwitcher() {
           }}
         >
           Accounts are derived deterministically from your wallet's BIP39 master seed. The same
-          mnemonic always produces the same set of accounts in the same order.
+          mnemonic always produces the same set of accounts in the same order. Watch-only entries
+          are just addresses — removing one never deletes key material, because it holds none.
         </div>
       </div>
 

@@ -53,50 +53,61 @@
   </script>
 </head>
 <body>
-<h1>Orion Wallet — User Guide</h1>
+<h1 id="orion-wallet-user-guide">Orion Wallet — User Guide</h1>
 <p>Orion Wallet runs entirely in your browser. Your keys are generated locally, encrypted<br />with your PIN, and stored only on your own device. Nothing is sent to a server.</p>
 <blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Source code, issues, and releases.</blockquote>
 <hr />
-<h2>Contents</h2>
+<h2 id="contents">Contents</h2>
 <ul>
 <li><a href="#getting-started">Getting started</a></li>
 <li><a href="#creating-a-wallet">Creating a wallet</a></li>
 <li><a href="#importing-an-existing-wallet">Importing an existing wallet</a></li>
 <li><a href="#everyday-use">Everyday use</a></li>
+<li><a href="#contacts-address-book">Contacts (address book)</a></li>
+<li><a href="#watch-only-accounts">Watch-only accounts</a></li>
 <li><a href="#encrypted-balance-fhe">Encrypted balance (FHE)</a></li>
 <li><a href="#stealth-transfers">Stealth transfers</a></li>
 <li><a href="#connecting-to-a-dapp">Connecting to a dApp</a></li>
+<li><a href="#locking-and-unlocking">Locking and unlocking</a></li>
 <li><a href="#session-expiry">Session expiry</a></li>
+<li><a href="#network-settings">Network settings</a></li>
 <li><a href="#backup-and-recovery">Backup and recovery</a></li>
 <li><a href="#troubleshooting">Troubleshooting</a></li>
 <li><a href="#keeping-your-funds-safe">Keeping your funds safe</a></li>
 </ul>
 <hr />
-<h2>Getting started</h2>
-<h3>Requirements</h3>
+<h2 id="getting-started">Getting started</h2>
+<h3 id="requirements">Requirements</h3>
 <ul>
 <li>A current version of Chrome, Edge, Firefox, or Safari</li>
 <li>JavaScript enabled</li>
 <li>Roughly 4 GB of RAM if you plan to use encrypted-balance features</li>
 </ul>
-<h3>Running it</h3>
+<h3 id="running-it">Running it</h3>
 <p>Use a hosted deployment, or run it locally:</p>
 <pre><code class="language-bash">npm install --legacy-peer-deps
 npm run dev</code></pre>
 <p>Then open &lt;http://localhost:5173&gt;.</p>
 <hr />
-<h2>Creating a wallet</h2>
+<h2 id="creating-a-wallet">Creating a wallet</h2>
 <ol>
-<li>Select <strong>Create Wallet</strong>.</li>
-<li><strong>Write down your recovery phrase.</strong> You are shown 12 or 24 words. Copy them onto</li>
+<li>Select <strong>Create New Wallet</strong>, name the account, and choose a PIN. The PIN encrypts</li>
 </ol>
-<p>paper in the exact order given.</p>
+<p>the wallet on this device.</p>
 <ol>
-<li>Confirm the phrase when prompted.</li>
-<li>Choose a PIN. This encrypts the wallet on this device.</li>
+<li><strong>Write down your recovery phrase.</strong> You are shown 12 words. Copy them onto paper in</li>
 </ol>
+<p>the exact order given.</p>
+<ol>
+<li>Select <strong>I've Written It Down</strong>. The wallet then asks you to retype <strong>3 of the words</strong>,</li>
+</ol>
+<p>picked at random, to prove the phrase actually left the screen. <strong>Show Phrase Again</strong><br />brings it back if you need another look; a wrong answer just lets you retry.</p>
+<ol>
+<li>Once the words check out, the wallet opens.</li>
+</ol>
+<blockquote><strong>Creating the wallet does not open it — passing the word check does.</strong> Until then you<br />can still walk away, and nothing is lost, because the phrase has not been relied on yet.</blockquote>
 <blockquote><strong>Your recovery phrase is the only way to restore your wallet.</strong> Anyone who has it<br />controls your funds. Store it offline. Never photograph it, type it into a website,<br />or paste it into a chat or email.</blockquote>
-<h3>PIN versus recovery phrase</h3>
+<h3 id="pin-versus-recovery-phrase">PIN versus recovery phrase</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th></th><th>Recovery phrase</th><th>PIN</th></tr></thead>
@@ -108,7 +119,7 @@ npm run dev</code></pre>
 </table>
 </div>
 <hr />
-<h2>Importing an existing wallet</h2>
+<h2 id="importing-an-existing-wallet">Importing an existing wallet</h2>
 <p>Choose <strong>Import</strong> and pick one of:</p>
 <ul>
 <li><strong>Recovery phrase</strong> — enter your 12/24 words</li>
@@ -116,40 +127,69 @@ npm run dev</code></pre>
 <li><strong>Wallet file</strong> — upload an encrypted <code>.oct</code> file and enter its PIN</li>
 </ul>
 <hr />
-<h2>Everyday use</h2>
-<h3>Checking your balance</h3>
+<h2 id="everyday-use">Everyday use</h2>
+<h3 id="checking-your-balance">Checking your balance</h3>
 <p>The <strong>Balance</strong> tab shows your public balance and, if PVAC is enabled, your encrypted balance.</p>
-<h3>Receiving</h3>
+<h3 id="receiving">Receiving</h3>
 <p>Open <strong>Receive</strong> to display your address and a QR code. Your address is public and safe<br />to share.</p>
-<h3>Sending</h3>
+<p>You can also <strong>request a specific amount</strong>. The QR code then carries the amount alongside<br />the address (as <code>octra:&lt;address&gt;?amount=&lt;OCT&gt;</code>), so a wallet scanning it prefills both.<br />With no amount requested, the code stays a bare address, which any scanner can read.</p>
+<h3 id="sending">Sending</h3>
 <ol>
 <li>Open <strong>Send</strong>.</li>
-<li>Paste the recipient address (it begins with <code>oct</code>).</li>
-<li>Enter an amount.</li>
-<li>Review the fee, then confirm with your PIN.</li>
+<li>Give the recipient in whichever way suits you:</li>
 </ol>
+<ul>
+<li>Paste the address (it begins with <code>oct</code>).</li>
+<li>Pick a saved name from <strong>📇 Contacts…</strong>.</li>
+<li>Select <strong>📷 Scan</strong> to read a QR code with your camera. The browser asks for camera</li>
+</ul>
+<p>permission the first time; the picture is processed in the page and never uploaded.<br />Scanning a code that carries an amount fills the amount in too.</p>
+<ol>
+<li>Enter an amount.</li>
+<li>Review the fee and the nonce, then confirm with your PIN.</li>
+</ol>
+<p>When the address matches a saved contact, the form shows the name next to it — a name you<br />recognise is a much better check than a string of base58. For a new address, **＋ Save to<br />contacts** stores it under a label you choose, so the next payment is a pick, not a paste.</p>
 <p>Always verify the first and last characters of the recipient address before confirming.<br />Transactions cannot be reversed.</p>
-<h3>History</h3>
+<h3 id="history">History</h3>
 <p><strong>History</strong> lists recent transactions. When the network is unreachable, cached entries<br />are shown and marked <code>⚠ Cached</code>.</p>
+<p><strong>⤓</strong> exports the table to a CSV file (time, hash, type, from, to, direction, amount, fee,<br />status) for a spreadsheet or your own records. It exports <strong>the rows currently loaded</strong> —<br />what you see is what you get — so use <strong>Load more</strong> first if you want a longer range. The<br />file is written by your browser to your downloads folder; nothing is sent anywhere.</p>
 <hr />
-<h2>Encrypted balance (FHE)</h2>
+<h2 id="contacts-address-book">Contacts (address book)</h2>
+<p><strong>Settings → 📇 Contacts</strong> keeps a list of addresses under names you choose. Each entry has<br />an address, a name, and an optional note — a good place for "memo required" or which<br />exchange a deposit address belongs to.</p>
+<p>Why bother: an address you cannot read is an address you cannot check. Once a payee is<br />saved, the Send form offers them by name and labels the address when you paste it back, so<br />a swapped or truncated address stands out instead of blending in.</p>
+<ul>
+<li><strong>Add</strong> an entry here, or use <strong>＋ Save to contacts</strong> straight from the Send form.</li>
+<li><strong>✎</strong> renames an entry, <strong>🗑</strong> removes it. Removing a contact affects nothing on-chain.</li>
+<li><strong>⤓</strong> exports the list as CSV, so it can be kept with your other records or moved to</li>
+</ul>
+<p>another browser.</p>
+<p>Contacts live in this browser only, alongside the rest of your wallet data. They are not<br />uploaded, and they are wiped with everything else if you clear the wallet.</p>
+<hr />
+<h2 id="watch-only-accounts">Watch-only accounts</h2>
+<p>A watch-only account tracks an address you do <strong>not</strong> hold the keys for — cold storage, a<br />hardware wallet, an exchange deposit address, someone else's address you keep an eye on.</p>
+<p>Add one under <strong>Settings → 👥 Accounts → 👁 Watch Address</strong>: paste the address, give it a<br />name, and it joins your account list.</p>
+<p>What it can do: show the balance, list history, export CSV, and be switched to without a<br />PIN — there is no keystore to decrypt, so there is nothing to unlock.</p>
+<p>What it cannot do: <strong>sign anything.</strong> Send, encrypt/decrypt, stealth transfers, contract<br />calls, and dApp signing requests all refuse, and the Send form says so before you fill it<br />in rather than after. Watch-only accounts are marked 👁 in the account list and in the<br />header, so you always know which kind you are looking at.</p>
+<p>To turn a watch-only account into a real one, import the recovery phrase or private key for<br />that address. Adding the keys is the only way; there is no shortcut.</p>
+<hr />
+<h2 id="encrypted-balance-fhe">Encrypted balance (FHE)</h2>
 <p>Orion Wallet can hold part of your balance encrypted using fully homomorphic encryption,<br />so the amount is not publicly visible on-chain.</p>
 <p>This is optional. Everything else works whether or not it is enabled.</p>
-<h3>Enabling it</h3>
+<h3 id="enabling-it">Enabling it</h3>
 <p>Go to <strong>Settings → PVAC</strong>. Two indicators must both be green:</p>
 <ul>
 <li><strong>WASM Module</strong> — the cryptographic module has loaded</li>
 <li><strong>Bridge Initialized</strong> — it has been keyed from your wallet seed</li>
 </ul>
 <p>If either is not ready, the panel explains the exact cause and the fix.</p>
-<h3>Encrypting and decrypting</h3>
+<h3 id="encrypting-and-decrypting">Encrypting and decrypting</h3>
 <p>Use <strong>Encrypt</strong> to move funds between your public and encrypted balances. These<br />operations are computationally heavy and may take several seconds; a progress dialog<br />shows each stage.</p>
 <hr />
-<h2>Stealth transfers</h2>
+<h2 id="stealth-transfers">Stealth transfers</h2>
 <p>Stealth transfers send funds to a one-time address derived from the recipient's public<br />key, so the payment is not publicly linkable to their main address.</p>
 <p>Open <strong>Stealth</strong>, enter the recipient and amount, and confirm. The recipient claims the<br />funds from their own Stealth tab.</p>
 <hr />
-<h2>Connecting to a dApp</h2>
+<h2 id="connecting-to-a-dapp">Connecting to a dApp</h2>
 <p>When a website requests a connection, a popup appears showing the requesting origin.</p>
 <p>Before approving:</p>
 <ul>
@@ -159,39 +199,137 @@ npm run dev</code></pre>
 </ul>
 <p>Review and revoke connections at any time under <strong>Settings → Connected Sites</strong>.</p>
 <hr />
-<h2>Session expiry</h2>
-<p>Orion Wallet sessions expire automatically:</p>
+<h2 id="locking-and-unlocking">Locking and unlocking</h2>
+<p>Your PIN decrypts the wallet. The decrypted keys then stay available for as long as the<br />unlock session lasts — you are not asked for the PIN again until it ends.</p>
+<ul>
+<li><strong>Refreshing the page keeps you unlocked.</strong> The keys are re-sealed for the browser tab</li>
+</ul>
+<p>you are in, so a reload picks the session back up instead of returning you to the PIN<br />screen. You will briefly see "Restoring your session…" while that happens.</p>
+<ul>
+<li><strong>Closing the tab ends the session.</strong> The sealed copy is scoped to that one tab and</li>
+</ul>
+<p>goes away with it, so a new tab or window starts locked.</p>
+<ul>
+<li><strong>🔒 in the header locks immediately</strong> and destroys the sealed copy — a reload after</li>
+</ul>
+<p>locking asks for the PIN, as it should.</p>
+<ul>
+<li><strong>Inactivity locks the wallet</strong> after 30 minutes by default, and a single unlock is</li>
+</ul>
+<p>never carried for more than 8 hours regardless of activity.</p>
+<p>Neither half of the sealed session is useful alone: the encrypted keys are held by the<br />tab, while the key that opens them is kept by the browser in a form that no page —<br />including this one — can read back out.</p>
+<p>Under <strong>Settings → Security → Session &amp; Auto-Lock</strong>:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Setting</th><th>Default</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td>Stay unlocked after a page refresh</td><td>On</td><td>Turn off to require the PIN on every reload</td></tr>
+<tr><td>Auto-lock after inactivity</td><td>30 minutes</td><td>5 / 15 / 30 / 60 minutes, or never (until the tab closes)</td></tr>
+</tbody>
+</table>
+</div>
+<p>Both apply at once, including to the session you already have open. On a shared or<br />untrusted computer, turn the first one off and lock the wallet when you step away.</p>
+<h3 id="unlocking-with-a-passkey">Unlocking with a passkey</h3>
+<p>If your device has a fingerprint reader, Face ID, Windows Hello, or a security key, you can<br />unlock with that instead of typing the PIN.</p>
+<p>Turn it on under <strong>Settings → 🔑 Security → Passkey Unlock → Enable passkey unlock</strong>. Your<br />device prompts you to register — it may prompt <strong>twice</strong>, once to create the passkey and<br />once to use it. The unlock screen then offers <strong>👆 Unlock with passkey</strong> above the PIN box.</p>
+<p>Worth knowing:</p>
+<ul>
+<li><strong>The PIN still exists and still matters.</strong> The passkey opens the wallet; it does not</li>
+</ul>
+<p>replace the PIN. Exporting keys, revealing the recovery phrase, changing the PIN, and<br />deriving new accounts all still ask for it. Keep the PIN — losing it is not fixed by<br />having a passkey.</p>
+<ul>
+<li><strong>It is tied to this device and this browser.</strong> Passkeys do not travel with your wallet</li>
+</ul>
+<p>data. On another device, unlock with the PIN and register a passkey there if you want one.</p>
+<ul>
+<li><strong>Your fingerprint never reaches the wallet.</strong> The device verifies you locally and hands</li>
+</ul>
+<p>the page a secret derived from the passkey; that secret is what opens the wallet.</p>
+<ul>
+<li><strong>Availability depends on your device and browser.</strong> If yours cannot do what this needs,</li>
+</ul>
+<p>the Security panel says so and the option stays off — the PIN keeps working exactly as<br />before.</p>
+<ul>
+<li><strong>Turn off passkey unlock</strong> in the same panel. That deletes the stored copy immediately;</li>
+</ul>
+<p>it does not delete the passkey from your device, which you can remove in your OS or<br />browser settings.</p>
+<p>If a passkey ever stops opening the wallet — a rotated or re-registered credential, or a<br />restored device — the wallet says so, discards the stale copy, and asks for the PIN. Nothing<br />is lost; you can register a fresh passkey afterwards.</p>
+<p>Passkey unlock cannot be registered while a watch-only account is active — it holds no keys,<br />so there is nothing for a passkey to seal. The Security panel says so in place of the button.</p>
+<hr />
+<h2 id="session-expiry">Session expiry</h2>
+<p>The same windows govern dApp connections, which expire automatically:</p>
 <ul>
 <li><strong>Idle timeout:</strong> 30 minutes of inactivity</li>
 <li><strong>Absolute timeout:</strong> 8 hours from connection</li>
 </ul>
 <p>When a session expires, the wallet closes the connection and the dApp is notified.<br />The dApp should then prompt you to reconnect.</p>
-<h3>What happens when your session expires</h3>
+<h3 id="what-happens-when-your-session-expires">What happens when your session expires</h3>
 <ol>
 <li>The wallet emits a <code>sessionExpired</code> event to the dApp.</li>
 <li>The dApp detects the expired session and shows a "Reconnect" prompt.</li>
 <li>You click <strong>Connect</strong> to open the wallet popup again.</li>
 <li>The wallet restores your session and the dApp resumes.</li>
 </ol>
-<h3>If a dApp doesn't reconnect automatically</h3>
+<h3 id="if-a-dapp-doesnt-reconnect-automatically">If a dApp doesn't reconnect automatically</h3>
 <ul>
 <li>Click the <strong>Connect</strong> button in the dApp.</li>
 <li>The wallet popup opens — approve the connection.</li>
 <li>Your previous session data is preserved, so you don't need to re-import your wallet.</li>
 </ul>
 <hr />
-<h2>Backup and recovery</h2>
-<h3>Exporting</h3>
-<p><strong>Settings → Backup → Export</strong> downloads an encrypted <code>.oct</code> file. It is protected by<br />your PIN, but treat it as sensitive.</p>
-<h3>Restoring</h3>
-<p>Use <strong>Import → Wallet file</strong> and supply the PIN in use when the file was exported.</p>
-<h3>Multiple accounts</h3>
-<p><strong>Settings → Accounts</strong> derives additional accounts from the same recovery phrase. One<br />phrase restores all of them.</p>
+<h2 id="network-settings">Network settings</h2>
+<p><strong>Settings → ⚙️ General</strong> holds the RPC URL the wallet talks to, the explorer it links out<br />to, and an optional proxy. Change the RPC URL and select <strong>Save URLs</strong> to point the wallet<br />at a different node.</p>
+<h3 id="nodes-without-https">Nodes without HTTPS</h3>
+<p>An <code>https://</code> node needs no special handling. A node reachable only over plain <code>http://</code> is<br />a different matter, because everything the wallet asks it — every balance and history<br />lookup, every transaction it submits — travels in the clear, where anyone on the network<br />path can read it <em>and change the answers</em>. So the wallet asks first.</p>
+<ul>
+<li><strong>Loopback needs no permission.</strong> <code>localhost</code>, <code>127.0.0.1</code>, <code>[::1]</code> and friends never</li>
+</ul>
+<p>leave your machine, so a local node works out of the box.</p>
+<ul>
+<li><strong>Any other <code>http://</code> address must be trusted explicitly.</strong> Paste the URL and the panel</li>
+</ul>
+<p>explains what is at stake with a <strong>Trust <code>http://…</code></strong> button next to it. Trust is stored<br />per origin (scheme, host, and port), so trusting one node does not trust another, and a<br />different port on the same host is a separate decision.</p>
+<ul>
+<li><strong>Trusted plaintext endpoints</strong> lists what you have trusted, with <strong>Remove</strong> to take it</li>
+</ul>
+<p>back.</p>
+<p>Two limits are not ours to lift, and the panel names whichever one is in the way:</p>
+<ul>
+<li><strong>A wallet served over <code>https://</code> cannot fetch <code>http://</code> at all.</strong> Browsers block that</li>
+</ul>
+<p>(it is called mixed content), and trusting the origin will not change it. Put the node<br />behind TLS, use a proxy, or open the wallet from a plain-http or localhost build.</p>
+<ul>
+<li><strong>The shipped build allows only <code>https://</code> and loopback.</strong> Its security policy is fixed</li>
+</ul>
+<p>at build time and cannot be widened while running. Self-hosters who need plain http can<br />build with <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code>; the trust list above still applies on top.</p>
+<p>The explorer URL is exempt from all of this — it is only ever a link you click, not<br />something the wallet fetches.</p>
+<h3 id="rpc-proxy">RPC proxy</h3>
+<p><strong>RPC proxy (optional)</strong> routes calls through a URL of your choosing: the RPC URL is<br />appended to it, percent-encoded, and the browser only ever connects to the proxy. It is the<br />practical fix for a node with no TLS or no CORS headers, and it satisfies the rules above<br />because the connection the browser makes is to the proxy.</p>
+<p>The proxy sees every request the wallet makes, so <strong>run your own</strong>. It cannot sign anything<br />or reach your keys, but it can watch and it can lie.</p>
+<h3 id="when-something-is-off">When something is off</h3>
+<p>If the RPC endpoint cannot be used as configured, <strong>⚠️ Insecure RPC</strong> appears in the header;<br />select it to jump straight to the setting. Network errors also carry the reason, so a bare<br />"Failed to fetch" tells you what to fix.</p>
 <hr />
-<h2>Troubleshooting</h2>
-<h3>The page is blank or stuck loading</h3>
+<h2 id="backup-and-recovery">Backup and recovery</h2>
+<h3 id="exporting">Exporting</h3>
+<p><strong>Settings → Backup → Export</strong> downloads an encrypted <code>.oct</code> file. It is protected by<br />your PIN, but treat it as sensitive.</p>
+<h3 id="restoring">Restoring</h3>
+<p>Use <strong>Import → Wallet file</strong> and supply the PIN in use when the file was exported.</p>
+<h3 id="multiple-accounts">Multiple accounts</h3>
+<p><strong>Settings → Accounts</strong> derives additional accounts from the same recovery phrase. One<br />phrase restores all of them.</p>
+<p>Two things the phrase does <strong>not</strong> restore, because they were never derived from it:</p>
+<ul>
+<li><strong>Watch-only accounts</strong> — they are just addresses you asked the wallet to track. Note them</li>
+</ul>
+<p>down separately if you want them back after a reinstall.</p>
+<ul>
+<li><strong>Contacts</strong> — export them with <strong>⤓</strong> under Settings → Contacts if they matter to you.</li>
+</ul>
+<p>Neither holds funds, so losing them costs you convenience, not money.</p>
+<hr />
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="the-page-is-blank-or-stuck-loading">The page is blank or stuck loading</h3>
 <p>Reload. If it persists, an error card with a <strong>Retry</strong> button should appear. Report the<br />message shown there.</p>
-<h3>Encrypted balance is unavailable</h3>
+<h3 id="encrypted-balance-is-unavailable">Encrypted balance is unavailable</h3>
 <p>Settings → PVAC shows one of the following:</p>
 <div class="table-wrap">
 <table>
@@ -205,22 +343,40 @@ npm run dev</code></pre>
 </table>
 </div>
 <p>Press <strong>↻ Reload PVAC</strong> after applying a fix — no restart needed.</p>
-<h3>"Failed to load history" / network errors</h3>
-<p>Usually the RPC node is unreachable or blocking CORS. Verify the RPC URL under<br /><strong>Settings</strong>, and see the <a href="../README.md#cors">CORS notes</a>.</p>
-<h3>I forgot my PIN</h3>
+<h3 id="failed-to-load-history-network-errors">"Failed to load history" / network errors</h3>
+<p>Usually the RPC node is unreachable or blocking CORS. Verify the RPC URL under<br /><strong>Settings</strong>, and see the <a href="../README.md#cors">CORS notes</a>. If the error names a reason —<br />plaintext, mixed content, or a build restriction — see<br /><a href="#network-settings">Network settings</a>; an <strong>RPC proxy</strong> fixes the CORS case.</p>
+<h3 id="the-header-shows-insecure-rpc">The header shows "⚠️ Insecure RPC"</h3>
+<p>The configured RPC endpoint is plain <code>http://</code> and is not usable as it stands. Select the<br />badge to open the setting, where the exact cause and the fix are spelled out. See<br /><a href="#network-settings">Network settings</a>.</p>
+<h3 id="the-camera-wont-open-when-i-select-scan">The camera won't open when I select 📷 Scan</h3>
+<ul>
+<li>Grant the camera permission when the browser asks; if you dismissed it, re-allow it in</li>
+</ul>
+<p>the site permissions and try again.</p>
+<ul>
+<li>Camera access needs a secure page. It works on <code>https://</code> and on <code>localhost</code>, but not on</li>
+</ul>
+<p>a plain-<code>http://</code> page on another host.</p>
+<ul>
+<li>If another app holds the camera, close it first. You can always paste the address instead.</li>
+</ul>
+<h3 id="unlock-with-passkey-isnt-offered">"Unlock with passkey" isn't offered</h3>
+<p>Either no passkey is registered in this browser, or the device cannot do what passkey unlock<br />requires. <strong>Settings → 🔑 Security → Passkey Unlock</strong> says which. Passkeys are per device<br />and per browser, so one registered elsewhere does not appear here. The PIN always works.</p>
+<h3 id="i-forgot-my-pin">I forgot my PIN</h3>
 <p>Reinstall the wallet using your recovery phrase and set a new PIN. Without the phrase,<br />the funds cannot be recovered — by anyone.</p>
-<h3>My wallet vanished after an update</h3>
+<h3 id="my-wallet-vanished-after-an-update">My wallet vanished after an update</h3>
 <p>Data is migrated automatically from older builds on first launch. If your accounts are<br />missing, <strong>do not create a new wallet</strong> — that could overwrite the old data. Report the<br />issue, and restore from your recovery phrase in the meantime.</p>
-<h3>dApp says "Session expired"</h3>
+<h3 id="dapp-says-session-expired">dApp says "Session expired"</h3>
 <p>This means the wallet session timed out (30 min idle / 8h absolute). Reconnect by<br />clicking <strong>Connect</strong> in the dApp. Your wallet data is preserved — you only need to<br />re-approve the connection.</p>
 <hr />
-<h2>Keeping your funds safe</h2>
+<h2 id="keeping-your-funds-safe">Keeping your funds safe</h2>
 <p><strong>Do</strong></p>
 <ul>
 <li>Keep your recovery phrase offline, on paper, ideally in more than one location</li>
 <li>Verify recipient addresses before sending</li>
 <li>Verify the origin shown in dApp connection prompts</li>
 <li>Start with a small test transaction when sending to a new address</li>
+<li>Save payees as contacts, and check the name — a name you recognise beats reading base58</li>
+<li>Use a watch-only account to keep an eye on cold storage, instead of unlocking the real one</li>
 </ul>
 <p><strong>Never</strong></p>
 <ul>

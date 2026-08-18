@@ -40,6 +40,11 @@ export interface Wallet {
   hdVersion: number;
   /** Whether this wallet was created (vs imported). */
   createdAt: number;
+  /**
+   * True for a tracked address with no keys: `sk`/`privB64`/`mnemonic` are
+   * empty and every signing path must refuse. See `wallet/watch-only.ts`.
+   */
+  watchOnly?: boolean;
 }
 
 /** Serialize a wallet to a JSON-encodable blob for encryption. */
@@ -56,6 +61,9 @@ export function serializeWallet(w: Wallet): Uint8Array {
     index: w.index,
     hd_version: w.hdVersion,
     created_at: w.createdAt,
+    // Carried through so a watch-only account survives a session restore as
+    // watch-only, instead of coming back looking like a broken signer.
+    watch_only: w.watchOnly === true,
   };
   return new TextEncoder().encode(JSON.stringify(obj));
 }
@@ -81,6 +89,7 @@ export function deserializeWallet(blob: Uint8Array): Wallet {
     index: obj.index || 0,
     hdVersion: obj.hd_version || 2,
     createdAt: obj.created_at || 0,
+    watchOnly: obj.watch_only === true,
   };
 }
 

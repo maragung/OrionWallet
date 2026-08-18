@@ -34,6 +34,7 @@ import {
   type WireError,
 } from '../sdk/protocol';
 import type { Wallet } from '../wallet/wallet';
+import { isWatchOnly } from '../wallet/watch-only';
 import {
   signPlainMessage,
   signTypedDataOctra,
@@ -613,6 +614,15 @@ export class ConnectHandler {
       return this.fail(env.id, {
         code: ERROR_CODES.UNAUTHORIZED,
         message: `Permission "${perm}" not granted`,
+      });
+    }
+
+    // A watch-only account holds no keys. Refuse before prompting: asking the
+    // user to approve something that cannot succeed is worse than a clear error.
+    if (isSigningScope && isWatchOnly(wallet)) {
+      return this.fail(env.id, {
+        code: ERROR_CODES.UNAUTHORIZED,
+        message: 'The active account is watch-only and cannot sign',
       });
     }
 

@@ -27,10 +27,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useAutoLock } from '../hooks/useAutoLock';
 import { useI18n } from '../i18n/useI18n';
 import { ConnectHandler } from '../connect/rpc-handler';
-import {
-  createWalletHost,
-  refreshHostAccounts,
-} from '../connect/host';
+import { createWalletHost, refreshHostAccounts } from '../connect/host';
 import { restoreSession } from '../connect/session';
 import type { Wallet } from '../wallet/wallet';
 import { HANDOFF_TYPE, type ConnectHandoffMessage } from '../connect/handoff';
@@ -316,6 +313,7 @@ export function Layout() {
     loadingMessage,
     pvacStatus,
     pvacError,
+    rpcWarning,
   } = useWalletStore();
 
   // Initialize theme system (applies data-theme to <html>)
@@ -520,6 +518,16 @@ export function Layout() {
           <img src="/logo.png" alt="Octra" />
           <span className="wordmark">Orion Wallet</span>
           {pvacIndicator}
+          {rpcWarning && (
+            <button
+              className="tag warn"
+              onClick={() => setTab('settings')}
+              title={`${rpcWarning}\n\nClick to open Settings → Network.`}
+              style={{ border: 'none', cursor: 'pointer', minHeight: 0 }}
+            >
+              ⚠️ Insecure RPC
+            </button>
+          )}
         </div>
         <div className="actions">
           <AccountPicker onManage={() => setTab('settings')} />

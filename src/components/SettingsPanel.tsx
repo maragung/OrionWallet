@@ -3,9 +3,17 @@ import { useEffect, useState } from 'react';
 import { useWalletStore } from '../store/wallet-store';
 import { loadSettings } from '../wallet/storage';
 import type { Settings } from '../wallet/storage';
-import { exportPrivateKey } from '../api/wallet-api';
+import { exportPrivateKey, exportMnemonic } from '../api/wallet-api';
+import {
+  disablePasskeyUnlock,
+  enablePasskeyUnlock,
+  getPasskeyInfo,
+  isPasskeySupported,
+  type PasskeyInfo,
+} from '../wallet/passkey';
 import { ConfirmDialog } from './ConfirmDialog';
 import { AccountSwitcher } from './AccountSwitcher';
+import { AddressBookPanel } from './AddressBookPanel';
 import { ConnectedSitesPanel } from './ConnectedSitesPanel';
 import { WalletExportImport } from './WalletExportImport';
 import { useTheme, type ThemeMode } from '../hooks/useTheme';
@@ -14,6 +22,7 @@ import { ProcessingModal } from './ProcessingModal';
 import { useI18n } from '../i18n/useI18n';
 import { LANGUAGES } from '../i18n/types';
 import type { LanguageCode } from '../i18n/types';
+import { checkEndpoint, normalizeOrigin } from '../wallet/endpoint-policy';
 import {
   allNetworks,
   getNetworkDef,
@@ -40,9 +49,14 @@ export function SettingsPanel() {
   const [settings, setLocalSettings] = useState<Settings | null>(null);
   const [pin, setPin] = useState('');
   const [privKey, setPrivKey] = useState<string | null>(null);
+  const [phrase, setPhrase] = useState<string | null>(null);
+  const [showPhrase, setShowPhrase] = useState(false);
+  const [showPhraseConfirm, setShowPhraseConfirm] = useState(false);
   const [showPrivConfirm, setShowPrivConfirm] = useState(false);
+  const [passkey, setPasskey] = useState<PasskeyInfo | null>(null);
+  const passkeyOk = isPasskeySupported();
   const [section, setSection] = useState<
-    'general' | 'accounts' | 'connections' | 'backup' | 'security'
+    'general' | 'accounts' | 'contacts' | 'connections' | 'backup' | 'security'
   >('general');
 
   // Custom-network add form.
@@ -53,7 +67,74 @@ export function SettingsPanel() {
 
   useEffect(() => {
     loadSettings().then(setLocalSettings);
+    getPasskeyInfo()
+      .then(setPasskey)
+      .catch(() => setPasskey(null));
   }, []);
+
+  /** Verdict for the RPC URL currently in the form, with the saved allowlist. */
+  const rpcVerdict = settings
+    ? checkEndpoint(settings.rpcUrl, {
+        allowlist: settings.allowedInsecureOrigins,
+        proxyUrl: settings.rpcProxyUrl?.trim() || undefined,
+      })
+    : null;
+
+  const trustOrigin = async (origin: string) => {
+    if (!settings) return;
+    const normalized = normalizeOrigin(origin);
+    if (!normalized) return pushToast('error', `Not a usable origin: ${origin}`);
+    const list = settings.allowedInsecureOrigins ?? [];
+    if (list.includes(normalized)) return;
+    const next: Settings = { ...settings, allowedInsecureOrigins: [...list, normalized] };
+    setLocalSettings(next);
+    try {
+      await setSettings(next);
+      pushToast('success', `${normalized} is now trusted for unencrypted RPC`);
+    } catch (e) {
+      pushToast('error', `Save failed: ${(e as Error).message}`);
+    }
+  };
+
+  const untrustOrigin = async (origin: string) => {
+    if (!settings) return;
+    const next: Settings = {
+      ...settings,
+      allowedInsecureOrigins: (settings.allowedInsecureOrigins ?? []).filter((o) => o !== origin),
+    };
+    setLocalSettings(next);
+    try {
+      await setSettings(next);
+      pushToast('success', `${origin} is no longer trusted`);
+    } catch (e) {
+      pushToast('error', `Save failed: ${(e as Error).message}`);
+    }
+  };
+
+  const handleEnablePasskey = async () => {
+    if (!wallet) return;
+    try {
+      const info = await run(
+        'Registering passkey',
+        () => enablePasskeyUnlock(wallet),
+        'Follow your device prompt — it may ask twice',
+      );
+      setPasskey(info);
+      pushToast('success', 'Passkey unlock enabled for this browser');
+    } catch (e) {
+      pushToast('error', (e as Error).message);
+    }
+  };
+
+  const handleDisablePasskey = async () => {
+    try {
+      await disablePasskeyUnlock();
+      setPasskey(null);
+      pushToast('success', 'Passkey unlock switched off — the PIN is the only way in again');
+    } catch (e) {
+      pushToast('error', `Could not switch it off: ${(e as Error).message}`);
+    }
+  };
 
   // `settings` loads asynchronously from IndexedDB. Render a skeleton instead
   // of nothing so the settings page never flashes blank.
@@ -108,6 +189,24 @@ export function SettingsPanel() {
     );
   };
 
+  const handleRevealPhrase = async () => {
+    setShowPhraseConfirm(false);
+    if (!pin) return pushToast('error', 'Enter PIN to reveal the phrase');
+    await run(
+      'Revealing recovery phrase',
+      async () => {
+        try {
+          setPhrase(await exportMnemonic(wallet, pin));
+          setShowPhrase(false);
+          pushToast('success', 'Recovery phrase revealed — keep it off-screen when done');
+        } catch (e) {
+          pushToast('error', `Reveal failed: ${(e as Error).message}`);
+        }
+      },
+      'Decrypting the keystore…',
+    );
+  };
+
   const handleReloadPvac = async () => {
     await run(
       'Reloading PVAC',
@@ -143,6 +242,7 @@ export function SettingsPanel() {
   const SECTIONS: Array<{ id: typeof section; label: string; icon: string }> = [
     { id: 'general', label: 'General', icon: '⚙️' },
     { id: 'accounts', label: 'Accounts', icon: '👥' },
+    { id: 'contacts', label: 'Contacts', icon: '📇' },
     { id: 'connections', label: 'Connections', icon: '🔗' },
     { id: 'backup', label: 'Backup', icon: '💾' },
     { id: 'security', label: 'Security', icon: '🔑' },
@@ -173,6 +273,7 @@ export function SettingsPanel() {
       </div>
 
       {section === 'accounts' && <AccountSwitcher />}
+      {section === 'contacts' && <AddressBookPanel />}
       {section === 'connections' && <ConnectedSitesPanel />}
       {section === 'backup' && <WalletExportImport />}
 
@@ -320,6 +421,80 @@ export function SettingsPanel() {
               {t('settings.relayerHint')}
             </div>
           </div>
+          <div className="form-row">
+            <label htmlFor="rpc-proxy">RPC proxy (optional)</label>
+            <input
+              id="rpc-proxy"
+              className="mono"
+              placeholder="https://proxy.example.com/?url="
+              value={settings.rpcProxyUrl ?? ''}
+              onChange={(e) => setLocalSettings({ ...settings, rpcProxyUrl: e.target.value })}
+            />
+            <div
+              style={{
+                fontSize: 'var(--fs-xs)',
+                color: 'var(--text-muted)',
+                marginTop: 'var(--sp-1)',
+              }}
+            >
+              The RPC URL is appended percent-encoded, so the browser only ever connects to the
+              proxy. Use it to reach a node that has no TLS or no CORS headers — the proxy sees
+              every request, so run your own.
+            </div>
+          </div>
+
+          {rpcVerdict && rpcVerdict.kind !== 'https' && (
+            <div
+              style={{
+                marginBottom: 'var(--sp-4)',
+                padding: 'var(--sp-3)',
+                background: rpcVerdict.allowed ? 'var(--bg-elevated-2)' : 'var(--warning-soft)',
+                border: `1px solid ${rpcVerdict.allowed ? 'var(--border-default)' : 'var(--warning)'}`,
+                borderRadius: 'var(--r-md)',
+                fontSize: 'var(--fs-xs)',
+              }}
+            >
+              <div style={{ marginBottom: 'var(--sp-2)' }}>
+                {rpcVerdict.allowed ? 'ℹ️' : '⚠️'} {rpcVerdict.message}
+              </div>
+              {rpcVerdict.kind === 'not-allowlisted' && rpcVerdict.origin && (
+                <button className="ghost" onClick={() => void trustOrigin(rpcVerdict.origin!)}>
+                  Trust {rpcVerdict.origin}
+                </button>
+              )}
+            </div>
+          )}
+
+          {(settings.allowedInsecureOrigins?.length ?? 0) > 0 && (
+            <div className="form-row">
+              <label>Trusted plaintext endpoints</label>
+              {(settings.allowedInsecureOrigins ?? []).map((origin) => (
+                <div
+                  key={origin}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 'var(--sp-2)',
+                    padding: 'var(--sp-1) 0',
+                  }}
+                >
+                  <span className="mono" style={{ fontSize: 'var(--fs-xs)' }}>
+                    {origin}
+                  </span>
+                  <button
+                    className="ghost"
+                    onClick={() => void untrustOrigin(origin)}
+                    title={`Stop trusting ${origin}`}
+                    style={{ minHeight: 28, fontSize: 'var(--fs-xs)' }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="form-actions">
             <button
               className="primary"
@@ -722,6 +897,165 @@ export function SettingsPanel() {
       )}
 
       {section === 'security' && (
+        <div className="card" style={{ marginBottom: 'var(--sp-4)' }}>
+          <div className="card-header">
+            <div className="card-title">Passkey Unlock</div>
+            {passkey && (
+              <span className="tag ok" style={{ fontSize: 10 }}>
+                enabled
+              </span>
+            )}
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+            Opens the wallet with this device&apos;s fingerprint, face or screen lock instead of the
+            PIN. The keys are sealed with a value only your authenticator can reproduce, so the
+            stored copy is useless on its own — but anyone who can pass this device&apos;s unlock
+            can open the wallet. The PIN is still required to export keys, change the PIN or derive
+            accounts, and it keeps working as the way in.
+          </p>
+          {!passkeyOk ? (
+            <div
+              style={{
+                padding: 'var(--sp-3)',
+                background: 'var(--warning-soft)',
+                border: '1px solid var(--warning)',
+                borderRadius: 'var(--r-md)',
+                fontSize: 'var(--fs-xs)',
+              }}
+            >
+              ⚠️ This browser cannot use passkeys here. They need a secure context — https:// or
+              localhost.
+            </div>
+          ) : passkey ? (
+            <>
+              <div
+                style={{
+                  padding: 'var(--sp-3)',
+                  background: 'var(--bg-elevated-2)',
+                  borderRadius: 'var(--r-md)',
+                  fontSize: 'var(--fs-xs)',
+                  marginBottom: 'var(--sp-3)',
+                }}
+              >
+                Registered for <strong>{passkey.name}</strong>{' '}
+                <span className="mono">
+                  {passkey.addr.slice(0, 14)}…{passkey.addr.slice(-6)}
+                </span>
+                <br />
+                Added {new Date(passkey.createdAt).toLocaleString()}
+              </div>
+              <div className="form-actions">
+                <button className="ghost" onClick={() => void handleDisablePasskey()}>
+                  Turn off passkey unlock
+                </button>
+              </div>
+            </>
+          ) : wallet?.watchOnly ? (
+            <div
+              style={{
+                padding: 'var(--sp-3)',
+                background: 'var(--bg-elevated-2)',
+                borderRadius: 'var(--r-md)',
+                fontSize: 'var(--fs-xs)',
+              }}
+            >
+              👁 This is a watch-only account — it holds no keys, so there is nothing for a passkey
+              to seal. Switch to an account with keys to register one.
+            </div>
+          ) : (
+            <div className="form-actions">
+              <button onClick={() => void handleEnablePasskey()} disabled={!wallet}>
+                👆 Enable passkey unlock
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {section === 'security' && (
+        <div className="card" style={{ marginBottom: 'var(--sp-4)' }}>
+          <div className="card-header">
+            <div className="card-title">Recovery Phrase</div>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+            Shows the 12-word BIP39 phrase for this account. It restores the wallet on any device,
+            so treat it exactly like the funds themselves. Uses the PIN field below.
+          </p>
+          <div className="form-actions">
+            <button
+              onClick={() => {
+                if (!pin) return pushToast('error', 'Enter PIN to reveal the phrase');
+                setShowPhraseConfirm(true);
+              }}
+              disabled={!pin}
+            >
+              Reveal Recovery Phrase
+            </button>
+          </div>
+          {phrase && (
+            <div
+              style={{
+                marginTop: 16,
+                padding: 12,
+                background: 'var(--warning-soft)',
+                border: '1px solid var(--warning)',
+                borderRadius: 8,
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: 4,
+                }}
+              >
+                <span style={{ fontSize: 12, color: 'var(--warning)', fontWeight: 600 }}>
+                  ⚠️ Recovery phrase (never share it)
+                </span>
+                <button
+                  type="button"
+                  className="ghost icon"
+                  onClick={() => setShowPhrase(!showPhrase)}
+                  title={showPhrase ? 'Hide' : 'Show'}
+                  aria-label={showPhrase ? 'Hide recovery phrase' : 'Show recovery phrase'}
+                  style={{ minHeight: 28, minWidth: 28, fontSize: 14 }}
+                >
+                  {showPhrase ? '🙈' : '👁️'}
+                </button>
+              </div>
+              <div
+                className="mono"
+                style={{
+                  fontSize: 12,
+                  wordBreak: 'break-word',
+                  filter: showPhrase ? 'none' : 'blur(6px)',
+                  transition: 'filter var(--t-base)',
+                  padding: '4px 0',
+                }}
+              >
+                {phrase}
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <button className="ghost" onClick={() => copyText(phrase)}>
+                  Copy
+                </button>
+                <button
+                  className="ghost"
+                  onClick={() => {
+                    setPhrase(null);
+                    setShowPhrase(false);
+                  }}
+                >
+                  Hide & clear
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {section === 'security' && (
         <div className="card">
           <div className="card-header">
             <div className="card-title">Export Private Key</div>
@@ -777,6 +1111,18 @@ export function SettingsPanel() {
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={showPhraseConfirm}
+        icon="📝"
+        title="Reveal Recovery Phrase"
+        message="This shows your 12-word recovery phrase on screen. Anyone who reads or photographs it gains full control of this wallet on any device. Only proceed somewhere private."
+        confirmLabel="Reveal Phrase"
+        cancelLabel="Cancel"
+        onConfirm={handleRevealPhrase}
+        onCancel={() => setShowPhraseConfirm(false)}
+        details={`Wallet: ${wallet.addr}`}
+      />
 
       <ConfirmDialog
         open={showPrivConfirm}
