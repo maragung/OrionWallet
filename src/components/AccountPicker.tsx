@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useWalletStore } from '../store/wallet-store';
 import { ProcessingModal } from './ProcessingModal';
 import { usePanelLoading } from '../hooks/usePanelLoading';
 import { listAccounts, unlockAccount, openWatchOnlyAccount } from '../api/wallet-api';
 import type { ManifestEntry } from '../wallet/storage';
 import { PinModal } from './PinModal';
+import { useAnchoredMenu } from '../hooks/useAnchoredMenu';
 
 /**
  * Compact account switcher for the top bar.
@@ -20,7 +21,21 @@ export function AccountPicker({ onManage }: { onManage?: () => void } = {}) {
   const [pendingSwitch, setPendingSwitch] = useState<ManifestEntry | null>(null);
   /** Why the account list could not be read, if it could not. */
   const [loadError, setLoadError] = useState<string | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => setOpen(false), []);
+  // Rendered in a top-level layer rather than inside the header row: the row clips
+  // it away on phones (`overflow: hidden`), and inside the header's stacking
+  // context a toast covered it and swallowed the click meant for a menu row.
+  const {
+    anchorRef,
+    menuRef,
+    style: menuStyle,
+    portal,
+  } = useAnchoredMenu<HTMLButtonElement>(open, {
+    align: 'left',
+    width: 280,
+    maxHeight: 380,
+    onDismiss: close,
+  });
 
   const refresh = useCallback(async () => {
     try {
@@ -37,15 +52,6 @@ export function AccountPicker({ onManage }: { onManage?: () => void } = {}) {
   useEffect(() => {
     refresh();
   }, [wallet, refresh]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
 
   if (!wallet) return null;
 
@@ -91,12 +97,14 @@ export function AccountPicker({ onManage }: { onManage?: () => void } = {}) {
 
   return (
     <>
-      <div ref={ref} style={{ position: 'relative' }}>
+      <div>
         <button
+          ref={anchorRef}
           className="ghost account-picker-trigger"
           onClick={() => setOpen(!open)}
           title={wallet.addr}
           aria-label={`Account: ${activeLabel}`}
+          aria-expanded={open}
           style={{
             minHeight: 32,
             display: 'flex',
@@ -131,146 +139,143 @@ export function AccountPicker({ onManage }: { onManage?: () => void } = {}) {
           <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>▾</span>
         </button>
 
-        {open && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 'calc(100% + 4px)',
-              left: 0,
-              background: 'var(--bg-elevated-1)',
-              border: '1px solid var(--border-default)',
-              borderRadius: 'var(--r-md)',
-              boxShadow: 'var(--shadow-lg)',
-              zIndex: 10000,
-              minWidth: 260,
-              maxHeight: 380,
-              overflowY: 'auto',
-              animation: 'slideUp var(--t-fast)',
-            }}
-          >
+        {open &&
+          portal(
             <div
+              ref={menuRef}
+              data-testid="account-menu"
               style={{
-                padding: 'var(--sp-2) var(--sp-3)',
-                fontSize: 'var(--fs-xs)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                color: 'var(--text-muted)',
-                fontWeight: 'var(--fw-semibold)',
-                borderBottom: '1px solid var(--border-subtle)',
+                background: 'var(--bg-elevated-1)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--r-md)',
+                boxShadow: 'var(--shadow-lg)',
+                animation: 'slideUp var(--t-fast)',
+                ...menuStyle,
               }}
             >
-              Accounts
-            </div>
-
-            {loadError && (
               <div
                 style={{
-                  padding: 'var(--sp-3)',
+                  padding: 'var(--sp-2) var(--sp-3)',
                   fontSize: 'var(--fs-xs)',
-                  color: 'var(--error)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  color: 'var(--text-muted)',
+                  fontWeight: 'var(--fw-semibold)',
                   borderBottom: '1px solid var(--border-subtle)',
                 }}
               >
-                Could not read your accounts: {loadError}
+                Accounts
+              </div>
+
+              {loadError && (
+                <div
+                  style={{
+                    padding: 'var(--sp-3)',
+                    fontSize: 'var(--fs-xs)',
+                    color: 'var(--error)',
+                    borderBottom: '1px solid var(--border-subtle)',
+                  }}
+                >
+                  Could not read your accounts: {loadError}
+                  <button
+                    className="ghost"
+                    onClick={() => void refresh()}
+                    style={{ marginTop: 'var(--sp-2)', minHeight: 28, fontSize: 'var(--fs-xs)' }}
+                  >
+                    ↻ Try again
+                  </button>
+                </div>
+              )}
+
+              {accounts.length === 0 && !loadError ? (
+                <div
+                  style={{
+                    padding: 'var(--sp-3)',
+                    fontSize: 'var(--fs-xs)',
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  No accounts in manifest.
+                </div>
+              ) : (
+                accounts.map((a) => {
+                  const isActive = a.addr === wallet.addr;
+                  return (
+                    <button
+                      key={a.addr}
+                      className="ghost"
+                      onClick={() => void handleSwitch(a)}
+                      title={a.addr}
+                      style={{
+                        width: '100%',
+                        justifyContent: 'flex-start',
+                        gap: 'var(--sp-2)',
+                        padding: 'var(--sp-2) var(--sp-3)',
+                        minHeight: 40,
+                        background: isActive ? 'var(--accent-soft)' : 'transparent',
+                        color: isActive ? 'var(--accent)' : 'var(--text-primary)',
+                        fontWeight: isActive ? 'var(--fw-semibold)' : 'var(--fw-normal)',
+                        borderRadius: 0,
+                        borderBottom: '1px solid var(--border-subtle)',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span
+                          style={{
+                            display: 'block',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {a.name}
+                          {a.watchOnly && (
+                            <span
+                              className="tag warn"
+                              style={{ marginLeft: 6, fontSize: 10 }}
+                              title="No keys — cannot sign"
+                            >
+                              👁
+                            </span>
+                          )}
+                        </span>
+                        <span
+                          className="mono"
+                          style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}
+                        >
+                          {a.addr.slice(0, 14)}…{a.addr.slice(-6)}
+                        </span>
+                      </span>
+                      {isActive && <span style={{ color: 'var(--accent)' }}>✓</span>}
+                    </button>
+                  );
+                })
+              )}
+
+              {onManage && (
                 <button
                   className="ghost"
-                  onClick={() => void refresh()}
-                  style={{ marginTop: 'var(--sp-2)', minHeight: 28, fontSize: 'var(--fs-xs)' }}
+                  onClick={() => {
+                    setOpen(false);
+                    onManage();
+                  }}
+                  style={{
+                    width: '100%',
+                    justifyContent: 'flex-start',
+                    gap: 'var(--sp-2)',
+                    padding: 'var(--sp-2) var(--sp-3)',
+                    minHeight: 36,
+                    borderRadius: 0,
+                    fontSize: 'var(--fs-xs)',
+                    color: 'var(--text-secondary)',
+                  }}
                 >
-                  ↻ Try again
+                  ⚙️ Manage accounts
                 </button>
-              </div>
-            )}
-
-            {accounts.length === 0 && !loadError ? (
-              <div
-                style={{
-                  padding: 'var(--sp-3)',
-                  fontSize: 'var(--fs-xs)',
-                  color: 'var(--text-muted)',
-                }}
-              >
-                No accounts in manifest.
-              </div>
-            ) : (
-              accounts.map((a) => {
-                const isActive = a.addr === wallet.addr;
-                return (
-                  <button
-                    key={a.addr}
-                    className="ghost"
-                    onClick={() => void handleSwitch(a)}
-                    title={a.addr}
-                    style={{
-                      width: '100%',
-                      justifyContent: 'flex-start',
-                      gap: 'var(--sp-2)',
-                      padding: 'var(--sp-2) var(--sp-3)',
-                      minHeight: 40,
-                      background: isActive ? 'var(--accent-soft)' : 'transparent',
-                      color: isActive ? 'var(--accent)' : 'var(--text-primary)',
-                      fontWeight: isActive ? 'var(--fw-semibold)' : 'var(--fw-normal)',
-                      borderRadius: 0,
-                      borderBottom: '1px solid var(--border-subtle)',
-                      textAlign: 'left',
-                    }}
-                  >
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span
-                        style={{
-                          display: 'block',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {a.name}
-                        {a.watchOnly && (
-                          <span
-                            className="tag warn"
-                            style={{ marginLeft: 6, fontSize: 10 }}
-                            title="No keys — cannot sign"
-                          >
-                            👁
-                          </span>
-                        )}
-                      </span>
-                      <span
-                        className="mono"
-                        style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}
-                      >
-                        {a.addr.slice(0, 14)}…{a.addr.slice(-6)}
-                      </span>
-                    </span>
-                    {isActive && <span style={{ color: 'var(--accent)' }}>✓</span>}
-                  </button>
-                );
-              })
-            )}
-
-            {onManage && (
-              <button
-                className="ghost"
-                onClick={() => {
-                  setOpen(false);
-                  onManage();
-                }}
-                style={{
-                  width: '100%',
-                  justifyContent: 'flex-start',
-                  gap: 'var(--sp-2)',
-                  padding: 'var(--sp-2) var(--sp-3)',
-                  minHeight: 36,
-                  borderRadius: 0,
-                  fontSize: 'var(--fs-xs)',
-                  color: 'var(--text-secondary)',
-                }}
-              >
-                ⚙️ Manage accounts
-              </button>
-            )}
-          </div>
-        )}
+              )}
+            </div>,
+          )}
       </div>
 
       <PinModal

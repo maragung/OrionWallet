@@ -13,7 +13,8 @@
 import { create } from 'zustand';
 import type { Wallet } from '../wallet/wallet';
 import { RpcClient } from '../rpc/client';
-import { loadSettings, saveSettings, type Settings } from '../wallet/storage';
+import { loadSettings, patchSettings, saveSettings, type Settings } from '../wallet/storage';
+import type { NetworkDef } from '../wallet/networks';
 import {
   hasUnlockSession,
   saveUnlockSession,
@@ -72,6 +73,13 @@ interface WalletStoreState {
   resumeSession: () => Promise<boolean>;
   initRpc: () => Promise<RpcClient>;
   setSettings: (s: Settings) => Promise<void>;
+  /**
+   * Switch the active network: persist the four endpoint fields together and
+   * rebuild the RPC client. Prefer this over `setSettings` for the top-bar pill
+   * and the Settings selector — it works even when settings have not loaded, and
+   * it cannot revert a field another writer changed meanwhile.
+   */
+  switchNetwork: (net: NetworkDef) => Promise<void>;
   pushToast: (level: ToastLevel, message: string) => void;
   dismissToast: (id: number) => void;
   setLoading: (loading: boolean, message?: string) => void;
@@ -87,6 +95,61 @@ function rpcWarningFor(s: Settings): string | null {
     allowlist: s.allowedInsecureOrigins,
     proxyUrl: s.rpcProxyUrl?.trim() || undefined,
   });
+}
+
+/** Attempts made to read settings at start-up before the failure is reported. */
+const SETTINGS_LOAD_ATTEMPTS = 3;
+/** Pause between those attempts. */
+const SETTINGS_RETRY_DELAY_MS = 750;
+
+/**
+ * Read settings, retrying a transient storage failure.
+ *
+ * `getDb()` already retries the *open*; this covers a read that lands on a
+ * connection closed under it, which is what happens when another tab upgrades the
+ * database. Without it, one failed read left `settings` null for the life of the
+ * page: the network pill then showed the default rather than the stored network,
+ * and every settings write was a silent no-op.
+ */
+async function loadSettingsWithRetry(): Promise<Settings> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= SETTINGS_LOAD_ATTEMPTS; attempt += 1) {
+    try {
+      return await loadSettings();
+    } catch (err) {
+      lastError = err;
+      if (attempt === SETTINGS_LOAD_ATTEMPTS) break;
+      console.warn(`[store] Reading settings failed (attempt ${attempt}); retrying.`, err);
+      await new Promise((resolve) => setTimeout(resolve, SETTINGS_RETRY_DELAY_MS));
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
+type StoreSet = (partial: Partial<WalletStoreState>) => void;
+type StoreGet = () => WalletStoreState;
+
+/**
+ * Publish settings that are already persisted: rebuild the RPC client for the
+ * endpoint they name, refresh the header badge, and re-seal the live unlock
+ * session (auto-lock timing lives in settings, so a change has to reach the
+ * session already open rather than only the next unlock).
+ */
+function publishSettings(s: Settings, set: StoreSet, get: StoreGet): void {
+  const warning = rpcWarningFor(s);
+  set({
+    settings: s,
+    rpc: new RpcClient({
+      url: s.rpcUrl,
+      proxyUrl: s.rpcProxyUrl?.trim() || undefined,
+      unreachableHint: warning ?? undefined,
+    }),
+    rpcWarning: warning,
+  });
+  const w = get().wallet;
+  if (w) {
+    resealUnlockSession(w, s).catch((e) => console.error('Re-sealing unlock session failed:', e));
+  }
 }
 
 /**
@@ -288,7 +351,14 @@ export const useWalletStore = create<WalletStoreState>((set, get) => ({
   initRpc: async () => {
     let settings = get().settings;
     if (!settings) {
-      settings = await loadSettings();
+      try {
+        settings = await loadSettingsWithRetry();
+      } catch (e) {
+        // Say so: silence here reads as "the wallet is on devnet with default
+        // endpoints", when in truth nothing about the configuration is known.
+        get().pushToast('error', `Could not read your settings: ${(e as Error).message}`);
+        throw e;
+      }
       set({ settings });
     }
     const warning = rpcWarningFor(settings);
@@ -307,23 +377,29 @@ export const useWalletStore = create<WalletStoreState>((set, get) => ({
 
   setSettings: async (s) => {
     await saveSettings(s);
-    const warning = rpcWarningFor(s);
-    set({
-      settings: s,
-      rpc: new RpcClient({
-        url: s.rpcUrl,
-        proxyUrl: s.rpcProxyUrl?.trim() || undefined,
-        unreachableHint: warning ?? undefined,
-      }),
-      rpcWarning: warning,
+    publishSettings(s, set, get);
+  },
+
+  switchNetwork: async (net) => {
+    // Settings may not have loaded: one failed read at boot leaves them null and
+    // nothing retries. Treating that as "nothing to switch" is exactly what made
+    // tapping the network pill do nothing at all, so read them back first.
+    const known = get().settings;
+    const current = known ?? (await loadSettingsWithRetry());
+    // Publish what was actually stored before changing it, so the pill stops
+    // claiming the default network and the change event below has a real "from".
+    if (!known) set({ settings: current });
+    if (current.network === net.id) return;
+    // Patch rather than write the whole record back: the language switcher and
+    // the Settings panel write independently, and putting this snapshot back
+    // wholesale would silently revert whatever they changed meanwhile.
+    const next = await patchSettings({
+      network: net.id,
+      rpcUrl: net.rpcUrl,
+      explorerUrl: net.explorerUrl,
+      relayerUrl: net.relayerUrl ?? '',
     });
-    // Auto-lock timing and the keep-unlocked switch live in settings, so the
-    // sealed session has to be re-minted for a change to apply to the session
-    // already in flight rather than only to the next unlock.
-    const w = get().wallet;
-    if (w) {
-      resealUnlockSession(w, s).catch((e) => console.error('Re-sealing unlock session failed:', e));
-    }
+    publishSettings(next, set, get);
   },
 
   pushToast: (level, message) => {

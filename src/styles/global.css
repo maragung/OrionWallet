@@ -113,6 +113,9 @@
   --z-sidebar: 90;
   --z-mobile-nav: 95;
   --z-toast: 1000;
+  /* Header dropdowns: above toasts (which are click-through-blocking and sit
+     in the same corner), below overlays and modals. */
+  --z-dropdown: 1500;
   --z-overlay: 2000;
   --z-modal: 3000;
 }
