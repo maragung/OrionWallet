@@ -5,6 +5,25 @@ import { wipeEverything, closeDb } from '../../src/wallet/storage';
 import { generateKeypair } from '../../src/crypto/ed25519';
 import { deriveAddressFromPubkey } from '../../src/crypto/address';
 import { base64Encode } from '../../src/crypto/base64';
+import { stubPvacGlueUnavailable } from './helpers/pvac-glue';
+
+/** PVAC states that are still in motion; everything else is a settled outcome. */
+const PVAC_IN_FLIGHT = ['idle', 'loading'];
+
+/**
+ * Poll until PVAC stops loading. The load is deliberately fire-and-forget, so
+ * there is nothing to await — and a fixed sleep either flakes on a loaded
+ * machine or wastes the time it reserves.
+ */
+async function waitForPvacToSettle(timeoutMs = 5000) {
+  const deadline = Date.now() + timeoutMs;
+  let state = useWalletStore.getState();
+  while (PVAC_IN_FLIGHT.includes(state.pvacStatus) && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 25));
+    state = useWalletStore.getState();
+  }
+  return state;
+}
 
 // Build a fake wallet for testing (doesn't go through createNewWallet)
 function makeTestWallet(): Wallet {
@@ -30,6 +49,8 @@ describe('wallet store — PVAC auto-load', () => {
     if (typeof indexedDB === 'undefined') {
       await import('fake-indexeddb/auto');
     }
+    // Without this the WASM probe's behaviour is whatever the host network does.
+    stubPvacGlueUnavailable();
   });
 
   beforeEach(async () => {
@@ -46,6 +67,7 @@ describe('wallet store — PVAC auto-load', () => {
   });
 
   afterAll(async () => {
+    vi.unstubAllGlobals();
     await closeDb();
   });
 
@@ -71,17 +93,14 @@ describe('wallet store — PVAC auto-load', () => {
     // loading → ready / unavailable / failed depending on whether pvac.wasm exists
     expect(['loading', 'ready', 'unavailable', 'failed']).toContain(state.pvacStatus);
 
-    // Wait for the load to complete (or fail)
-    await new Promise((r) => setTimeout(r, 500));
-
-    const finalState = useWalletStore.getState();
+    const finalState = await waitForPvacToSettle();
     expect(['ready', 'unavailable', 'failed']).toContain(finalState.pvacStatus);
   });
 
   it('lock() resets pvacStatus to idle and pvacBridgeReady to false', async () => {
     const wallet = makeTestWallet();
     useWalletStore.getState().setWallet(wallet);
-    await new Promise((r) => setTimeout(r, 500));
+    await waitForPvacToSettle();
 
     useWalletStore.getState().lock();
     const state = useWalletStore.getState();

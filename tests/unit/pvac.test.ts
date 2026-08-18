@@ -1,12 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { afterAll, beforeAll, describe, it, expect, vi } from 'vitest';
 import {
   isPvacWasmAvailable,
   getPvacBridge,
   StubPvacBridge,
   PvacNotAvailableError,
 } from '../../src/pvac';
+import { stubPvacGlueUnavailable } from './helpers/pvac-glue';
 
 describe('pvac stub', () => {
+  beforeAll(() => stubPvacGlueUnavailable());
+  afterAll(() => vi.unstubAllGlobals());
+
   it('isPvacWasmAvailable returns false initially', () => {
     // Note: this could be true if a previous test loaded the WASM.
     // We test that the function doesn't throw.
@@ -95,5 +99,11 @@ describe('pvac stub', () => {
   it('loadPvacWasm returns false (stub mode)', async () => {
     const ok = await import('../../src/pvac').then((m) => m.loadPvacWasm());
     expect(ok).toBe(false);
+  });
+
+  it('leaves the stub bridge in place when the glue script is missing', async () => {
+    await import('../../src/pvac').then((m) => m.loadPvacWasm());
+    expect(isPvacWasmAvailable()).toBe(false);
+    expect(getPvacBridge()).toBeInstanceOf(StubPvacBridge);
   });
 });
