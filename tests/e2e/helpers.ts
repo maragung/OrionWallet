@@ -43,7 +43,7 @@ export async function createWallet(
 }
 
 /**
- * Clear IndexedDB to ensure a clean state.
+ * Clear IndexedDB (and this tab's unlock session) to ensure a clean state.
  * Useful in beforeEach hooks.
  *
  * NOTE: After calling this, you MUST reload the page for the change to take
@@ -51,6 +51,13 @@ export async function createWallet(
  */
 export async function clearIndexedDB(page: Page): Promise<void> {
   await page.evaluate(() => {
+    // The sealed unlock session lives in sessionStorage; leaving it behind would
+    // let a "clean" page reload straight back into an unlocked wallet.
+    try {
+      sessionStorage.clear();
+    } catch {
+      /* ignore */
+    }
     // Clear the legacy database too, otherwise the rebrand migration copies it
     // straight back into the new one and the "clean state" is not clean.
     const names = ['orion-wallet', 'webcli-react'];

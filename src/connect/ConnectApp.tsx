@@ -18,6 +18,7 @@ import { useWalletStore } from '../store/wallet-store';
 import { UnlockWallet } from '../components/UnlockWallet';
 import { CreateWallet } from '../components/CreateWallet';
 import { Toasts } from '../components/Toasts';
+import { SessionRestoring } from '../components/SessionRestoring';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useI18n } from '../i18n/useI18n';
@@ -73,7 +74,7 @@ function abbreviate(addr: string): string {
 export function ConnectApp() {
   const params = useMemo(parseParams, []);
   const store = useWalletStore();
-  const { wallet, isUnlocked, rpc, initRpc, settings } = store;
+  const { wallet, isUnlocked, isRestoringSession, rpc, initRpc, resumeSession, settings } = store;
   const { t } = useI18n();
 
   const [showCreate, setShowCreate] = useState(false);
@@ -221,6 +222,13 @@ export function ConnectApp() {
   useEffect(() => {
     if (isUnlocked && !rpc) initRpc().catch(() => undefined);
   }, [isUnlocked, rpc, initRpc]);
+
+  // A popup opened by the wallet inherits a copy of the tab's sessionStorage, so
+  // a live unlock session reopens here too — a dApp request during an unlocked
+  // session should not stop to ask for the PIN again.
+  useEffect(() => {
+    resumeSession().catch((e) => console.error('resumeSession failed:', e));
+  }, [resumeSession]);
 
   const requestApproval = useCallback(
     (request: ApprovalRequest) =>
@@ -612,6 +620,16 @@ export function ConnectApp() {
   }
 
   if (!isUnlocked || !wallet) {
+    // Reopening an inherited session takes a moment — don't ask for the PIN
+    // over a wallet that is about to unlock itself.
+    if (isRestoringSession) {
+      return (
+        <>
+          <SessionRestoring />
+          <Toasts />
+        </>
+      );
+    }
     return (
       <div style={pageStyle}>
         {showCreate ? (

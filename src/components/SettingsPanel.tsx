@@ -632,6 +632,98 @@ export function SettingsPanel() {
       {section === 'security' && (
         <div className="card">
           <div className="card-header">
+            <div className="card-title">Session &amp; Auto-Lock</div>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+            While the session is alive, reloading the page brings the wallet back without the PIN.
+            The keys are sealed for this browser tab only: closing it, locking the wallet, or
+            letting the session expire ends it, and an unlock is never kept longer than 8 hours.
+          </p>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 'var(--sp-2)',
+              marginBottom: 'var(--sp-3)',
+              fontSize: 13,
+              cursor: 'pointer',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={settings.keepUnlocked !== false}
+              onChange={async (e) => {
+                const next: Settings = { ...settings, keepUnlocked: e.target.checked };
+                setLocalSettings(next);
+                try {
+                  // Applies to the session already in flight, not just the next
+                  // unlock: turning this off drops the sealed keys right away.
+                  await setSettings(next);
+                  pushToast(
+                    'success',
+                    next.keepUnlocked
+                      ? 'Reloading this tab will keep the wallet unlocked'
+                      : 'Reloading this tab will now ask for your PIN',
+                  );
+                } catch (err) {
+                  pushToast('error', `Save failed: ${(err as Error).message}`);
+                }
+              }}
+            />
+            <span>
+              Stay unlocked after a page refresh
+              <span
+                style={{ display: 'block', color: 'var(--text-muted)', fontSize: 'var(--fs-xs)' }}
+              >
+                Turn off to require the PIN on every reload.
+              </span>
+            </span>
+          </label>
+          <div className="form-row">
+            <label htmlFor="autolock">Auto-lock after inactivity</label>
+            <select
+              id="autolock"
+              value={String(settings.autoLockMinutes ?? 30)}
+              onChange={async (e) => {
+                const minutes = Number(e.target.value);
+                const next: Settings = { ...settings, autoLockMinutes: minutes };
+                setLocalSettings(next);
+                try {
+                  await setSettings(next);
+                  pushToast(
+                    'success',
+                    minutes > 0
+                      ? `Auto-lock set to ${minutes} minutes`
+                      : 'Auto-lock disabled for this tab',
+                  );
+                } catch (err) {
+                  pushToast('error', `Save failed: ${(err as Error).message}`);
+                }
+              }}
+            >
+              <option value="5">5 minutes</option>
+              <option value="15">15 minutes</option>
+              <option value="30">30 minutes (default)</option>
+              <option value="60">1 hour</option>
+              <option value="0">Never (until the tab closes)</option>
+            </select>
+            <div
+              style={{
+                fontSize: 'var(--fs-xs)',
+                color: 'var(--text-muted)',
+                marginTop: 'var(--sp-1)',
+              }}
+            >
+              Counted from your last interaction — clicks, typing and scrolling all reset it. The
+              8-hour cap on a single unlock applies either way.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {section === 'security' && (
+        <div className="card">
+          <div className="card-header">
             <div className="card-title">Export Private Key</div>
           </div>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>

@@ -82,6 +82,44 @@ The PIN is **never persisted**, in any form. It derives the decryption key at un
 and is then discarded. There is no "remember my PIN" — by design. Consequently, a forgotten
 PIN can only be resolved by restoring from the recovery phrase.
 
+### Unlock session
+
+The PIN is not persisted, but the *result* of unlocking is, for as long as the session lasts:
+refreshing the page must not throw the user back to the PIN screen. `src/wallet/unlock-session.ts`
+seals the decrypted wallet with AES-256-GCM and splits it across two stores:
+
+| Half | Where | Lifetime |
+|---|---|---|
+| Ciphertext (`orion:unlock-session`) | `sessionStorage` | One tab. Gone when that tab closes |
+| Sealing key | IndexedDB `unlock-session-keys`, as a **non-extractable** `CryptoKey` | Deleted on lock; orphans pruned by age |
+
+Neither half is usable alone. IndexedDB survives a tab closing but holds no ciphertext;
+`sessionStorage` holds ciphertext but no key, and a second tab or another origin cannot read
+it. The key is generated with `extractable: false`, so it can be *used* by this origin but its
+bytes cannot be read out — not by our own code, and not by anything that manages to run in the
+page. The session rotates (fresh key, fresh nonce) on every restore, and carries `createdAt`
+forward so refreshing cannot extend the absolute cap.
+
+Expiry: **30 minutes idle** (configurable, `autoLockMinutes`; `0` disables it) and an **8-hour
+absolute cap** from the original unlock. Both are enforced on restore, and the idle window is
+also enforced live by `useAutoLock`, so a tab left open locks itself.
+
+What this does *not* defend against — the honest part:
+
+- **Script execution in the tab.** Code running in the page during a live session can ask the
+  browser to decrypt the session and then sign with the keys, exactly as the wallet does. It
+  cannot exfiltrate the sealing key, so the compromise ends with the tab; it does not become a
+  stolen key usable elsewhere.
+- **A compromised device.** Unchanged from the threat model above: local malware can read
+  IndexedDB and `sessionStorage` together.
+- **Insecure contexts.** Without `crypto.subtle` (plain `http://`, see below), the sealing key
+  falls back to raw bytes in IndexedDB and the non-extractability guarantee is lost. The split
+  and the expiry still hold.
+
+To opt out entirely, turn off **Settings → Security → Stay unlocked after a page refresh**
+(`keepUnlocked: false`). Nothing is written, and every reload asks for the PIN — the behaviour
+before this feature existed. An explicit lock (🔒) destroys both halves immediately.
+
 ### Randomness
 
 All security-relevant values use `crypto.getRandomValues` via `src/crypto/random.ts`.

@@ -2,6 +2,24 @@
 
 All notable changes to Orion Wallet will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **Unlock session that survives a page reload** (`src/wallet/unlock-session.ts`) — the unlocked wallet is sealed with AES-256-GCM and split across two stores: the ciphertext in `sessionStorage` (scoped to one tab, dropped when it closes) and the key in IndexedDB as a non-extractable `CryptoKey`. Neither half is usable alone. The session rotates on every restore, and `createdAt` is carried through so refreshing cannot extend the absolute cap.
+- **Idle auto-lock** (`src/hooks/useAutoLock.ts`) — real user activity (pointer, keyboard, wheel, touch) refreshes the idle window; the wallet locks itself once it elapses, so the 30-minute rule holds in a tab that is never reloaded, not only on refresh.
+- **Settings → Security → Session & Auto-Lock** — "Stay unlocked after a page refresh" (`keepUnlocked`) and "Auto-lock after inactivity" (`autoLockMinutes`: 5/15/30/60/never). Both apply to the session already open, not just the next unlock.
+- **"Restoring your session…" screen** (`src/components/SessionRestoring.tsx`) — shown while a session is reopened, so a reload no longer flashes the PIN screen on the way back into the wallet.
+- **`unlock-session-keys` object store** — IndexedDB `DB_VERSION` 5 (additive migration). Holds only the sealing key; orphans left by a tab that closed without locking are pruned by age.
+- **`aesGcmSeal` / `aesGcmOpen` / `generateAesGcmKey`** in `src/crypto/aes.ts` — AES-GCM helpers that accept a `CryptoKey` or raw bytes, so the session works in insecure contexts too (without the non-extractability guarantee).
+- **Docs** — "Locking and unlocking" in `docs/USER_GUIDE.md` (what a refresh, a tab close, and 🔒 each do) and "Unlock session" in `docs/SECURITY.md` (what is persisted, the two-halves split, what it does _not_ defend against, and how to opt out).
+
+### Fixed
+
+- **Reloading the page asked for the PIN again mid-session** — the unlocked wallet lived only in the Zustand store, so any refresh dropped it and rendered the unlock screen even seconds after unlocking. The wallet now resumes from the sealed session; the PIN is required only once the session has genuinely ended (explicit lock, tab closed, 30 minutes idle, or the 8-hour cap). `/connect` popups resume the same way instead of re-prompting during a live session.
+- **E2E lock button selector** — `tests/e2e/wallet-unlock.spec.ts` and `pvac-auto-load.spec.ts` clicked `button[aria-label="Lock"]`, which never matched the rendered `aria-label="Lock wallet"`.
+- **`clearIndexedDB` left the tab's session behind** — the E2E helper now clears `sessionStorage` as well, so a "clean state" reload cannot come back unlocked.
+
 ## [0.1.0] — 2026-08-05
 
 ### Added

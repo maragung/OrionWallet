@@ -16,6 +16,7 @@ with your PIN, and stored only on your own device. Nothing is sent to a server.
 - [Encrypted balance (FHE)](#encrypted-balance-fhe)
 - [Stealth transfers](#stealth-transfers)
 - [Connecting to a dApp](#connecting-to-a-dapp)
+- [Locking and unlocking](#locking-and-unlocking)
 - [Session expiry](#session-expiry)
 - [Backup and recovery](#backup-and-recovery)
 - [Troubleshooting](#troubleshooting)
@@ -152,9 +153,40 @@ Review and revoke connections at any time under **Settings → Connected Sites**
 
 ---
 
+## Locking and unlocking
+
+Your PIN decrypts the wallet. The decrypted keys then stay available for as long as the
+unlock session lasts — you are not asked for the PIN again until it ends.
+
+- **Refreshing the page keeps you unlocked.** The keys are re-sealed for the browser tab
+  you are in, so a reload picks the session back up instead of returning you to the PIN
+  screen. You will briefly see "Restoring your session…" while that happens.
+- **Closing the tab ends the session.** The sealed copy is scoped to that one tab and
+  goes away with it, so a new tab or window starts locked.
+- **🔒 in the header locks immediately** and destroys the sealed copy — a reload after
+  locking asks for the PIN, as it should.
+- **Inactivity locks the wallet** after 30 minutes by default, and a single unlock is
+  never carried for more than 8 hours regardless of activity.
+
+Neither half of the sealed session is useful alone: the encrypted keys are held by the
+tab, while the key that opens them is kept by the browser in a form that no page —
+including this one — can read back out.
+
+Under **Settings → Security → Session & Auto-Lock**:
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| Stay unlocked after a page refresh | On | Turn off to require the PIN on every reload |
+| Auto-lock after inactivity | 30 minutes | 5 / 15 / 30 / 60 minutes, or never (until the tab closes) |
+
+Both apply at once, including to the session you already have open. On a shared or
+untrusted computer, turn the first one off and lock the wallet when you step away.
+
+---
+
 ## Session expiry
 
-Orion Wallet sessions expire automatically:
+The same windows govern dApp connections, which expire automatically:
 
 - **Idle timeout:** 30 minutes of inactivity
 - **Absolute timeout:** 8 hours from connection

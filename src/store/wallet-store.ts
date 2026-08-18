@@ -14,6 +14,13 @@ import { create } from 'zustand';
 import type { Wallet } from '../wallet/wallet';
 import { RpcClient } from '../rpc/client';
 import { loadSettings, saveSettings, type Settings } from '../wallet/storage';
+import {
+  hasUnlockSession,
+  saveUnlockSession,
+  resealUnlockSession,
+  restoreUnlockSession,
+  clearUnlockSession,
+} from '../wallet/unlock-session';
 import { getPvacBridge, isPvacWasmAvailable } from '../pvac';
 
 export type ToastLevel = 'info' | 'success' | 'error' | 'warning';
@@ -30,6 +37,12 @@ interface WalletStoreState {
   // Wallet state
   wallet: Wallet | null;
   isUnlocked: boolean;
+  /**
+   * True while a persisted unlock session is being reopened on boot. Seeded
+   * synchronously so the very first paint after a reload shows a restoring
+   * state instead of flashing the PIN screen.
+   */
+  isRestoringSession: boolean;
 
   // RPC
   rpc: RpcClient | null;
@@ -47,8 +60,10 @@ interface WalletStoreState {
   loadingMessage: string;
 
   // Actions
-  setWallet: (w: Wallet | null) => void;
+  setWallet: (w: Wallet | null, opts?: { persistSession?: boolean }) => void;
   lock: () => void;
+  /** Reopen this tab's unlock session, if it has a live one. */
+  resumeSession: () => Promise<boolean>;
   initRpc: () => Promise<RpcClient>;
   setSettings: (s: Settings) => Promise<void>;
   pushToast: (level: ToastLevel, message: string) => void;
@@ -59,6 +74,14 @@ interface WalletStoreState {
 }
 
 let toastId = 1;
+
+/**
+ * In-flight session restore, shared by every caller.
+ *
+ * Both app roots ask to resume on mount, and React StrictMode runs mount
+ * effects twice in dev — without this they would race over the same envelope.
+ */
+let resumeInFlight: Promise<boolean> | null = null;
 
 /**
  * Auto-load the PVAC WASM module + init the bridge with the wallet's privB64.
@@ -132,6 +155,7 @@ async function autoLoadPvac(
 export const useWalletStore = create<WalletStoreState>((set, get) => ({
   wallet: null,
   isUnlocked: false,
+  isRestoringSession: hasUnlockSession(),
   rpc: null,
   settings: null,
 
@@ -149,10 +173,15 @@ export const useWalletStore = create<WalletStoreState>((set, get) => ({
    * When a wallet is set, automatically:
    *   - Initializes RPC if needed
    *   - Auto-loads PVAC WASM + inits bridge
+   *   - Seals an unlock session so a page reload does not ask for the PIN again
+   *     (`persistSession: false` for a wallet that came out of one already)
    */
-  setWallet: (w) => {
+  setWallet: (w, opts = {}) => {
     set({ wallet: w, isUnlocked: w !== null });
     if (w) {
+      if (opts.persistSession !== false) {
+        saveUnlockSession(w).catch((e) => console.error('Persisting unlock session failed:', e));
+      }
       // The unlock screen (and its ProcessingModal) unmounts the instant
       // `isUnlocked` flips, so drive the GLOBAL LoadingOverlay here instead.
       // It renders on top of the already-mounted wallet layout, which keeps the
@@ -190,15 +219,55 @@ export const useWalletStore = create<WalletStoreState>((set, get) => ({
       w.mnemonic = '';
       w.hdMaster = new Uint8Array(0);
     }
+    // Locking is explicit: the persisted session must not survive it, or the
+    // next reload would silently unlock again.
+    clearUnlockSession().catch((e) => console.error('Clearing unlock session failed:', e));
     set({
       wallet: null,
       isUnlocked: false,
+      isRestoringSession: false,
       pvacStatus: 'idle',
       pvacAvailable: false,
       pvacBridgeReady: false,
       isLoading: false,
       loadingMessage: '',
     });
+  },
+
+  /**
+   * Reopen the unlock session this tab sealed before the reload.
+   *
+   * Resolves false when there is nothing to restore (no session, expired, or
+   * unreadable), in which case the caller shows the PIN screen as before.
+   */
+  resumeSession: async () => {
+    if (get().isUnlocked) {
+      set({ isRestoringSession: false });
+      return true;
+    }
+    if (resumeInFlight) return resumeInFlight;
+    if (!hasUnlockSession()) {
+      set({ isRestoringSession: false });
+      return false;
+    }
+
+    set({ isRestoringSession: true });
+    resumeInFlight = (async () => {
+      try {
+        const wallet = await restoreUnlockSession();
+        if (!wallet) return false;
+        // The session it came from was just rotated — do not seal it again.
+        get().setWallet(wallet, { persistSession: false });
+        return true;
+      } catch (e) {
+        console.error('Restoring unlock session failed:', e);
+        return false;
+      } finally {
+        set({ isRestoringSession: false });
+        resumeInFlight = null;
+      }
+    })();
+    return resumeInFlight;
   },
 
   initRpc: async () => {
@@ -218,6 +287,13 @@ export const useWalletStore = create<WalletStoreState>((set, get) => ({
   setSettings: async (s) => {
     await saveSettings(s);
     set({ settings: s, rpc: new RpcClient({ url: s.rpcUrl }) });
+    // Auto-lock timing and the keep-unlocked switch live in settings, so the
+    // sealed session has to be re-minted for a change to apply to the session
+    // already in flight rather than only to the next unlock.
+    const w = get().wallet;
+    if (w) {
+      resealUnlockSession(w, s).catch((e) => console.error('Re-sealing unlock session failed:', e));
+    }
   },
 
   pushToast: (level, message) => {

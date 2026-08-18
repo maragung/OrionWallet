@@ -22,7 +22,7 @@ test.describe('Wallet Unlock Flow', () => {
     await expect(page.locator('.app-header')).toBeVisible({ timeout: 5_000 });
 
     // Step 2: Lock the wallet
-    await page.click('button[aria-label="Lock"]');
+    await page.click('button[aria-label="Lock wallet"]');
 
     // Wait a moment for the lock to take effect
     await page.waitForTimeout(500);
@@ -47,7 +47,7 @@ test.describe('Wallet Unlock Flow', () => {
     await createWallet(page, 'Wrong PIN E2E', 'Pass1word!abc');
 
     // Lock - wait for unlock screen to appear
-    await page.click('button[aria-label="Lock"]');
+    await page.click('button[aria-label="Lock wallet"]');
     await page.waitForSelector('h1:has-text("Welcome Back")', { timeout: 15_000 });
 
     // Try wrong PIN
@@ -59,5 +59,32 @@ test.describe('Wallet Unlock Flow', () => {
     // Check for error text (in modal or toast)
     const errorEl = page.locator('text=/Wrong PIN|Unlock failed|decryption failed/i').first();
     await expect(errorEl).toBeVisible({ timeout: 15_000 });
+  });
+
+  test('reloading during a live session does not ask for the PIN again', async ({ page }) => {
+    test.setTimeout(60_000);
+    await createWallet(page, 'Session E2E', 'Pass1word!abc');
+    await expect(page.locator('.app-header')).toBeVisible({ timeout: 10_000 });
+
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+
+    // The wallet comes back on its own — no "Welcome Back", no PIN field.
+    await expect(page.locator('.app-header')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('h1:has-text("Welcome Back")')).toHaveCount(0);
+  });
+
+  test('locking ends the session, so a reload asks for the PIN', async ({ page }) => {
+    test.setTimeout(60_000);
+    await createWallet(page, 'Session Lock E2E', 'Pass1word!abc');
+
+    await page.click('button[aria-label="Lock wallet"]');
+    await page.waitForSelector('h1:has-text("Welcome Back")', { timeout: 15_000 });
+
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+
+    // An explicit lock must not be undone by a refresh.
+    await expect(page.locator('h1:has-text("Welcome Back")')).toBeVisible({ timeout: 15_000 });
   });
 });

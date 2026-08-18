@@ -131,9 +131,10 @@ function installConnectDriver(this: unknown): void {
   })();
 }
 
-/** The popup is a separate document: it shares the encrypted wallet in
- * IndexedDB but NOT the in-memory unlocked state, so it must be unlocked with
- * the PIN before it can send the hello. */
+/** The popup is a separate document that shares the encrypted wallet in
+ * IndexedDB. It inherits a copy of the opener's unlock session, so it normally
+ * comes up already unlocked; the PIN is only filled in when it does show the
+ * unlock screen (no live session, or a different account is being unlocked). */
 async function unlockPopup(popup: Page, pin: string): Promise<void> {
   await popup.waitForLoadState('domcontentloaded');
   const pinInput = popup.locator('input[id="pin"]');

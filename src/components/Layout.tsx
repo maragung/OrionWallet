@@ -19,10 +19,12 @@ import { BrowserPanel } from './BrowserPanel';
 import { TokensView } from './TokensView';
 import { Toasts } from './Toasts';
 import { LoadingOverlay } from './LoadingOverlay';
+import { SessionRestoring } from './SessionRestoring';
 import { ErrorBoundary } from './ErrorBoundary';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ConnectApprovalHost } from './ConnectApprovalHost';
 import { useTheme } from '../hooks/useTheme';
+import { useAutoLock } from '../hooks/useAutoLock';
 import { useI18n } from '../i18n/useI18n';
 import { ConnectHandler } from '../connect/rpc-handler';
 import {
@@ -303,11 +305,25 @@ export function Layout() {
   const [tab, setTab] = useState<Tab>('balance');
   const [showCreate, setShowCreate] = useState(false);
   const { t } = useI18n();
-  const { wallet, isUnlocked, initRpc, lock, isLoading, loadingMessage, pvacStatus, pvacError } =
-    useWalletStore();
+  const {
+    wallet,
+    isUnlocked,
+    isRestoringSession,
+    initRpc,
+    resumeSession,
+    lock,
+    isLoading,
+    loadingMessage,
+    pvacStatus,
+    pvacError,
+  } = useWalletStore();
 
   // Initialize theme system (applies data-theme to <html>)
   useTheme();
+
+  // Lock the wallet after the configured idle window, and keep the persisted
+  // session's idle clock in step with real activity.
+  useAutoLock();
 
   // Host for SDK connect sessions handed off from /connect popups (see handoff).
   // The main wallet window is long-lived, so dApp sessions survive the popup
@@ -392,6 +408,12 @@ export function Layout() {
     });
   }, [initRpc]);
 
+  // A reload drops the in-memory wallet, so reopen the session this tab sealed
+  // at unlock time. No live session (or an expired one) leaves us locked.
+  useEffect(() => {
+    resumeSession().catch((e) => console.error('resumeSession failed:', e));
+  }, [resumeSession]);
+
   // Global keyboard shortcuts (desktop). Ignored while typing in a field.
   useEffect(() => {
     if (!isUnlocked) return;
@@ -427,6 +449,15 @@ export function Layout() {
   }, [isUnlocked]);
 
   if (!isUnlocked || !wallet) {
+    // Don't flash the PIN screen over a session that is about to come back.
+    if (isRestoringSession) {
+      return (
+        <>
+          <SessionRestoring />
+          <Toasts />
+        </>
+      );
+    }
     return (
       <>
         {showCreate ? (

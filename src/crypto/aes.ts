@@ -221,6 +221,60 @@ export async function aesGcmDecrypt(
 }
 
 /**
+ * A key usable with `aesGcmSeal` / `aesGcmOpen`.
+ *
+ * A `CryptoKey` may be non-extractable, i.e. no script can ever read its bytes
+ * back — only WebCrypto can use it. Raw bytes are the fallback for insecure
+ * contexts, where `crypto.subtle` does not exist at all.
+ */
+export type AesGcmKey = CryptoKey | Uint8Array;
+
+/** Encrypt with an already-generated AES-256-GCM key (no PBKDF2 step). */
+export async function aesGcmSeal(
+  plaintext: Uint8Array,
+  key: AesGcmKey,
+  nonce: Uint8Array,
+): Promise<Uint8Array> {
+  if (key instanceof Uint8Array) return aesGcmEncrypt(plaintext, key, nonce);
+  return new Uint8Array(
+    await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: toBufferSource(nonce) },
+      key,
+      toBufferSource(plaintext),
+    ),
+  );
+}
+
+/** Decrypt data produced by `aesGcmSeal`. Throws on auth failure. */
+export async function aesGcmOpen(
+  ciphertext: Uint8Array,
+  key: AesGcmKey,
+  nonce: Uint8Array,
+): Promise<Uint8Array> {
+  if (key instanceof Uint8Array) return aesGcmDecrypt(ciphertext, key, nonce);
+  return new Uint8Array(
+    await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: toBufferSource(nonce) },
+      key,
+      toBufferSource(ciphertext),
+    ),
+  );
+}
+
+/**
+ * Generate a fresh AES-256-GCM key for sealing short-lived local data.
+ *
+ * In a secure context the key is NON-EXTRACTABLE: it can be handed to
+ * IndexedDB (CryptoKey is structured-cloneable) and used later, but its bytes
+ * can never be read out again — not by our code, not by injected script.
+ * Without `crypto.subtle` there is no such thing, so raw bytes are returned.
+ */
+export async function generateAesGcmKey(): Promise<AesGcmKey> {
+  if (!hasSubtle()) return randomBytes(KEY_LEN);
+  return crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+
+/**
  * Cast a Uint8Array to BufferSource that WebCrypto accepts.
  * Works around TS lib dom strictness with SharedArrayBuffer.
  */

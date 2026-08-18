@@ -60,7 +60,7 @@ test.describe('PVAC Auto-Load', () => {
       timeout: 10_000,
     });
 
-    await page.click('button[aria-label="Lock"]');
+    await page.click('button[aria-label="Lock wallet"]');
     await expect(page.locator('h1:has-text("Welcome Back")')).toBeVisible();
   });
 

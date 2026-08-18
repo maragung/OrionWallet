@@ -8,7 +8,7 @@ import { isValidAddress } from '../crypto/address';
 import { PinModal } from './PinModal';
 
 export function AccountSwitcher() {
-  const { wallet, setWallet, pushToast } = useWalletStore();
+  const { wallet, setWallet, lock, pushToast } = useWalletStore();
   const panelLoading = usePanelLoading();
   const [accounts, setAccounts] = useState<ManifestEntry[]>([]);
   const [showDerive, setShowDerive] = useState(false);
@@ -89,6 +89,14 @@ export function AccountSwitcher() {
     panelLoading.show('Removing account', 'Deleting the account from local storage…');
     try {
       await removeAccount(addr);
+      // Removing the account that is currently open has to close it too, or its
+      // keys would live on in memory — and in the unlock session, which would
+      // bring the deleted account back on the next reload.
+      if (addr === wallet.addr) {
+        lock();
+        pushToast('success', 'Account removed — wallet locked');
+        return;
+      }
       await refresh();
       pushToast('success', 'Account removed');
     } catch (e) {

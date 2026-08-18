@@ -16,7 +16,7 @@ import type { NetworkId, CustomNetworkDef } from './networks';
 const DB_NAME = 'orion-wallet';
 /** Pre-rebrand database name. Data is copied forward on first launch. */
 const LEGACY_DB_NAME = 'webcli-react';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 /** How long an IndexedDB open/upgrade may take before we fail loudly. */
 const DB_OPEN_TIMEOUT_MS = 8_000;
 
@@ -36,6 +36,9 @@ const OBJECT_STORES: { name: string; keyPath: string }[] = [
   { name: 'token-custom', keyPath: 'key' },
   // v4: oct:// browser bookmarks (additive migration).
   { name: 'browser-bookmarks', keyPath: 'uri' },
+  // v5: unlock-session keys (additive migration). Holds the key that seals the
+  // unlock session, never the session itself — see wallet/unlock-session.ts.
+  { name: 'unlock-session-keys', keyPath: 'id' },
 ];
 
 export interface StoredWalletEntry {
@@ -74,6 +77,13 @@ export interface Settings {
   relayerUrl?: string;
   /** User-added networks (presets are not stored here). */
   customNetworks?: CustomNetworkDef[];
+  /**
+   * Keep the wallet unlocked across a page reload (default true).
+   * The session never outlives the browser tab — see wallet/unlock-session.ts.
+   */
+  keepUnlocked?: boolean;
+  /** Minutes of inactivity before the wallet locks itself. 0 disables idle lock. */
+  autoLockMinutes?: number;
 }
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
@@ -589,6 +599,56 @@ export async function deleteCustomToken(
 ): Promise<void> {
   const db = await getDb();
   await db.delete('token-custom', tokenKey(rpcUrl, owner, contract));
+}
+
+// ===== Unlock-session keys =====
+
+/**
+ * The key that seals one unlock session.
+ *
+ * Deliberately split from the sealed session itself, which lives in
+ * `sessionStorage`: neither half is usable alone, and the sessionStorage half
+ * dies with the browser tab. See wallet/unlock-session.ts for the full model.
+ */
+export interface UnlockSessionKeyRecord {
+  id: string;
+  /**
+   * Non-extractable AES-GCM `CryptoKey` in a secure context (its bytes can
+   * never be read back), raw 32 bytes only where `crypto.subtle` is absent.
+   */
+  key: CryptoKey | Uint8Array;
+  createdAt: number;
+}
+
+export async function putUnlockSessionKey(rec: UnlockSessionKeyRecord): Promise<void> {
+  const db = await getDb();
+  await db.put('unlock-session-keys', rec);
+}
+
+export async function getUnlockSessionKey(id: string): Promise<UnlockSessionKeyRecord | null> {
+  const db = await getDb();
+  return ((await db.get('unlock-session-keys', id)) as UnlockSessionKeyRecord | undefined) ?? null;
+}
+
+export async function deleteUnlockSessionKey(id: string): Promise<void> {
+  const db = await getDb();
+  await db.delete('unlock-session-keys', id);
+}
+
+/**
+ * Drop session keys older than `maxAgeMs`.
+ *
+ * A tab closed without locking leaves its key behind (the sealed session it
+ * belonged to is already gone with the tab), so keys are pruned by age rather
+ * than by reference — another tab may still be using one we cannot see.
+ */
+export async function pruneUnlockSessionKeys(maxAgeMs: number): Promise<void> {
+  const db = await getDb();
+  const all = (await db.getAll('unlock-session-keys')) as UnlockSessionKeyRecord[];
+  const cutoff = Date.now() - maxAgeMs;
+  for (const rec of all) {
+    if (!(rec.createdAt > cutoff)) await db.delete('unlock-session-keys', rec.id);
+  }
 }
 
 // ===== Maintenance =====
