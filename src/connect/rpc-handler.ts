@@ -20,6 +20,7 @@ import {
   ERROR_CODES,
   EVENTS,
   METHODS,
+  PROTOCOL_VERSION,
   canonicalizeMethod,
   isEnvelope,
   isProhibitedMethod,
@@ -41,9 +42,12 @@ import {
   signTypedDataOctra,
   signContractApproval,
   signContractCall,
+  signNativeTransfer,
+  previewTransfer,
   type TypedData,
   type ApproveContractParams,
   type SignContractParams,
+  type SignTransferParams,
 } from './typed-data';
 import {
   createSession,
@@ -61,8 +65,17 @@ import type { SdkSessionRecord } from '../wallet/storage';
 /** How far an inbound `ts` may drift from local time (ms). */
 const FRESHNESS_WINDOW_MS = 30_000;
 
+/**
+ * Methods answered while the wallet is locked, without raising an unlock prompt.
+ * Everything else suspends until the user unlocks — see `dispatch`.
+ */
+const UNLOCK_EXEMPT_METHODS: ReadonlySet<string> = new Set<string>([
+  METHODS.DISCONNECT,
+  METHODS.PING,
+]);
+
 export type ApprovalKind =
-  'connect' | 'signMessage' | 'signTypedData' | 'approveContract' | 'signContract';
+  'connect' | 'signMessage' | 'signTypedData' | 'approveContract' | 'signContract' | 'signTransfer';
 
 export interface ApprovalRequest {
   kind: ApprovalKind;
@@ -388,9 +401,14 @@ export class ConnectHandler {
     // Locked-wallet gate: instead of failing outright, suspend the request and
     // ask the wallet UI to prompt for unlock. When the user unlocks, the promise
     // resolves true and we fall through to normal dispatch (approval/read/etc.).
-    // If the user never unlocks, the dApp call times out on its own. DISCONNECT
-    // is exempt so a dApp can always tear down a session without an unlock.
-    if (method !== METHODS.DISCONNECT && !this.host.isUnlocked()) {
+    // If the user never unlocks, the dApp call times out on its own.
+    //
+    // Two methods are exempt. DISCONNECT, so a dApp can always tear down a
+    // session without an unlock. And PING, because a background liveness probe
+    // that raises a PIN prompt is worse than no probe at all — it interrupts the
+    // user for a question they never asked, and the answer it wants ("is anyone
+    // still there?") does not need the keys.
+    if (!UNLOCK_EXEMPT_METHODS.has(method) && !this.host.isUnlocked()) {
       const unlocked = await this.host.requestUnlock();
       if (!unlocked) {
         return this.fail(env.id, {
@@ -406,6 +424,8 @@ export class ConnectHandler {
           return await this.onConnect(env);
         case METHODS.DISCONNECT:
           return await this.onDisconnect(env);
+        case METHODS.PING:
+          return this.onPing(env);
         case METHODS.GET_ACCOUNTS:
         case METHODS.GET_ADDRESS:
         case METHODS.GET_PUBLIC_KEY:
@@ -420,6 +440,7 @@ export class ConnectHandler {
         case METHODS.SIGN_TYPED_DATA:
         case METHODS.APPROVE_CONTRACT:
         case METHODS.SIGN_CONTRACT:
+        case METHODS.SIGN_TRANSFER:
           return await this.onSign(env, method);
         default:
           return this.fail(env.id, {
@@ -551,6 +572,32 @@ export class ConnectHandler {
   /** User pressed "Disconnect" inside the wallet popup. */
   async disconnectByUser(): Promise<void> {
     await this.endCurrentSession('user disconnected in wallet');
+  }
+
+  // ── Liveness ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Answer a liveness probe. Never prompts, never touches session state, and
+   * deliberately does NOT call `requireSession` — a probe must be able to report
+   * "the port is alive but your session is gone" rather than expiring the very
+   * session it is asking about.
+   *
+   * `connected` and `locked` are what callers actually branch on: a timeout means
+   * the port is dead and the transport has to be rebuilt, `connected: false`
+   * means reconnect, and `locked: true` means wait rather than fire a request
+   * that would pop a PIN prompt behind the user's back.
+   */
+  private onPing(env: Envelope): void {
+    this.reply(env.id, {
+      pong: true,
+      v: PROTOCOL_VERSION,
+      connected: this.session !== null,
+      locked: !this.host.isUnlocked(),
+      capabilities: this.capabilities,
+      /** Echoed so a caller can confirm the wallet still sees the same origin. */
+      origin: this.origin,
+      ts: Date.now(),
+    });
   }
 
   // ── Reads (session-silent) ───────────────────────────────────────────────────
@@ -716,16 +763,19 @@ export class ConnectHandler {
             message: `signContract: unsupported opType "${String(params.opType)}" (expected "call" or "program_call")`,
           });
         }
+        // Fetched BEFORE the prompt so the nonce on screen is the nonce that
+        // gets signed. Reading it afterwards left the user approving a
+        // transaction with one field they were never shown.
+        const nonce = await this.host.getNextNonce();
         const decision = await this.host.requestApproval({
           kind: 'signContract',
           origin: this.origin,
           // Surface the resolved opType so the approval UI shows which
           // operation the user is actually authorising.
-          detail: { ...params, opType: params.opType ?? 'program_call' },
+          detail: { ...params, opType: params.opType ?? 'program_call', nonce },
         });
         if (!decision.approved) return this.rejected(env.id);
         this.session = await grantPermission(session, 'signContract');
-        const nonce = await this.host.getNextNonce();
         const signed = signContractCall(wallet, { ...params, nonce });
         // Return the SIGNED tx only — never submitted here.
         return this.reply(env.id, {
@@ -735,6 +785,54 @@ export class ConnectHandler {
           opType: signed.opType,
           nonce,
           note: 'Signed only. Submit via the wallet UI; the SDK cannot broadcast.',
+        });
+      }
+      case METHODS.SIGN_TRANSFER: {
+        const params = env.params as Omit<SignTransferParams, 'nonce'> | undefined;
+        if (!params?.to) {
+          return this.fail(env.id, {
+            code: ERROR_CODES.INVALID_PARAMS,
+            message: 'signTransfer requires a recipient address (`to`)',
+          });
+        }
+        // Nonce and fee are resolved before the prompt: the approval has to
+        // describe the exact transaction that will be signed, down to the fee.
+        const nonce = await this.host.getNextNonce();
+        let preview: ReturnType<typeof previewTransfer>;
+        try {
+          preview = previewTransfer(params, wallet.addr);
+        } catch (e) {
+          // Bad amount / bad address / self-send: say so instead of opening a
+          // prompt for something that cannot be signed.
+          return this.fail(env.id, {
+            code: ERROR_CODES.INVALID_PARAMS,
+            message: (e as Error).message,
+          });
+        }
+        const decision = await this.host.requestApproval({
+          kind: 'signTransfer',
+          origin: this.origin,
+          detail: { ...params, ...preview, nonce, opType: 'standard' },
+        });
+        if (!decision.approved) return this.rejected(env.id);
+        this.session = await grantPermission(session, 'signTransfer');
+        const transfer = signNativeTransfer(wallet, {
+          ...params,
+          // Pass the exact raw amount and fee that were displayed, so an
+          // approval can never be for a different number than the signature.
+          amountRaw: preview.amountRaw,
+          ou: preview.ou,
+          nonce,
+        });
+        return this.reply(env.id, {
+          signedTransaction: transfer.tx,
+          to: transfer.to,
+          amountRaw: transfer.amountRaw,
+          ou: transfer.ou,
+          opType: transfer.opType,
+          nonce,
+          hash: transfer.tx.hash,
+          note: 'Signed only. Submit it yourself; the SDK cannot broadcast.',
         });
       }
     }
@@ -750,6 +848,8 @@ export class ConnectHandler {
         return 'approveContract';
       case METHODS.SIGN_CONTRACT:
         return 'signContract';
+      case METHODS.SIGN_TRANSFER:
+        return 'signTransfer';
       default:
         return 'unknown';
     }

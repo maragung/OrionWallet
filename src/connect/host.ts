@@ -13,11 +13,7 @@ import { listAccounts } from '../api/wallet-api';
 import { fetchNextNonce } from '../api/nonce';
 import type { Wallet } from '../wallet/wallet';
 import { activeNetworkInfo, networkInfoList } from '../wallet/networks';
-import type {
-  WalletHost,
-  ApprovalRequest,
-  ApprovalDecision,
-} from './rpc-handler';
+import type { WalletHost, ApprovalRequest, ApprovalDecision } from './rpc-handler';
 
 // ── Approval bus (connect + sign prompts) ────────────────────────────────────
 
@@ -46,7 +42,8 @@ let chosenAccount: string | null = null;
 
 // ── Manifest account cache (getAccounts is synchronous on the host) ──────────
 
-let accountsCache: Array<{ address: string; publicKey: string; name?: string; index?: number }> = [];
+let accountsCache: Array<{ address: string; publicKey: string; name?: string; index?: number }> =
+  [];
 
 export function subscribeApprovals(cb: () => void): () => void {
   approvalListeners.add(cb);

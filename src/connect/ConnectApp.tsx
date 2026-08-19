@@ -39,6 +39,7 @@ import {
   type NetworkId,
 } from '../wallet/networks';
 import { MAIN_WALLET_NAME, HANDOFF_TYPE } from './handoff';
+import { requestAttention } from './attention';
 import type { Wallet } from '../wallet/wallet';
 
 interface HandshakeParams {
@@ -68,6 +69,19 @@ interface PendingApproval {
   resolve: (d: ApprovalDecision) => void;
 }
 
+/**
+ * Handoff tracing, development only.
+ *
+ * The deferral loop below retries every 100ms while a prompt is on screen, and
+ * each pass logged six values. In a production console that is a scrolling wall
+ * of internal state while the user waits — and it drowns out anything they might
+ * actually need to report. The trace is genuinely useful when debugging the
+ * handoff, so it stays; it just no longer ships.
+ */
+const debugHandoff: (...args: unknown[]) => void = import.meta.env.DEV
+  ? (...args) => console.log('[handoff]', ...args)
+  : () => undefined;
+
 function abbreviate(addr: string): string {
   if (addr.length <= 16) return addr;
   return addr.slice(0, 8) + '…' + addr.slice(-6);
@@ -81,6 +95,15 @@ export function ConnectApp() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [pending, setPending] = useState<PendingApproval | null>(null);
+  /**
+   * Set while one or more dApp requests are parked behind the lock screen.
+   *
+   * It exists so the unlock screen can explain itself. A PIN prompt that appears
+   * with no context is the same shape as a phishing prompt, and the correct
+   * response to one of those is to close the window — so an unexplained prompt
+   * costs the user the request they were trying to make.
+   */
+  const [unlockPrompt, setUnlockPrompt] = useState<{ origin: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [handshakeDone, setHandshakeDone] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -116,37 +139,21 @@ export function ConnectApp() {
   // Account bound to the live session (mirror of `sessionAccount` state).
   const sessionAddrRef = useRef<string | null>(null);
 
-  // Aggressively focus popup when approval prompt appears.
-  // Browsers may ignore a single window.focus(), so we retry with delays.
+  // Signal that a prompt is waiting: focus once, chime only if the popup is in
+  // the background, and flash the title until it is answered. The signal is torn
+  // down on cleanup, which is what keeps the tab title from being left flashing
+  // after the user has already decided.
   useEffect(() => {
     if (!pending) return;
-    // Play a short beep to alert the user.
-    try {
-      const ctx = new AudioContext();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = 800;
-      gain.gain.value = 0.15;
-      osc.start();
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
-      osc.stop(ctx.currentTime + 0.2);
-    } catch {
-      /* ignore */
-    }
-    const focusAttempts = [0, 100, 300, 600, 1000];
-    const timers = focusAttempts.map((ms) =>
-      setTimeout(() => {
-        try {
-          window.focus();
-        } catch {
-          /* ignore */
-        }
-      }, ms),
-    );
-    return () => timers.forEach(clearTimeout);
+    return requestAttention();
   }, [pending]);
+
+  // Same signal for the unlock gate. A locked wallet with a dApp request parked
+  // behind it is exactly as much "your turn" as an approval prompt is.
+  useEffect(() => {
+    if (!unlockPrompt) return;
+    return requestAttention();
+  }, [unlockPrompt]);
 
   // Load accounts once unlocked.
   const reloadAccounts = useCallback(() => {
@@ -241,26 +248,8 @@ export function ConnectApp() {
   const requestApproval = useCallback(
     (request: ApprovalRequest) =>
       new Promise<ApprovalDecision>((resolve) => {
-        // Immediately focus the popup so the user sees the prompt.
-        try {
-          window.focus();
-        } catch {
-          /* ignore */
-        }
-        setTimeout(() => {
-          try {
-            window.focus();
-          } catch {
-            /* ignore */
-          }
-        }, 200);
-        setTimeout(() => {
-          try {
-            window.focus();
-          } catch {
-            /* ignore */
-          }
-        }, 500);
+        // Focus and the title flash are driven by the effect on `pending` above,
+        // so they are set up and torn down together with the prompt itself.
         const entry = {
           request,
           resolve: async (d: ApprovalDecision) => {
@@ -306,32 +295,14 @@ export function ConnectApp() {
     () =>
       new Promise<boolean>((resolve) => {
         unlockResolversRef.current.push(resolve);
-        // Alert + focus the popup so the user sees the unlock screen.
-        try {
-          const ctx = new AudioContext();
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.frequency.value = 800;
-          gain.gain.value = 0.15;
-          osc.start();
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
-          osc.stop(ctx.currentTime + 0.2);
-        } catch {
-          /* ignore */
-        }
-        [0, 200, 500].forEach((ms) =>
-          setTimeout(() => {
-            try {
-              window.focus();
-            } catch {
-              /* ignore */
-            }
-          }, ms),
-        );
+        // Record that a request is waiting, so the unlock screen can say WHICH
+        // site is waiting and WHY the PIN is being asked for. A bare PIN prompt
+        // that appears with no explanation is indistinguishable from one the user
+        // did not trigger, and the safe reaction to that is to close the window.
+        setUnlockPrompt({ origin: params?.origin ?? '' });
+        // Attention (focus, chime, title flash) is driven by the effect above.
       }),
-    [],
+    [params?.origin],
   );
 
   const accountsRef = useRef(accounts);
@@ -454,8 +425,8 @@ export function ConnectApp() {
       // transfer and post its reply on a port that no longer belongs to this
       // window — the dApp call would hang forever. Retry until the popup is idle.
       if (pendingRef.current || pinRequestRef.current || h.getInFlightCount() > 0) {
-        console.log(
-          '[handoff] deferring, pending=',
+        debugHandoff(
+          'deferring, pending=',
           !!pendingRef.current,
           'pin=',
           !!pinRequestRef.current,
@@ -467,15 +438,15 @@ export function ConnectApp() {
       }
       // The main wallet window shares this origin; reach it by its stable name.
       const main = window.open('', MAIN_WALLET_NAME);
-      console.log(
-        '[handoff] main window lookup:',
+      debugHandoff(
+        'main window lookup:',
         main === null ? 'null' : main === window ? 'self' : 'found',
       );
       if (!main || main === window) return; // not found — keep hosting in the popup
       // Safety net: if we accidentally got a blank window, close it and fall back.
       try {
         if (main.location.href === 'about:blank') {
-          console.log('[handoff] got blank window, closing + fallback');
+          debugHandoff('got blank window, closing + fallback');
           main.close();
           return;
         }
@@ -486,8 +457,8 @@ export function ConnectApp() {
       // while we were resolving the window. Transferring now would strand its
       // reply. Retry instead.
       if (pendingRef.current || pinRequestRef.current || h.getInFlightCount() > 0) {
-        console.log(
-          '[handoff] deferring after lookup, pending=',
+        debugHandoff(
+          'deferring after lookup, pending=',
           !!pendingRef.current,
           'pin=',
           !!pinRequestRef.current,
@@ -498,7 +469,7 @@ export function ConnectApp() {
         return;
       }
       handedOffRef.current = true;
-      console.log('[handoff] transferring port');
+      debugHandoff('transferring port');
       const info = {
         type: HANDOFF_TYPE,
         origin: params!.origin,
@@ -589,6 +560,7 @@ export function ConnectApp() {
       const resolvers = unlockResolversRef.current;
       unlockResolversRef.current = [];
       resolvers.forEach((r) => r(true));
+      setUnlockPrompt(null);
     }
     prevUnlocked.current = isUnlocked;
   }, [isUnlocked]);
@@ -671,7 +643,23 @@ export function ConnectApp() {
         {showCreate ? (
           <CreateWallet onBack={() => setShowCreate(false)} />
         ) : (
-          <UnlockWallet onCreate={() => setShowCreate(true)} />
+          <UnlockWallet
+            onCreate={() => setShowCreate(true)}
+            notice={
+              unlockPrompt ? (
+                <>
+                  <strong className="mono">{unlockPrompt.origin}</strong> is waiting for your
+                  wallet. Unlock to answer its request — you will still be asked to approve anything
+                  it wants signed.
+                </>
+              ) : params ? (
+                <>
+                  <strong className="mono">{params.origin}</strong> wants to connect to your wallet.
+                  Unlock to continue.
+                </>
+              ) : undefined
+            }
+          />
         )}
         <Toasts />
       </div>

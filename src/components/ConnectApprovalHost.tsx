@@ -30,11 +30,15 @@ export function ConnectApprovalHost() {
   const force = () => setTick((t) => t + 1);
 
   useEffect(() => subscribeApprovals(force), []);
-  useEffect(() => subscribeUnlockAccount(() => {
-    const p = getPendingUnlockAccount();
-    setUnlockAddr(p?.addr ?? null);
-    force();
-  }), []);
+  useEffect(
+    () =>
+      subscribeUnlockAccount(() => {
+        const p = getPendingUnlockAccount();
+        setUnlockAddr(p?.addr ?? null);
+        force();
+      }),
+    [],
+  );
 
   useEffect(() => {
     listAccounts()
@@ -66,9 +70,7 @@ export function ConnectApprovalHost() {
       resolveUnlockAccount(w);
       setUnlockAddr(null);
     } catch (e) {
-      useWalletStore
-        .getState()
-        .pushToast('error', `Unlock failed: ${(e as Error).message}`);
+      useWalletStore.getState().pushToast('error', `Unlock failed: ${(e as Error).message}`);
     }
   };
 
@@ -101,7 +103,9 @@ export function ConnectApprovalHost() {
           request={p.request}
           busy={false}
           accounts={p.request.accounts}
-          selectedAccount={selected ?? getChosenAccount() ?? p.request.accounts?.[0]?.address ?? null}
+          selectedAccount={
+            selected ?? getChosenAccount() ?? p.request.accounts?.[0]?.address ?? null
+          }
           onSelectAccount={onSelectAccount}
           onDecision={(d) => onDecision(p.id, d)}
         />

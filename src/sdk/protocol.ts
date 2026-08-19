@@ -24,6 +24,18 @@ export const METHODS = {
   // Connection / session
   CONNECT: 'wallet_connect',
   DISCONNECT: 'wallet_disconnect',
+  /**
+   * Liveness check. Answers `{ pong: true, … }` without touching the wallet's
+   * state, opening a popup, or asking the user anything.
+   *
+   * It exists because the alternative is worse. A dApp that wants to know
+   * whether its session is still answered has otherwise only one option:
+   * re-issue `wallet_connect`. That re-runs permission negotiation, can surface
+   * a fresh approval prompt, and mutates the very session it was trying to
+   * observe — so the probe itself is what breaks the thing being probed. A
+   * dedicated no-op read makes the question answerable without side effects.
+   */
+  PING: 'wallet_ping',
   // Read-only wallet information (session-silent)
   GET_ACCOUNTS: 'wallet_getAccounts',
   GET_ADDRESS: 'wallet_getAddress',
@@ -41,6 +53,23 @@ export const METHODS = {
   SIGN_TYPED_DATA: 'wallet_signTypedData',
   APPROVE_CONTRACT: 'wallet_approveContract',
   SIGN_CONTRACT: 'wallet_signContract',
+  /**
+   * Sign a plain native-token transfer (`op_type: 'standard'`).
+   *
+   * SIGN-ONLY, like every other method here: the wallet returns a signed
+   * transaction and never submits it. Broadcasting stays the caller's job, and
+   * `wallet_sendTransaction` remains permanently prohibited — see
+   * PROHIBITED_METHODS.
+   *
+   * Without this, a dApp that needs a signed transfer has to disguise it as a
+   * contract call and then rewrite `op_type` on the result. That does not work:
+   * `op_type` is inside the canonical JSON that was signed (see
+   * `src/tx/canonical-json.ts`), so editing it afterwards invalidates the
+   * signature — and the approval prompt meanwhile describes a contract call the
+   * user is not actually making. Both problems are the missing method, not the
+   * dApp.
+   */
+  SIGN_TRANSFER: 'wallet_signTransfer',
 } as const;
 
 export type Method = (typeof METHODS)[keyof typeof METHODS];
@@ -123,6 +152,10 @@ export const CAPABILITIES = {
   SIGN_TYPED_DATA: 'signTypedData',
   APPROVE_CONTRACT: 'approveContract',
   SIGN_CONTRACT: 'signContract',
+  /** `wallet_signTransfer` is available (native transfers need no disguise). */
+  SIGN_TRANSFER: 'signTransfer',
+  /** `wallet_ping` is available (liveness without re-running connect). */
+  PING: 'ping',
   MULTI_ACCOUNT: 'multiAccount',
   EVENTS: 'events',
   SESSION_RESTORE: 'sessionRestore',
@@ -143,6 +176,8 @@ export const WALLET_CAPABILITIES: Capability[] = [
   CAPABILITIES.SIGN_TYPED_DATA,
   CAPABILITIES.APPROVE_CONTRACT,
   CAPABILITIES.SIGN_CONTRACT,
+  CAPABILITIES.SIGN_TRANSFER,
+  CAPABILITIES.PING,
   CAPABILITIES.MULTI_ACCOUNT,
   CAPABILITIES.EVENTS,
   CAPABILITIES.SESSION_RESTORE,

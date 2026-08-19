@@ -13,9 +13,34 @@ import { ProcessingModal, type ProcessingStage } from './ProcessingModal';
 import { Tooltip } from './Tooltip';
 import { closeDb, type StoredWalletEntry } from '../wallet/storage';
 
-export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
+export interface UnlockWalletProps {
+  onCreate: () => void;
+  /**
+   * Why the wallet is being asked to unlock, when something other than the user
+   * asked. Rendered above the PIN field.
+   *
+   * The connect popup uses this to name the site that is waiting. An unexplained
+   * PIN prompt has the same shape as a phishing prompt, and the right instinct
+   * when facing one of those is to close the window — so without this the safest
+   * user behaviour is also the one that loses the request.
+   */
+  notice?: React.ReactNode;
+}
+
+export function UnlockWallet({ onCreate, notice }: UnlockWalletProps) {
   const { setWallet, pushToast } = useWalletStore();
   const [pin, setPin] = useState('');
+  /**
+   * True from the moment an unlock starts until it resolves.
+   *
+   * PBKDF2 runs for seconds, and Enter in the PIN field is the fastest way to
+   * start one. Without a guard, a second Enter spends another `recordPinAttempt`
+   * slot on a PIN that is already being checked — so two impatient keystrokes
+   * burn two of the very few attempts allowed before the 30-second lockout.
+   */
+  const [unlocking, setUnlocking] = useState(false);
+  /** Field-level complaint, shown next to the input instead of as a toast. */
+  const [pinError, setPinError] = useState<string | null>(null);
   // `null` means "not known yet or unreadable" — never "none saved".
   const [hasStored, setHasStored] = useState<boolean | null>(null);
   const [storedEntries, setStoredEntries] = useState<StoredWalletEntry[]>([]);
@@ -103,83 +128,75 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
   };
 
   const handleUnlock = async () => {
+    // Re-entry guard, not a nicety: see the note on `unlocking`.
+    if (unlocking) return;
     if (!pin) {
-      pushToast('error', 'Please enter your PIN');
+      setPinError('Enter your PIN to unlock.');
       return;
     }
 
     if (!recordPinAttempt('unlock')) {
-      pushToast('error', 'Too many failed attempts. Please wait 30 seconds before trying again.');
+      setPinError('Too many failed attempts. Wait 30 seconds, then try again.');
       return;
     }
 
+    setPinError(null);
     setModalError(null);
+    setUnlocking(true);
+    // Two stages, because two things actually happen. There used to be four,
+    // two of which were marked done the instant they appeared — and 500ms of
+    // `setTimeout` was inserted between them so the fake progress would be
+    // visible. Unlock now takes exactly as long as the cryptography takes.
     setModalStages([
       {
         id: 'decrypt',
-        label: 'Decrypting wallet',
+        label: 'Checking your PIN',
         description: 'PBKDF2 key derivation + AES-256-GCM decryption',
         status: 'pending',
       },
       {
         id: 'load',
-        label: 'Loading wallet data',
+        label: 'Opening your wallet',
         description: 'Restoring keys and address',
-        status: 'pending',
-      },
-      {
-        id: 'pvac',
-        label: 'Loading PVAC WASM',
-        description: 'Initializing FHE module for encrypted balance',
-        status: 'pending',
-      },
-      {
-        id: 'rpc',
-        label: 'Connecting to network',
-        description: 'Initializing RPC client',
         status: 'pending',
       },
     ]);
     setModalOpen(true);
 
     try {
-      // Stage 1: Decrypt
       updateStage('decrypt', 'active');
-      await new Promise((r) => setTimeout(r, 200));
       // No blanket timeout here: unlockWallet bounds its own storage read, and
       // PBKDF2 (600k iterations) legitimately takes seconds on the pure-JS
       // fallback used when crypto.subtle is unavailable.
       const wallet = await unlockWallet(pin, selectedId);
-      updateStage('decrypt', 'done', 'Wallet decrypted successfully');
+      updateStage('decrypt', 'done', 'PIN accepted');
 
-      // Stage 2: Load
       updateStage('load', 'active');
-      await new Promise((r) => setTimeout(r, 150));
-      updateStage('load', 'done', `Address: ${wallet.addr.slice(0, 16)}...`);
-
-      // Stages 3 & 4 are handed off to the store: `setWallet` kicks off the
-      // PVAC WASM load and the RPC init in the background, and drives the
-      // global LoadingOverlay while RPC comes up.
-      updateStage('pvac', 'done', 'PVAC WASM loading in background');
-      updateStage('rpc', 'done', 'Connecting in background');
-      await new Promise((r) => setTimeout(r, 150));
+      updateStage('load', 'done', `Address: ${wallet.addr.slice(0, 16)}…`);
 
       // Close this modal BEFORE flipping `isUnlocked`. Once the store flips,
       // Layout swaps to the main app and unmounts this component (and its
       // modal), so any await sequenced after `setWallet` would be pointless.
       setModalOpen(false);
-      pushToast('success', 'Wallet unlocked — PVAC WASM loading in background');
+      // Names the wallet that opened. The network and FHE module keep loading in
+      // the background, but that is the wallet's business, not something to
+      // announce to someone who just wanted in.
+      pushToast('success', `Unlocked ${wallet.name || 'wallet'}`);
       setWallet(wallet);
       resetPinAttempts('unlock');
     } catch (e) {
       const msg = (e as Error).message;
       updateStage('decrypt', 'error');
+      // Reported once, in the modal that is already open and already showing
+      // which step failed. The same text as a toast on top of it was two copies
+      // of one problem, in two places, with two different dismiss behaviours.
       setModalError(
         msg.includes('decryption failed')
           ? 'Wrong PIN. Please check your PIN and try again.'
           : `Unlock failed: ${msg}`,
       );
-      pushToast('error', `Unlock failed: ${msg}`);
+    } finally {
+      setUnlocking(false);
     }
   };
 
@@ -236,6 +253,22 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
               Unlock your Octra wallet to continue
             </p>
           </div>
+
+          {notice && (
+            <div
+              className="info-box"
+              style={{
+                marginBottom: 'var(--sp-4)',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 'var(--sp-2)',
+                fontSize: 'var(--fs-sm)',
+              }}
+            >
+              <span>🔒</span>
+              <div style={{ flex: 1, minWidth: 0 }}>{notice}</div>
+            </div>
+          )}
 
           {loadError && (
             <div
@@ -324,6 +357,44 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
             </div>
           )}
 
+          {passkey && (
+            <>
+              <button
+                className="primary"
+                onClick={() => void handlePasskeyUnlock()}
+                disabled={passkeyBusy || unlocking}
+                title={`Unlock ${passkey.name} (${passkey.addr.slice(0, 12)}…) with this device`}
+                style={{ width: '100%' }}
+              >
+                {passkeyBusy ? (
+                  <>
+                    <span className="spinner" /> Waiting for your device…
+                  </>
+                ) : (
+                  <>👆 Unlock with passkey</>
+                )}
+              </button>
+              {/* Offered first because it is one tap against a PIN that takes a
+                  line of typing. It used to sit below the PIN button, under a
+                  field that grabbed focus on mount — so the faster route was the
+                  one you had to go looking for. */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--sp-2)',
+                  margin: 'var(--sp-4) 0 var(--sp-3)',
+                  color: 'var(--text-muted)',
+                  fontSize: 'var(--fs-xs)',
+                }}
+              >
+                <span style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+                or use your PIN
+                <span style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+              </div>
+            </>
+          )}
+
           <div className="form-row">
             <label htmlFor="pin">
               PIN{' '}
@@ -337,11 +408,21 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
                 type={showPin ? 'text' : 'password'}
                 className="mono"
                 value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
+                onChange={(e) => {
+                  setPin(e.target.value);
+                  // The complaint was about what was in the box; typing answers it.
+                  if (pinError) setPinError(null);
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && void handleUnlock()}
                 placeholder="Enter your wallet PIN"
-                autoFocus
+                // Not focused when a passkey exists: the passkey is the primary
+                // action there, and stealing the caret into a PIN field argues
+                // for the slower route.
+                autoFocus={!passkey}
                 autoComplete="current-password"
+                aria-invalid={pinError ? true : undefined}
+                aria-describedby={pinError ? 'pin-error' : undefined}
+                disabled={unlocking}
                 style={{ paddingRight: 48 }}
               />
               <button
@@ -363,6 +444,19 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
                 {showPin ? '🙈' : '👁️'}
               </button>
             </div>
+            {pinError && (
+              <div
+                id="pin-error"
+                role="alert"
+                style={{
+                  marginTop: 'var(--sp-2)',
+                  color: 'var(--error)',
+                  fontSize: 'var(--fs-xs)',
+                }}
+              >
+                {pinError}
+              </div>
+            )}
           </div>
 
           <div
@@ -370,49 +464,27 @@ export function UnlockWallet({ onCreate }: { onCreate: () => void }) {
             style={{ flexDirection: 'column', marginTop: 'var(--sp-6)' }}
           >
             <button
-              className="primary"
-              onClick={handleUnlock}
-              disabled={!pin}
+              className={passkey ? 'ghost' : 'primary'}
+              onClick={() => void handleUnlock()}
+              disabled={!pin || unlocking}
               style={{ width: '100%' }}
             >
-              🔓 Unlock Wallet
+              {unlocking ? (
+                <>
+                  <span className="spinner" /> Unlocking…
+                </>
+              ) : (
+                <>🔓 Unlock Wallet</>
+              )}
             </button>
-            {passkey && (
-              <button
-                className="ghost"
-                onClick={() => void handlePasskeyUnlock()}
-                disabled={passkeyBusy}
-                title={`Unlock ${passkey.name} (${passkey.addr.slice(0, 12)}…) with this device`}
-                style={{
-                  width: '100%',
-                  marginTop: 'var(--sp-2)',
-                  borderColor: 'var(--accent)',
-                  color: 'var(--accent)',
-                }}
-              >
-                {passkeyBusy ? (
-                  <>
-                    <span className="spinner" /> Waiting for your device…
-                  </>
-                ) : (
-                  <>👆 Unlock with passkey</>
-                )}
-              </button>
-            )}
             <button
               className="ghost"
               onClick={onCreate}
+              disabled={unlocking}
               style={{ width: '100%', marginTop: 'var(--sp-2)' }}
             >
               Create New Wallet
             </button>
-          </div>
-
-          <div className="info-box" style={{ marginTop: 'var(--sp-6)', fontSize: 'var(--fs-xs)' }}>
-            <strong>PIN requirements:</strong>
-            <br />
-            • 8–64 characters
-            <br />• Under 15 chars: letter + digit + symbol
           </div>
         </div>
 

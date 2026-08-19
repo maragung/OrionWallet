@@ -52,7 +52,10 @@ function installConnectDriver(this: unknown): void {
         params?: unknown;
       };
       if (!isEnv(d)) return;
-      console.log('[driver] port message', JSON.stringify({ kind: d.kind, id: d.id, event: d.event }));
+      console.log(
+        '[driver] port message',
+        JSON.stringify({ kind: d.kind, id: d.id, event: d.event }),
+      );
       if (d.kind === 'res') {
         const p = pending.get(d.id!);
         if (p) {

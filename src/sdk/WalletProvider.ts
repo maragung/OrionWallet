@@ -130,6 +130,63 @@ export interface SignContractParams {
   opType?: 'call' | 'program_call';
 }
 
+export interface SignTransferParams {
+  /** Recipient address (`oct…`). */
+  to: string;
+  /** Decimal OCT amount ("1.5"). Use `amountRaw` to pass base units instead. */
+  amount?: string | number;
+  /** Amount in raw base units, as an integer string. Wins over `amount`. */
+  amountRaw?: string;
+  /** Fee. Omit to let the wallet apply its recommended fee for this size. */
+  ou?: string;
+  /** Optional public memo carried in the transaction. */
+  message?: string;
+}
+
+export interface SignTransferResult {
+  /** The signed transaction, ready to submit. The wallet does NOT submit it. */
+  signedTransaction: Record<string, unknown>;
+  to: string;
+  /** Amount actually signed, in raw base units. */
+  amountRaw: string;
+  /** Fee actually signed. */
+  ou: string;
+  opType: 'standard';
+  nonce: number;
+  /** Transaction hash of the signed payload. */
+  hash: string;
+  note: string;
+}
+
+export interface PingResult {
+  pong: true;
+  /** Protocol version the wallet speaks. */
+  v: number;
+  /** Whether the wallet still holds a session for this origin. */
+  connected: boolean;
+  /** Whether the wallet is locked right now. */
+  locked: boolean;
+  capabilities: Capability[];
+  origin: string;
+  ts: number;
+}
+
+/** Per-call overrides for `request()`. */
+export interface RequestOptions {
+  /** Override the provider-wide request timeout for this call only. */
+  timeoutMs?: number;
+  /**
+   * Whether sending this request should raise the wallet window. Defaults to
+   * true for anything the user must answer, false for `wallet_ping`.
+   */
+  focus?: boolean;
+}
+
+interface DispatchOptions {
+  timeoutMs?: number;
+  focus?: boolean;
+}
+
 type Listener = (payload: unknown) => void;
 
 interface Pending {
@@ -312,9 +369,56 @@ export class WalletProvider {
     return (await this.request(METHODS.SIGN_CONTRACT, params)) as Record<string, unknown>;
   }
 
+  /**
+   * Sign a plain native-token transfer. Opens an approval prompt; returns the
+   * SIGNED transaction and never submits it — broadcasting is yours to do.
+   *
+   * Use this rather than dressing a transfer up as a contract call. `op_type` is
+   * covered by the signature, so rewriting it on the result silently produces a
+   * transaction the node will reject.
+   */
+  async signTransfer(params: SignTransferParams): Promise<SignTransferResult> {
+    return (await this.request(METHODS.SIGN_TRANSFER, params)) as SignTransferResult;
+  }
+
+  /**
+   * Ask the wallet whether it is still there, without side effects.
+   *
+   * Answered even while the wallet is locked and even after the session has
+   * expired, and it never raises a prompt — which is the point. Reconnecting just
+   * to find out whether a session is alive re-runs permission negotiation and can
+   * interrupt the user; this does not.
+   *
+   * A rejection means the channel itself is gone (rebuild the transport). A
+   * resolution with `connected: false` means reconnect; `locked: true` means the
+   * user has to unlock before a request will be answered.
+   *
+   * `timeoutMs` is deliberately short by default: a liveness check that waits the
+   * full request timeout is not a liveness check.
+   */
+  async ping(timeoutMs = 4000): Promise<PingResult> {
+    return (await this.request(METHODS.PING, {}, { timeoutMs })) as PingResult;
+  }
+
+  /**
+   * Whether the wallet is reachable. Never throws — a dead channel resolves
+   * `false` — so it can be used directly in a condition.
+   */
+  async isAlive(timeoutMs = 4000): Promise<boolean> {
+    try {
+      return (await this.ping(timeoutMs)).pong === true;
+    } catch {
+      return false;
+    }
+  }
+
   // ── Low-level escape hatch (still blocks prohibited methods) ────────────────
 
-  async request<T = unknown>(method: string, params: unknown): Promise<T> {
+  async request<T = unknown>(
+    method: string,
+    params: unknown,
+    opts: RequestOptions = {},
+  ): Promise<T> {
     if (isProhibitedMethod(method)) {
       // Fail locally without ever contacting the wallet.
       throw methodForbidden(method);
@@ -322,22 +426,29 @@ export class WalletProvider {
     // Compare canonically so the `orion_wallet_*` alias is recognised as connect
     // and does not trigger a reconnect loop against itself.
     const canonical = canonicalizeMethod(method);
+    // PING is observational: reconnecting on its behalf would open a popup the
+    // user did not ask for and destroy the very answer it was sent to get.
+    const mayReconnect = canonical !== METHODS.CONNECT && canonical !== METHODS.PING;
     // Reconnect transparently if the session dropped (auto-reconnect).
-    if (canonical !== METHODS.CONNECT && !this.transport?.isConnected()) {
+    if (mayReconnect && !this.transport?.isConnected()) {
       await this.reconnect();
     }
     const env = makeRequest(method, params, this.nextNonce());
-    return this.dispatch<T>(env);
+    return this.dispatch<T>(env, {
+      timeoutMs: opts.timeoutMs,
+      // Only requests the user has to answer should raise the wallet window.
+      focus: opts.focus ?? canonical !== METHODS.PING,
+    });
   }
 
-  private dispatch<T>(env: Envelope): Promise<T> {
+  private dispatch<T>(env: Envelope, opts: DispatchOptions = {}): Promise<T> {
     const transport = this.transport;
     if (!transport) return Promise.reject(new WalletError(ERROR_CODES.INTERNAL, 'No transport'));
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(env.id);
         reject(timeoutErr());
-      }, this.opts.requestTimeoutMs);
+      }, opts.timeoutMs ?? this.opts.requestTimeoutMs);
       this.pending.set(env.id, {
         env,
         resolve: resolve as (v: unknown) => void,
@@ -347,7 +458,7 @@ export class WalletProvider {
       });
       try {
         transport.send(env);
-        transport.focus();
+        if (opts.focus !== false) transport.focus();
       } catch (e) {
         clearTimeout(timer);
         this.pending.delete(env.id);

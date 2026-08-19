@@ -43,7 +43,13 @@ describe('SDK permission grant flow (lazy signing scopes)', () => {
   });
 
   it('SIGNING_PERMISSIONS enumerates every signing scope', () => {
-    const expected = ['signMessage', 'signTypedData', 'approveContract', 'signContract'];
+    const expected = [
+      'signMessage',
+      'signTypedData',
+      'approveContract',
+      'signContract',
+      'signTransfer',
+    ];
     expect([...SIGNING_PERMISSIONS]).toEqual(expected);
   });
 

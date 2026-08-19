@@ -48,6 +48,7 @@ export const SIGNING_PERMISSIONS = [
   'signTypedData',
   'approveContract',
   'signContract',
+  'signTransfer',
 ] as const;
 
 function newSid(): string {

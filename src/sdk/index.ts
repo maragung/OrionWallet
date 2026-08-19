@@ -21,6 +21,10 @@ export type {
   TypedData,
   ApproveContractParams,
   SignContractParams,
+  SignTransferParams,
+  SignTransferResult,
+  PingResult,
+  RequestOptions,
 } from './WalletProvider';
 
 export { injectWalletProvider } from './inject';
@@ -35,14 +39,30 @@ export type {
   TransportCloseHandler,
 } from './transport/types';
 
+export { toNodeWireTx, buildNodeWireJson } from './wire-tx';
+export type { SignedTxLike } from './wire-tx';
+
 export { WalletError } from './errors';
 export {
   PROTOCOL_VERSION,
+  MIN_PROTOCOL_VERSION,
   METHODS,
+  ORION_METHODS,
+  ORION_METHOD_PREFIX,
+  SUPPORTED_METHODS,
+  canonicalizeMethod,
   EVENTS,
   CAPABILITIES,
+  WALLET_CAPABILITIES,
   ERROR_CODES,
   PROHIBITED_METHODS,
   isProhibitedMethod,
 } from './protocol';
-export type { Method, Capability, WalletEventName, ErrorCode, Envelope } from './protocol';
+export type {
+  Method,
+  Capability,
+  WalletEventName,
+  ErrorCode,
+  Envelope,
+  WireError,
+} from './protocol';

@@ -24,8 +24,16 @@ import { sha256 } from '../crypto/sha256';
 import { hexEncode } from '../crypto/hex';
 import { base64Encode } from '../crypto/base64';
 import { canonicalSerializeOrdered, type CanonicalObject } from '../tx/canonical-json';
-import { signTransaction, nowTs, recommendedOu, type Transaction } from '../tx/builder';
+import {
+  signTransaction,
+  nowTs,
+  recommendedOu,
+  parseAmountRaw,
+  type Transaction,
+  type TransactionFields,
+} from '../tx/builder';
 import { encodeCallArgs } from '../tx/call-args';
+import { isValidAddress } from '../crypto/address';
 import type { Wallet } from '../wallet/wallet';
 
 const MSG_TAG = 'octra-signed-message:v1\n';
@@ -235,4 +243,127 @@ export function signContractCall(
     },
   });
   return { tx, program: params.program, method: params.method, opType };
+}
+
+export interface SignTransferParams {
+  /** Recipient address (`oct…`). Validated before anything is signed. */
+  to: string;
+  /**
+   * Amount to send. A decimal OCT string ("1.5") or a number is converted with
+   * `parseAmountRaw`; pass `amountRaw` instead to give the integer directly.
+   */
+  amount?: string | number;
+  /** Amount in raw base units, as an integer string. Wins over `amount`. */
+  amountRaw?: string;
+  /** Fee. Defaults to the recommended OU for a standard transfer of this size. */
+  ou?: string;
+  /** Sender nonce. The caller fetches it so the approval shows what is signed. */
+  nonce: number;
+  /** Optional public memo, carried in the tx `message` field. */
+  message?: string;
+}
+
+/**
+ * Build and sign a plain native-token transfer (`op_type: 'standard'`).
+ *
+ * SIGNS ONLY — nothing is submitted here. The transfer is built the same way
+ * `api/send.ts` builds it, so a transaction signed through the SDK and one sent
+ * from the wallet UI are byte-identical apart from the values the caller chose.
+ *
+ * This exists so a dApp never has to disguise a transfer as a contract call.
+ * `op_type` is part of the canonical JSON that gets signed, so a caller that
+ * signs a `call` and then rewrites `op_type` to `standard` ends up with a
+ * transaction whose signature no longer verifies — and, worse, the user
+ * approved a prompt describing a contract call they never made.
+ */
+/**
+ * Resolve a transfer request into the exact numbers that will be signed, without
+ * signing anything.
+ *
+ * The approval prompt and the signature MUST agree on every field, so both go
+ * through this: the UI renders what it returns, and `signNativeTransfer` signs
+ * what it returns. Computing the fee twice — once for the prompt and once for the
+ * signature — is how a user ends up approving one fee and signing another.
+ *
+ * `from` is optional so a caller that only wants to validate a request (before
+ * an account is chosen) can still do so; pass it to also reject a self-send.
+ */
+export function previewTransfer(
+  params: Omit<SignTransferParams, 'nonce'>,
+  from?: string,
+): { to: string; amountRaw: string; ou: string } {
+  if (!isValidAddress(params.to)) {
+    throw new Error(`signTransfer: invalid recipient address "${params.to}"`);
+  }
+  // Matches the wallet UI's own refusal: a standard transfer to self is not a
+  // no-op on Octra, it is rejected by the node, so catch it before signing.
+  if (from !== undefined && params.to === from) {
+    throw new Error('signTransfer: cannot send to your own address with a standard transfer');
+  }
+  const amountRaw = resolveAmountRaw(params);
+  const raw = BigInt(amountRaw);
+  if (raw <= 0n) throw new Error('signTransfer: amount must be positive');
+  const ou = params.ou ?? recommendedOu('standard', raw);
+  if (!/^\d+(\.\d+)?$/.test(ou)) {
+    throw new Error(`signTransfer: fee (ou) must be a positive number, got "${ou}"`);
+  }
+  return { to: params.to, amountRaw, ou };
+}
+
+/**
+ * Build and sign a plain native-token transfer (`op_type: 'standard'`).
+ *
+ * SIGNS ONLY — nothing is submitted here. The transfer is built the same way
+ * `api/send.ts` builds it, so a transaction signed through the SDK and one sent
+ * from the wallet UI are byte-identical apart from the values the caller chose.
+ *
+ * This exists so a dApp never has to disguise a transfer as a contract call.
+ * `op_type` is part of the canonical JSON that gets signed, so a caller that
+ * signs a `call` and then rewrites `op_type` to `standard` ends up with a
+ * transaction whose signature no longer verifies — and, worse, the user
+ * approved a prompt describing a contract call they never made.
+ */
+export function signNativeTransfer(
+  wallet: Wallet,
+  params: SignTransferParams,
+): { tx: Transaction; to: string; amountRaw: string; ou: string; opType: 'standard' } {
+  const { to, amountRaw, ou } = previewTransfer(params, wallet.addr);
+  if (!Number.isInteger(params.nonce) || params.nonce < 0) {
+    throw new Error(`signTransfer: invalid nonce ${String(params.nonce)}`);
+  }
+  const fields: TransactionFields = {
+    from: wallet.addr,
+    to,
+    amount: amountRaw,
+    nonce: params.nonce,
+    ou,
+    timestamp: nowTs(),
+    op_type: 'standard',
+  };
+  if (params.message) fields.message = params.message;
+  const tx = signTransaction({
+    secretKey: wallet.sk,
+    publicKeyB64: wallet.pubB64,
+    fields,
+  });
+  return { tx, to, amountRaw, ou, opType: 'standard' };
+}
+
+/**
+ * Resolve the amount a caller gave into a raw integer string.
+ *
+ * `amountRaw` is preferred when present because it is unambiguous. A decimal
+ * `amount` goes through `parseAmountRaw`, which is the same conversion the send
+ * form uses, so "0.1" cannot mean two different values depending on entry point.
+ */
+function resolveAmountRaw(params: Omit<SignTransferParams, 'nonce'>): string {
+  if (params.amountRaw !== undefined) {
+    const s = String(params.amountRaw).trim();
+    if (!/^\d+$/.test(s)) throw new Error(`signTransfer: amountRaw must be an integer, got "${s}"`);
+    return s;
+  }
+  if (params.amount === undefined || params.amount === null || params.amount === '') {
+    throw new Error('signTransfer: amount is required');
+  }
+  return parseAmountRaw(params.amount);
 }

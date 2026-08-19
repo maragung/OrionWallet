@@ -7,6 +7,7 @@ import { base64Decode, base64Encode } from '../crypto/base64';
 import { hexEncode } from '../crypto/hex';
 import { sha256 } from '../crypto/sha256';
 import { canonicalJsonForTx, computeTxHash, type TransactionFields } from './canonical-json';
+import { buildNodeWireJson, type SignedTxLike } from '../sdk/wire-tx';
 
 /** Operation types supported by Octra. */
 export type OpType =
@@ -75,50 +76,16 @@ export function verifyTransaction(tx: Transaction): boolean {
   }
 }
 
-/** Build the JSON payload to submit to the RPC node (full signed tx as JSON). */
+/**
+ * Build the JSON payload to submit to the RPC node (full signed tx as JSON).
+ *
+ * The field naming and ordering rules live in `src/sdk/wire-tx.ts`, not here:
+ * every dApp that submits a wallet-signed transaction needs exactly the same
+ * transformation, and it was previously reachable only from inside the wallet.
+ * One implementation, shared — this wrapper keeps the existing call sites.
+ */
 export function buildTxJson(tx: Transaction): string {
-  // Wire format matches the node's Transaction.to_yojson (lib/core/transaction.ml):
-  //   from, to_, amount, nonce, ou, timestamp, signature, op_type,
-  //   [public_key], [message], [encrypted_data]
-  // NOTE: recipient is emitted as "to_" (trailing underscore); the node's
-  // of_yojson parser requires it and rejects "to" as "Malformed JSON".
-  // The local-only "hash" field is intentionally omitted (not part of the
-  // wire protocol; the node ignores it, and the reference wallet omits it).
-  const knownKeys = new Set([
-    'from',
-    'to',
-    'to_',
-    'amount',
-    'nonce',
-    'ou',
-    'timestamp',
-    'op_type',
-    'signature',
-    'hash',
-    'public_key',
-    'message',
-    'encrypted_data',
-  ]);
-  const ordered: Array<[string, unknown]> = [
-    ['from', tx.from],
-    ['to_', tx.to],
-    ['amount', tx.amount],
-    ['nonce', tx.nonce],
-    ['ou', tx.ou],
-    ['timestamp', tx.timestamp],
-    ['signature', tx.signature],
-    ['op_type', tx.op_type],
-    ['public_key', tx.public_key],
-  ];
-  if (tx.message) ordered.push(['message', tx.message]);
-  if (tx.encrypted_data) ordered.push(['encrypted_data', tx.encrypted_data]);
-  for (const [k, v] of Object.entries(tx)) {
-    if (knownKeys.has(k)) continue;
-    ordered.push([k, v]);
-  }
-  const obj: Record<string, unknown> = {};
-  for (const [k, v] of ordered) obj[k] = v;
-  return JSON.stringify(obj);
+  return buildNodeWireJson(tx as SignedTxLike);
 }
 
 /**
