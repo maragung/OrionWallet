@@ -221,6 +221,28 @@ Before approving:
 
 Review and revoke connections at any time under **Settings → Connected Sites**.
 
+### Reading a signing prompt
+
+Every prompt leads with the part that decides your answer, in plain language: for a
+transfer, the amount as a headline, then the recipient, the fee, the nonce and any memo;
+for a contract call, the program, the method, what it sends and its arguments; for an
+approval, the spending limit and expiry — with **No limit set by the site** and **Never**
+spelled out, because those are the two answers worth pausing on. The verbatim payload the
+site sent is still there behind **▸ Show raw payload** if you want to audit it.
+
+Two things to know:
+
+- **Reject is the button that has keyboard focus**, so if the popup appears while you are
+  typing, a stray Enter or Space rejects rather than signs. **Escape** rejects too.
+- **The wallet signs; it does not send.** For a transfer the prompt says so — the signed
+  transaction goes back to the site, and the site submits it.
+
+If the wallet is locked when a site asks for something, the popup shows the PIN screen with
+a note naming the site that is waiting. Unlocking resumes the request where it left off;
+you are still asked to approve anything that gets signed. A prompt that does **not** name a
+site, or names one you were not using, is a reason to close the window rather than type
+your PIN.
+
 ---
 
 ## Locking and unlocking

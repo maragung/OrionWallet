@@ -188,8 +188,19 @@ async function testWithRetry() {
 }
 
 async function build() {
-  const r = await run('vite', ['build']);
-  return { ok: r.code === 0, output: r.stdout + r.stderr };
+  const app = await run('vite', ['build']);
+  if (app.code !== 0) return { ok: false, output: app.stdout + app.stderr };
+  // The SDK bundle is a second Vite build with its own config and its own
+  // tsconfig, and it is what dApps actually load from `/sdk/*`. Building only
+  // the app here meant a change that broke the published bundle — a bad export,
+  // a type error in `tsconfig.sdk.json`'s stricter view — passed the whole
+  // pipeline and failed in `npm run build` at release time.
+  const sdk = await run('vite', ['build', '--config', 'vite.config.sdk.ts']);
+  const types = sdk.code === 0 ? await run('tsc', ['-p', 'tsconfig.sdk.json']) : { code: 1, stdout: '', stderr: '' };
+  return {
+    ok: sdk.code === 0 && types.code === 0,
+    output: app.stdout + app.stderr + sdk.stdout + sdk.stderr + types.stdout + types.stderr,
+  };
 }
 
 // ════════════════════════════════════════════════════════════════════

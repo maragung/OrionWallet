@@ -231,7 +231,9 @@
         <h2>Integration Guide</h2>
         <div class="integration-step">
           <strong>1. Import the SDK</strong>
-          <pre><code>import { WalletProvider } from '@orion-wallet/sdk';</code></pre>
+          <pre><code>import { WalletProvider } from '@orion-wallet/sdk';
+// or, with no build step:
+// const { WalletProvider } = await import('https://orionwallet.vercel.app/sdk/orion-wallet-sdk.mjs');</code></pre>
         </div>
         <div class="integration-step">
           <strong>2. Create the provider</strong>
@@ -321,11 +323,23 @@ const sig = await provider.signContract({...});</code></pre>
       let WalletProvider = null;
       let provider = null;
 
-      try {
-        const mod = await import('/src/sdk/index.ts');
-        WalletProvider = mod.WalletProvider;
-      } catch (e) {
-        logErr('SDK import', e);
+      /* The built artifact first, the TypeScript source second.
+         `dist/` has no /src, and the dev server has no /sdk — so a page that
+         only ever tried one of them was broken in the other half of its life.
+         This demo is the reference integration; it should load the SDK the same
+         way a real dApp does (the published bundle), and still run from a
+         `vite dev` checkout. */
+      const SDK_SOURCES = ['/sdk/orion-wallet-sdk.mjs', '/src/sdk/index.ts'];
+      for (const url of SDK_SOURCES) {
+        try {
+          const mod = await import(url);
+          if (mod && mod.WalletProvider) {
+            WalletProvider = mod.WalletProvider;
+            break;
+          }
+        } catch (e) {
+          if (url === SDK_SOURCES[SDK_SOURCES.length - 1]) logErr('SDK import', e);
+        }
       }
 
       if (WalletProvider) {
@@ -336,9 +350,12 @@ const sig = await provider.signContract({...});</code></pre>
             'signTypedData',
             'approveContract',
             'signContract',
+            'signTransfer',
+            'ping',
             'multiAccount',
             'events',
             'sessionRestore',
+            'customNetworks',
           ],
           requestTimeoutMs: 60000,
         });

@@ -1,0 +1,20 @@
+{
+  // Public type declarations for the dApp-side SDK.
+  //
+  // Emitted into dist/sdk/types so an integrator gets the same types the wallet
+  // compiles against, instead of hand-written interfaces that go stale. Only
+  // src/sdk is included: it is self-contained by design, and pulling in the rest
+  // of src would drag React and the wallet core into a dApp's type graph.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "declarationMap": false,
+    "outDir": "dist/sdk/types",
+    "rootDir": "src/sdk",
+    "types": ["node"]
+  },
+  "include": ["src/sdk"],
+  "references": []
+}

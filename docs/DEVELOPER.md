@@ -300,10 +300,12 @@ The wallet answers to two equivalent namespaces:
 | `wallet_signTypedData` | `orion_wallet_signTypedData` | Sign structured data |
 | `wallet_approveContract` | `orion_wallet_approveContract` | Pre-approve a contract call |
 | `wallet_signContract` | `orion_wallet_signContract` | Sign a contract transaction |
+| `wallet_signTransfer` | `orion_wallet_signTransfer` | Sign a native OCT transfer (`op_type: standard`) |
 | `wallet_getAccounts` | `orion_wallet_getAccounts` | List accounts |
 | `wallet_getBalance` | `orion_wallet_getBalance` | Read balance |
 | `wallet_getNetworkInfo` | `orion_wallet_getNetworkInfo` | Read the active network as a record |
 | `wallet_getNetworks` | `orion_wallet_getNetworks` | List every network the wallet offers |
+| `wallet_ping` | `orion_wallet_ping` | Liveness probe — answered while locked, never prompts |
 | … | … | … |
 
 Both are accepted and execute identically. The `orion_wallet_*` names exist for dApps that
@@ -378,6 +380,10 @@ Do not weaken these:
 
 ```javascript
 import { WalletProvider } from '@orion-wallet/sdk';
+// …or with no build step at all — the deployed wallet serves the bundle
+// cross-origin (see `vercel.json`):
+// const { WalletProvider } =
+//   await import('https://orionwallet.vercel.app/sdk/orion-wallet-sdk.mjs');
 
 const provider = new WalletProvider({
   walletUrl: 'https://orionwallet.example/connect',
@@ -386,6 +392,8 @@ const provider = new WalletProvider({
     'signTypedData',
     'approveContract',
     'signContract',
+    'signTransfer',
+    'ping',
     'multiAccount',
     'events',
     'sessionRestore',
@@ -395,6 +403,80 @@ const provider = new WalletProvider({
 
 const result = await provider.connect();
 ```
+
+### Sending OCT: `signTransfer`
+
+```javascript
+const { signedTransaction, amountRaw, ou, nonce, hash } = await provider.signTransfer({
+  to: 'oct…',
+  amount: '1.5',        // decimal OCT; or pass amountRaw: '1500000' in base units
+  message: 'invoice 42', // optional public memo
+  // ou omitted → the wallet applies its recommended fee and shows it on the prompt
+});
+```
+
+Use this for native transfers rather than dressing one up as a contract call.
+`op_type` is inside the canonical JSON the signature covers, so signing a `call`
+and rewriting `op_type` to `standard` afterwards produces a transaction the node
+rejects — after showing the user a prompt describing an operation that was never
+made. `wallet_signContract` accepts only `call` and `program_call` by design.
+
+The wallet signs and does not broadcast. Submitting is the dApp's job, and the
+wire format is not the object you were handed — the recipient field is `to_`,
+`hash` is local-only, and key order is fixed by the node's `Transaction.to_yojson`.
+The SDK exports that transformation so nobody has to rediscover it from a rejected
+submit:
+
+```javascript
+import { toNodeWireTx } from '@orion-wallet/sdk';
+
+// The node speaks JSON-RPC 2.0 over HTTP POST; submit is `octra_submit`.
+await fetch(nodeRpcUrl, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'octra_submit',
+    params: [toNodeWireTx(signedTransaction)],
+  }),
+});
+```
+
+`buildNodeWireJson(tx)` is the same thing pre-stringified, for transports that
+want the raw body.
+
+`src/tx/builder.ts` calls the same helper, so the wallet's own submit and a dApp's
+cannot drift.
+
+### Liveness: `ping`
+
+```javascript
+const pong = await provider.ping();      // { pong, v, connected, locked, capabilities, origin, ts }
+if (await provider.isAlive()) { /* … */ } // never throws
+```
+
+`wallet_ping` is the only method that can safely be a probe. It is exempt from the
+unlock gate, raises no approval prompt, does not take focus, does not trigger the
+SDK's auto-reconnect, and does **not** refresh the session's idle timer — so
+polling it cannot keep a session alive the user has abandoned, and cannot pop a
+PIN screen behind their back. It also deliberately skips the session check, so it
+can report "the port is alive but your session is gone" instead of expiring the
+session it was asked about.
+
+Three outcomes, three different repairs:
+
+| Result | Meaning | What to do |
+|---|---|---|
+| rejects / times out | the MessagePort is gone | rebuild the transport (reopen the popup) |
+| `connected: false` | port alive, session gone | reconnect |
+| `locked: true` | session alive, wallet locked | wait — a real request suspends behind the unlock screen and resumes |
+| `connected: true, locked: false` | healthy | proceed |
+
+Do **not** probe with `wallet_connect`. It is not observational: it refreshes the
+session, can open a popup and takes focus, so it changes the state it is meant to
+report. The default timeout is 4 s (`provider.ping(timeoutMs)`), because a
+liveness check that waits out the full request timeout is not a liveness check.
 
 ### Session management
 
