@@ -18,7 +18,7 @@ import type { NetworkId, CustomNetworkDef } from './networks';
 const DB_NAME = 'orion-wallet';
 /** Pre-rebrand database name. Data is copied forward on first launch. */
 const LEGACY_DB_NAME = 'webcli-react';
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 /** How long the first IndexedDB open/upgrade attempt may take. */
 const DB_OPEN_TIMEOUT_MS = 8_000;
 /** Deadline for each retry after the first attempt. */
@@ -65,6 +65,10 @@ const OBJECT_STORES: { name: string; keyPath: string }[] = [
   // v6: address book + passkey unlock (additive migration).
   { name: 'contacts', keyPath: 'addr' },
   { name: 'passkey-unlock', keyPath: 'id' },
+  // v7: token discovery bookkeeping (additive migration). Records when a full
+  // balance sweep last completed per (endpoint, address) so discovery can run
+  // automatically without re-sweeping on every visit.
+  { name: 'token-scans', keyPath: 'key' },
 ];
 
 export interface StoredWalletEntry {
@@ -728,6 +732,14 @@ export async function getPermissions(origin: string): Promise<PermissionRecord |
 export interface TokenRegistryEntry {
   id: string; // rpcUrl
   addresses: string[];
+  /**
+   * Deployer of `addresses[i]`, same length and order.
+   *
+   * Optional because entries cached before this field existed have none; a
+   * reader that finds it missing simply loses the deployer fast-path, which is
+   * an optimisation rather than a correctness requirement.
+   */
+  owners?: string[];
   fetchedAt: number;
 }
 
@@ -749,6 +761,13 @@ export interface TokenHoldingEntry {
   /** null means the contract exposes no `decimals` key — scaling unknown. */
   decimals: number | null;
   totalSupply: string | null;
+  /**
+   * This owner deployed the contract (it is the `owner` in `listContracts`).
+   *
+   * Kept because a token you deployed is yours to see even at zero balance —
+   * the same reason a hand-added token survives a zero.
+   */
+  deployed?: boolean;
   updatedAt: number;
 }
 
@@ -817,6 +836,50 @@ export async function deleteCustomToken(
 ): Promise<void> {
   const db = await getDb();
   await db.delete('token-custom', tokenKey(rpcUrl, owner, contract));
+}
+
+/**
+ * Bookkeeping for the full balance sweep, per endpoint and address.
+ *
+ * `completedAt` only advances when a sweep read every contract. That
+ * distinction is the whole point of the record: a sweep that lost chunks to
+ * rate limiting has NOT proven the address holds nothing more, so it must not
+ * suppress the next attempt.
+ */
+export interface TokenScanEntry {
+  key: string; // `${rpcUrl}|${ownerAddr}`
+  rpcUrl: string;
+  owner: string;
+  /** When the most recent sweep finished, complete or not. */
+  attemptedAt: number;
+  /**
+   * When a sweep last read EVERY contract successfully.
+   *
+   * A partial sweep leaves this at its previous value, so the next visit tries
+   * again instead of trusting an answer that was never fully gathered.
+   */
+  completedAt: number | null;
+  /** Contracts the sweep covered, for progress reporting and diagnostics. */
+  contractCount: number;
+  /** Contracts whose balance could not be read on the last attempt. */
+  unreadable: number;
+}
+
+/** Composite key for the scan record. */
+export function scanKey(rpcUrl: string, owner: string): string {
+  return `${rpcUrl}|${owner}`;
+}
+
+export async function saveTokenScan(entry: TokenScanEntry): Promise<void> {
+  const db = await getDb();
+  await db.put('token-scans', entry);
+}
+
+export async function getTokenScan(rpcUrl: string, owner: string): Promise<TokenScanEntry | null> {
+  const db = await getDb();
+  return (
+    ((await db.get('token-scans', scanKey(rpcUrl, owner))) as TokenScanEntry | undefined) ?? null
+  );
 }
 
 // ===== Unlock-session keys =====

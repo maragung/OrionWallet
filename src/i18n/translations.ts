@@ -63,15 +63,23 @@ const en: Translations = {
   'tokens.removeTitle': 'Remove token',
   'tokens.removeConfirm':
     'Stop tracking {symbol}? This only affects this wallet view — your on-chain balance is unchanged.',
-  'tokens.scan': 'Scan for my tokens',
-  'tokens.scanExplainer':
-    'Tokens you received cannot be detected from transaction history, so finding them requires checking every deployed contract. This can take a while and makes many network requests. You can cancel at any time.',
+  'tokens.scan': 'Scan again',
+  'tokens.autoExplainer':
+    'Tokens are found automatically: a token you received leaves no trace in your transaction history, so this wallet reads every token contract on the active network and keeps the ones your address holds. Known balances are re-read every time you open this panel.',
+  'tokens.discovering': 'Looking for your tokens…',
   'tokens.scanFound': '{n} found',
   'tokens.scanDone': 'Scan complete — {n} token(s)',
   'tokens.scanCancelled': 'Scan cancelled',
+  'tokens.deployed': 'deployed by you',
+  'tokens.onNetwork': 'on {network}',
+  'tokens.partial':
+    'Could not read {n} contract(s) on the last scan, so a token may still be missing. This retries by itself, or scan again now.',
+  'tokens.searchingTitle': 'Looking for your tokens',
+  'tokens.searchingDesc':
+    'Checking every token contract on {network}. Tokens appear here as they are found.',
   'tokens.emptyTitle': 'No tokens yet',
   'tokens.emptyDesc':
-    'Add a token by its contract address, or run a scan to find tokens you already hold.',
+    'This address holds no token balance on {network}. If you know a contract address, you can add it by hand.',
   'tokens.unknownSymbol': 'Unknown',
   'tokens.manual': 'added manually',
   'tokens.incomplete': 'incomplete metadata',
