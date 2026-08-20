@@ -6,10 +6,13 @@ import { prepareStealthSend, STEALTH_PREPARE_STEPS } from '../stealth';
 import { base64Decode } from '../crypto/base64';
 import { fetchNextNonce } from '../api/nonce';
 import { formatAmount } from '../tx/builder';
+import { copyText } from '../utils/clipboard';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ProcessingModal, useProcessingModal } from './ProcessingModal';
 import { shorten, formatBytes, type StepDescriptor } from '../utils/progress';
 import { PanelSkeleton } from './PanelSkeleton';
+import { PageHead } from './PageHead';
+import { Icon } from './icons/Icon';
 
 /**
  * Full stealth-send sequence: the panel's own steps wrapped around the
@@ -61,6 +64,7 @@ export function StealthPanel() {
   if (!wallet) return <PanelSkeleton title="Stealth Send" rows={3} />;
 
   const stealthFee = recommendedOu('stealth', 0n);
+  const toInvalid = Boolean(to.trim()) && !isValidAddress(to.trim());
 
   const requestSend = () => {
     if (!rpc) return pushToast('error', 'RPC not initialized');
@@ -191,33 +195,37 @@ export function StealthPanel() {
   };
 
   return (
-    <>
+    <div className="page">
+      <PageHead
+        icon="eye-off"
+        title="Stealth Send"
+        sub="Send OCT so that only the recipient can see the amount, and nobody can link it to their address."
+      />
+
       <div className="card">
-        <div className="card-header">
-          <div className="card-title">Stealth Send</div>
+        {/* The explanation is the first thing in the card rather than a tooltip on the
+            title: nobody sends their first stealth transaction without reading what
+            makes it different from an ordinary transfer. */}
+        <div className="info-box spaced">
+          <Icon name="info" size={18} />
+          <div className="info-box-body">
+            <span>
+              <strong>How it works:</strong> Stealth sends use ephemeral X25519 ECDH to derive a
+              one-time stealth tag and claim key. The amount is encrypted with AES-256-GCM and only
+              the recipient can decrypt it (by scanning the chain for matching stealth tags).
+            </span>
+          </div>
         </div>
 
-        <div
-          style={{
-            marginBottom: 16,
-            padding: 12,
-            background: 'var(--bg-tertiary)',
-            borderRadius: 8,
-            fontSize: 13,
-          }}
-        >
-          <strong>How it works:</strong> Stealth sends use ephemeral X25519 ECDH to derive a
-          one-time stealth tag and claim key. The amount is encrypted with AES-256-GCM and only the
-          recipient can decrypt it (by scanning the chain for matching stealth tags).
-          <br />
-          <br />
-          {!pvacBridgeReady && (
-            <span className="tag warn">
-              ⚠️ PVAC bridge not ready — sender-side FHE balance subtraction is disabled. Stealth
-              send still works for recipients with public balance.
-            </span>
-          )}
-        </div>
+        {!pvacBridgeReady && (
+          <div className="info-box warn spaced">
+            <Icon name="alert-triangle" size={18} />
+            <div className="info-box-body">
+              PVAC bridge not ready — sender-side FHE balance subtraction is disabled. Stealth send
+              still works for recipients with public balance.
+            </div>
+          </div>
+        )}
 
         <div className="form-row">
           <label htmlFor="sto">Recipient Address</label>
@@ -227,6 +235,8 @@ export function StealthPanel() {
             value={to}
             onChange={(e) => setTo(e.target.value)}
             placeholder="oct..."
+            aria-invalid={toInvalid}
+            data-invalid={toInvalid ? 'true' : undefined}
           />
         </div>
 
@@ -255,44 +265,45 @@ export function StealthPanel() {
 
         <div className="form-actions">
           <button className="primary" onClick={requestSend} disabled={!to || !amount || !pin}>
-            Send Stealth
+            <Icon name="eye-off" size={18} /> Send Stealth
           </button>
         </div>
 
-        <ConfirmDialog
-          open={showConfirm}
-          icon="🤫"
-          title="Confirm Stealth Send"
-          message="The amount will be encrypted so only the recipient can decrypt it. Note the stealth fee is higher than a standard transfer. This action cannot be undone."
-          confirmLabel="Send Stealth"
-          cancelLabel="Cancel"
-          onConfirm={handleSend}
-          onCancel={() => setShowConfirm(false)}
-          details={[
-            `To:      ${to}`,
-            `Amount:  ${amount} OCT (encrypted)`,
-            `Fee:     ${formatAmount(stealthFee)} OCT`,
-          ].join('\n')}
-        />
-
         {result && (
-          <div
-            style={{
-              marginTop: 16,
-              padding: 12,
-              background: 'var(--bg-tertiary)',
-              borderRadius: 8,
-            }}
-          >
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>
-              Transaction Hash
-            </div>
-            <div className="mono" style={{ fontSize: 12, wordBreak: 'break-all' }}>
-              {result}
+          <div className="info-box ok spaced-top">
+            <Icon name="check-circle" size={18} />
+            <div className="info-box-body">
+              <strong className="ok-text">Transaction Hash</strong>
+              <div className="mono mono-line">{result}</div>
+              <button
+                className="ghost btn-sm self-start"
+                onClick={() => {
+                  copyText(result);
+                  pushToast('success', 'Hash copied');
+                }}
+              >
+                <Icon name="copy" size={14} /> Copy Hash
+              </button>
             </div>
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={showConfirm}
+        icon="eye-off"
+        title="Confirm Stealth Send"
+        message="The amount will be encrypted so only the recipient can decrypt it. Note the stealth fee is higher than a standard transfer. This action cannot be undone."
+        confirmLabel="Send Stealth"
+        cancelLabel="Cancel"
+        onConfirm={handleSend}
+        onCancel={() => setShowConfirm(false)}
+        details={[
+          `To:      ${to}`,
+          `Amount:  ${amount} OCT (encrypted)`,
+          `Fee:     ${formatAmount(stealthFee)} OCT`,
+        ].join('\n')}
+      />
 
       <ProcessingModal
         open={modal.open}
@@ -307,6 +318,6 @@ export function StealthPanel() {
         onClose={modal.close}
         dismissible={!!modal.success || !!modal.error}
       />
-    </>
+    </div>
   );
 }

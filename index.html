@@ -2,29 +2,69 @@
 <html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover"
+    />
     <!-- 'wasm-unsafe-eval' is REQUIRED for the PVAC (FHE) module. Chromium blocks
          WebAssembly.instantiate() under a CSP that lacks it, which made the WASM
          module silently fail to load. It grants WebAssembly compilation only —
          it does NOT re-enable eval() for JavaScript. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https: http://localhost:* http://127.0.0.1:* http://[::1]:*; frame-src 'self' https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https: http://localhost:* http://127.0.0.1:* http://[::1]:*; frame-src 'self' https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';"
+    />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <meta name="theme-color" content="#0a0a0f" />
+    <!-- Keep in sync with THEME_COLORS in src/styles/theme-colors.ts (= --surface-0). -->
+    <meta name="theme-color" content="#0b0d12" />
     <meta name="color-scheme" content="dark light" />
-    <meta name="description" content="Orion Wallet — Client-side React wallet for the Octra Network with FHE (PVAC) support." />
+    <meta
+      name="description"
+      content="Orion Wallet — Client-side React wallet for the Octra Network with FHE (PVAC) support."
+    />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Orion Wallet" />
     <meta name="mobile-web-app-capable" content="yes" />
     <link rel="icon" type="image/png" href="/logo.png" />
     <link rel="apple-touch-icon" href="/logo.png" />
+    <!-- Preload only the Latin subsets: they are what every locale paints (the UI is
+         Latin-script in 16 of 20 languages, and all addresses/hashes are ASCII), so these
+         two are always needed. The latin-ext / cyrillic / vietnamese subsets are left to
+         `unicode-range` so a user never downloads a subset their language does not use.
+         Served from our own origin, which is why CSP `font-src 'self'` suffices. -->
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/inter-latin-wght-normal.woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/jetbrains-mono-latin-wght-normal.woff2"
+      crossorigin
+    />
     <title>Orion Wallet — Octra Network</title>
     <style>
-      /* Pre-paint critical styles to avoid FOUC */
-      html { background: #0a0a0f; }
-      html[data-theme='light'] { background: #fafafa; }
-      body { margin: 0; }
-      #root { min-height: 100vh; min-height: 100dvh; }
+      /* Pre-paint critical styles to avoid FOUC. These literals cannot be var()s —
+         this block is parsed before global.css loads. Keep them equal to --surface-0
+         and THEME_COLORS in src/styles/theme-colors.ts. */
+      html {
+        background: #0b0d12;
+      }
+      html[data-theme='light'] {
+        background: #f7f8fa;
+      }
+      body {
+        margin: 0;
+      }
+      #root {
+        min-height: 100vh;
+        min-height: 100dvh;
+      }
       /* Initial loading state */
       #root:empty::before {
         content: 'Loading Orion Wallet…';
@@ -32,8 +72,13 @@
         align-items: center;
         justify-content: center;
         min-height: 100vh;
-        color: #6e6e85;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        color: #6d7688;
+        font-family:
+          'Inter',
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
         font-size: 14px;
       }
     </style>

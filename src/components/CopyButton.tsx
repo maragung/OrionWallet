@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { copyText } from '../utils/clipboard';
+import { Icon } from './icons/Icon';
 
 /**
  * Copy-to-clipboard button with inline "Copied!" feedback.
@@ -10,14 +11,12 @@ export function CopyButton({
   label,
   title = 'Copy',
   className = 'ghost',
-  style,
   onCopied,
 }: {
   value: string;
   label?: string;
   title?: string;
   className?: string;
-  style?: React.CSSProperties;
   onCopied?: () => void;
 }) {
   const [copied, setCopied] = useState(false);
@@ -47,11 +46,13 @@ export function CopyButton({
       className={className}
       onClick={handle}
       title={title}
-      aria-label={title}
-      style={style}
+      /* Only when the button is icon-only: with a visible label, an aria-label
+         would replace the words the user can actually see with a shorter,
+         different name. */
+      aria-label={label ? undefined : title}
     >
-      {copied ? '✓' : '📋'}
-      {label ? ` ${copied ? 'Copied!' : label}` : ''}
+      <Icon name={copied ? 'check' : 'copy'} size={16} className={copied ? 'icon-ok' : undefined} />
+      {label ? <span>{copied ? 'Copied!' : label}</span> : null}
     </button>
   );
 }

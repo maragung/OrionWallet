@@ -11,6 +11,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { recordPinAttempt, resetPinAttempts } from '../wallet/pin';
+import { Icon } from './icons/Icon';
 
 export function PinModal({
   open,
@@ -31,6 +32,9 @@ export function PinModal({
 }) {
   const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
+  /* A PIN typed on a phone keyboard is easy to mistype and impossible to check,
+     and the field is the only thing standing between the user and a retry loop. */
+  const [reveal, setReveal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -40,6 +44,7 @@ export function PinModal({
     setPin('');
     setError(null);
     setBusy(false);
+    setReveal(false);
     const t = setTimeout(() => inputRef.current?.focus(), 50);
     return () => clearTimeout(t);
   }, [open]);
@@ -83,100 +88,65 @@ export function PinModal({
   };
 
   return (
-    <div
-      className="modal-overlay"
-      onClick={() => !busy && onCancel()}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0, 0, 0, 0.6)',
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 3000,
-        padding: 'var(--sp-4)',
-        animation: 'fadeIn var(--t-base)',
-      }}
-    >
+    <div className="modal-overlay" onClick={() => !busy && onCancel()}>
       <div
-        className="modal-content"
+        className="modal-content sm"
         onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'var(--bg-elevated-1)',
-          border: '1px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          padding: 'var(--sp-6)',
-          maxWidth: 400,
-          width: '100%',
-          boxShadow: 'var(--shadow-xl)',
-          animation: 'slideUp var(--t-base)',
-        }}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
       >
-        <div className="card-title" style={{ marginBottom: 'var(--sp-2)' }}>
-          {title}
+        <div className="modal-head">
+          <span className="modal-icon accent">
+            <Icon name="lock" size={20} />
+          </span>
+          <h3 className="modal-title">{title}</h3>
         </div>
-        {description && (
-          <p
-            style={{
-              fontSize: 'var(--fs-sm)',
-              color: 'var(--text-secondary)',
-              marginTop: 0,
-              marginBottom: 'var(--sp-4)',
-            }}
-          >
-            {description}
-          </p>
-        )}
+        {description && <p className="modal-text">{description}</p>}
 
         <div className="form-row">
           <label htmlFor="pin-modal-input">PIN</label>
-          <input
-            id="pin-modal-input"
-            ref={inputRef}
-            type="password"
-            className="mono"
-            autoComplete="current-password"
-            value={pin}
-            disabled={busy}
-            onChange={(e) => setPin(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void submit();
-            }}
-          />
+          <div className="input-wrap">
+            <input
+              id="pin-modal-input"
+              ref={inputRef}
+              type={reveal ? 'text' : 'password'}
+              className="mono"
+              autoComplete="current-password"
+              value={pin}
+              disabled={busy}
+              onChange={(e) => setPin(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void submit();
+              }}
+            />
+            <button
+              type="button"
+              className="icon-btn plain input-affix"
+              onClick={() => setReveal(!reveal)}
+              title={reveal ? 'Hide PIN' : 'Show PIN'}
+              aria-label={reveal ? 'Hide PIN' : 'Show PIN'}
+            >
+              <Icon name={reveal ? 'eye-off' : 'eye'} size={18} />
+            </button>
+          </div>
         </div>
 
         {error && (
-          <div
-            style={{
-              color: 'var(--error)',
-              background: 'var(--error-soft)',
-              borderRadius: 'var(--r-md)',
-              padding: 'var(--sp-3)',
-              fontSize: 'var(--fs-sm)',
-              marginTop: 'var(--sp-2)',
-            }}
-          >
-            {error}
+          <div className="info-box err" role="alert">
+            <Icon name="alert-triangle" size={18} />
+            <span>{error}</span>
           </div>
         )}
 
-        <div
-          style={{
-            display: 'flex',
-            gap: 'var(--sp-2)',
-            justifyContent: 'flex-end',
-            marginTop: 'var(--sp-4)',
-          }}
-        >
+        <div className="modal-actions">
           <button className="ghost" onClick={onCancel} disabled={busy}>
             Cancel
           </button>
           <button className="primary" onClick={() => void submit()} disabled={!pin || busy}>
             {busy ? (
               <>
-                <span className="spinner" style={{ marginRight: 6 }} />
+                <span className="spinner" />
                 {busyLabel}
               </>
             ) : (

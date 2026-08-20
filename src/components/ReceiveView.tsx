@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useWalletStore } from '../store/wallet-store';
 import { QrCode } from './QrCode';
 import { CopyButton } from './CopyButton';
+import { PageHead } from './PageHead';
+import { Icon } from './icons';
 import { copyText } from '../utils/clipboard';
 import { buildPaymentUri } from '../wallet/payment-uri';
 import { PanelSkeleton } from './PanelSkeleton';
@@ -38,72 +40,43 @@ export function ReceiveView() {
   };
 
   return (
-    <div className="card">
-      <div className="card-header">
-        <div className="card-title">📥 Receive OCT</div>
-      </div>
+    <div className="page">
+      <PageHead
+        icon="receive"
+        title="Receive"
+        sub="Let another device scan the code, or share the address. Adding an amount turns it into a payment request."
+      />
 
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 'var(--sp-4)',
-        }}
-      >
-        <div
-          style={{
-            padding: 'var(--sp-3)',
-            background: '#ffffff',
-            borderRadius: 'var(--r-lg)',
-            boxShadow: 'var(--shadow-md)',
-            lineHeight: 0,
-          }}
-        >
-          <QrCode value={payload} size={220} />
-        </div>
-
-        <div style={{ width: '100%', textAlign: 'center' }}>
-          <div
-            style={{
-              fontSize: 'var(--fs-xs)',
-              color: 'var(--text-muted)',
-              marginBottom: 'var(--sp-2)',
-            }}
-          >
-            Scan this code, or share your address
-          </div>
-          <div
-            className="address-display"
-            style={{ textAlign: 'center', fontSize: 'var(--fs-sm)' }}
-          >
-            {wallet.addr}
+      <div className="card">
+        <div className="card-header">
+          <div className="card-title">
+            <Icon name="receive" size={18} /> Receive OCT
           </div>
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            gap: 'var(--sp-2)',
-            width: '100%',
-            justifyContent: 'center',
-            flexWrap: 'wrap',
-          }}
-        >
-          <CopyButton
-            value={wallet.addr}
-            label="Copy address"
-            onCopied={() => pushToast('success', 'Address copied')}
-            style={{ minHeight: 44 }}
-          />
-          {canShare && (
-            <button className="ghost" onClick={share} style={{ minHeight: 44 }}>
-              🔗 Share
-            </button>
-          )}
-        </div>
+        <div className="receive-stack">
+          <div className="qr-frame">
+            <QrCode value={payload} size={220} />
+          </div>
 
-        <div style={{ width: '100%' }}>
+          <div>
+            <div className="receive-caption">Scan this code, or share your address</div>
+            <div className="address-display center">{wallet.addr}</div>
+          </div>
+
+          <div className="row tight receive-actions">
+            <CopyButton
+              value={wallet.addr}
+              label="Copy address"
+              onCopied={() => pushToast('success', 'Address copied')}
+            />
+            {canShare && (
+              <button className="ghost" onClick={share}>
+                <Icon name="link" size={16} /> Share
+              </button>
+            )}
+          </div>
+
           <div className="form-row">
             <label htmlFor="recv-amount">Request a specific amount (optional)</label>
             <input
@@ -116,15 +89,7 @@ export function ReceiveView() {
               autoComplete="off"
             />
             {amount.trim() && (
-              <div
-                style={{
-                  fontSize: 'var(--fs-xs)',
-                  color: 'var(--text-muted)',
-                  marginTop: 'var(--sp-1)',
-                }}
-              >
-                QR now encodes a request for {amount.trim()} OCT.
-              </div>
+              <div className="field-note">QR now encodes a request for {amount.trim()} OCT.</div>
             )}
           </div>
         </div>

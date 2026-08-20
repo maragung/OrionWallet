@@ -22,11 +22,11 @@ export function PanelSkeleton({
       <div className="card-header">
         <div className="card-title">{title}</div>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
+      <div className="stack">
         {Array.from({ length: rows }, (_, i) => (
-          <div key={i} className="skeleton" style={{ height: i === 0 ? 28 : 36 }} />
+          <div key={i} className={`skeleton ${i === 0 ? 'title' : 'row'}`} />
         ))}
-        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{message}</div>
+        <div className="field-note">{message}</div>
       </div>
     </div>
   );

@@ -53,8 +53,16 @@ export async function createWallet(
  * each input's `data-word-index` instead of being hardcoded.
  */
 export async function completeMnemonicBackup(page: Page): Promise<void> {
-  // The success modal sits over the card; close it before clicking behind it.
+  /* The success modal sits over the card; close it before clicking behind it. Both
+     waits below exist because `count()` does not auto-wait — it answers about the DOM
+     as it is at that instant. Sampling it right after the previous step passed on a
+     fast desktop run and intermittently failed under the mobile project's emulation,
+     which is slower for the same work. */
   const gotIt = page.locator('button:has-text("Got It")');
+  await gotIt
+    .first()
+    .waitFor({ state: 'visible', timeout: 10_000 })
+    .catch(() => undefined);
   if (await gotIt.count()) await gotIt.first().click();
 
   const phrase = ((await page.textContent('[data-testid="mnemonic-words"]')) ?? '').trim();
@@ -64,6 +72,7 @@ export async function completeMnemonicBackup(page: Page): Promise<void> {
   await page.click('button:has-text("Written It Down")');
 
   const inputs = page.locator('input[data-word-index]');
+  await inputs.first().waitFor({ state: 'visible', timeout: 15_000 });
   const count = await inputs.count();
   if (count === 0) throw new Error('completeMnemonicBackup: no verification inputs rendered');
   for (let i = 0; i < count; i++) {
@@ -76,6 +85,38 @@ export async function completeMnemonicBackup(page: Page): Promise<void> {
   }
 
   await page.click('button:has-text("Confirm")');
+}
+
+/**
+ * Navigate to a top-level view by its visible label, at any viewport width.
+ *
+ * The sidebar and the phone bottom bar do not carry the same set of items: below
+ * 768px only Home / Send / Receive / History are slots, and everything else lives
+ * behind "More". A spec that hardcodes `.nav-item:has-text(…)` therefore passes on
+ * desktop and fails on the mobile project for a reason that has nothing to do with
+ * what it is testing. This picks whichever route is actually on screen.
+ *
+ * `label` is the sidebar/sheet label ("Settings", "Tokens", "Balance"); the four
+ * bottom-bar slots use a short label, so pass what the bar shows for those ("Home"
+ * for Balance).
+ */
+export async function gotoTab(page: Page, label: string): Promise<void> {
+  const direct = page
+    .locator(`.nav-item:has-text("${label}"), .mobile-nav-item:has-text("${label}")`)
+    .filter({ visible: true })
+    .first();
+  if (await direct.count()) {
+    await direct.click();
+    return;
+  }
+
+  // Not a bottom-bar slot at this width — it is in the "More" sheet.
+  await page.locator('.mobile-nav-item:has-text("More")').click();
+  const sheetItem = page.locator(`.sheet-item:has-text("${label}")`).first();
+  await sheetItem.waitFor({ state: 'visible', timeout: 5_000 });
+  await sheetItem.click();
+  // The sheet closes on select; wait for it so the next click is not intercepted.
+  await page.locator('.sheet').waitFor({ state: 'detached', timeout: 5_000 });
 }
 
 /**

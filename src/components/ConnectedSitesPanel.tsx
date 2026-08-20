@@ -15,6 +15,7 @@ import {
   type SdkSessionRecord,
   type TrustedSiteRecord,
 } from '../wallet/storage';
+import { Icon } from './icons';
 
 function timeLeft(ms: number): string {
   const d = ms - Date.now();
@@ -61,88 +62,65 @@ export function ConnectedSitesPanel() {
   return (
     <div className="card">
       <div className="card-header">
-        <div className="card-title">🔗 Connected Sites</div>
-        <button className="ghost icon" onClick={refresh} aria-label="Refresh" disabled={loading}>
-          {loading ? <span className="spinner" /> : '↻'}
+        <div className="card-title">
+          <Icon name="link" size={18} /> Connected Sites
+        </div>
+        <button
+          className="icon-btn"
+          onClick={refresh}
+          aria-label="Refresh connected sites"
+          disabled={loading}
+        >
+          {loading ? <span className="spinner" /> : <Icon name="refresh" size={16} />}
         </button>
       </div>
 
-      <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
+      <p className="card-desc">
         Sites connected via the Wallet SDK. They can read your address, balance, and network, and
         request signatures — every signature still needs your explicit approval. They can never
         send, transfer, swap, bridge, or broadcast.
       </p>
 
       {sessions.length === 0 ? (
-        <div
-          style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', padding: 'var(--sp-3) 0' }}
-        >
-          No active sessions.
-        </div>
+        <div className="empty-note">No active sessions.</div>
       ) : (
-        sessions.map((s) => (
-          <div
-            key={s.sid}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 'var(--sp-2)',
-              padding: 'var(--sp-2) 0',
-              borderBottom: '1px solid var(--border-subtle)',
-            }}
-          >
-            <div style={{ minWidth: 0 }}>
-              <div className="mono" style={{ fontSize: 'var(--fs-sm)' }}>
-                {s.origin}
-              </div>
-              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
-                {timeLeft(Math.min(s.idleExpiresAt, s.absExpiresAt))} · {s.permissions.length}{' '}
-                permissions
-              </div>
+        <div className="data-rows">
+          {sessions.map((s) => (
+            <div key={s.sid} className="data-row">
+              <span className="data-row-main">
+                <span className="mono truncate">{s.origin}</span>
+                <span className="data-row-sub">
+                  {timeLeft(Math.min(s.idleExpiresAt, s.absExpiresAt))} · {s.permissions.length}{' '}
+                  permissions
+                </span>
+              </span>
+              <button className="ghost danger btn-sm" onClick={() => revoke(s.sid)}>
+                Revoke
+              </button>
             </div>
-            <button className="ghost" onClick={() => revoke(s.sid)} style={{ minHeight: 32 }}>
-              Revoke
-            </button>
-          </div>
-        ))
+          ))}
+        </div>
       )}
 
-      <div className="card-header" style={{ marginTop: 'var(--sp-4)' }}>
-        <div className="card-title" style={{ fontSize: 'var(--fs-sm)' }}>
-          ⭐ Trusted Sites
-        </div>
+      <div className="card-subhead">
+        <Icon name="star" size={16} /> Trusted Sites
       </div>
-      <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
+      <p className="field-note">
         Trusted sites skip only the connection prompt. They never skip a signing prompt.
       </p>
       {trusted.length === 0 ? (
-        <div
-          style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', padding: 'var(--sp-2) 0' }}
-        >
-          No trusted sites.
-        </div>
+        <div className="empty-note">No trusted sites.</div>
       ) : (
-        trusted.map((t) => (
-          <div
-            key={t.origin}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 'var(--sp-2)',
-              padding: 'var(--sp-2) 0',
-              borderBottom: '1px solid var(--border-subtle)',
-            }}
-          >
-            <div className="mono" style={{ fontSize: 'var(--fs-sm)', minWidth: 0 }}>
-              {t.origin}
+        <div className="data-rows">
+          {trusted.map((t) => (
+            <div key={t.origin} className="data-row">
+              <span className="data-row-main mono truncate">{t.origin}</span>
+              <button className="ghost danger btn-sm" onClick={() => untrust(t.origin)}>
+                Remove
+              </button>
             </div>
-            <button className="ghost" onClick={() => untrust(t.origin)} style={{ minHeight: 32 }}>
-              Remove
-            </button>
-          </div>
-        ))
+          ))}
+        </div>
       )}
     </div>
   );

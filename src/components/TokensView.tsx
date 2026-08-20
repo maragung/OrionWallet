@@ -4,7 +4,9 @@ import { useI18n } from '../i18n/useI18n';
 import { isValidAddress } from '../crypto/address';
 import { PanelSkeleton } from './PanelSkeleton';
 import { CopyButton } from './CopyButton';
-import { Tooltip } from './Tooltip';
+import { Tooltip, InfoHint } from './Tooltip';
+import { PageHead } from './PageHead';
+import { Icon } from './icons';
 import { ConfirmDialog } from './ConfirmDialog';
 import { TokenTransferForm } from './TokenTransferForm';
 import {
@@ -171,34 +173,39 @@ export function TokensView() {
   const pct =
     progress && progress.total > 0 ? Math.round((progress.scanned / progress.total) * 100) : 0;
 
+  const addrInvalid = Boolean(addr) && !isValidAddress(addr.trim());
+
   return (
-    <>
+    <div className="page">
+      <PageHead
+        icon="gem"
+        title={t('tokens.title')}
+        sub={t('tokens.tooltip')}
+        actions={
+          <button
+            className="icon-btn"
+            onClick={doRefresh}
+            title={t('common.refresh')}
+            aria-label={t('common.refresh')}
+            disabled={busy || scanning || holdings.length === 0}
+          >
+            <Icon name="refresh" size={16} />
+          </button>
+        }
+      />
+
       <div className="card">
         <div className="card-header">
           <div className="card-title">
-            💎 {t('tokens.title')}{' '}
-            <Tooltip text={t('tokens.tooltip')}>
-              <span
-                style={{ color: 'var(--text-muted)', cursor: 'help', fontSize: 'var(--fs-sm)' }}
-              >
-                ⓘ
-              </span>
-            </Tooltip>
+            <Icon name="gem" size={18} /> {t('tokens.title')}
+            <InfoHint text={t('tokens.tooltip')} />
           </div>
-          <button
-            className="ghost icon"
-            onClick={doRefresh}
-            title={t('common.refresh')}
-            disabled={busy || scanning || holdings.length === 0}
-          >
-            ↻
-          </button>
         </div>
 
         {/* Manual add — instant, unlike a scan. */}
         <div className="form-row">
           <label htmlFor="tokenAddr">{t('tokens.addLabel')}</label>
-          <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+          <div className="input-row">
             <input
               id="tokenAddr"
               className="mono"
@@ -207,9 +214,8 @@ export function TokensView() {
               placeholder="oct…"
               onKeyDown={(e) => e.key === 'Enter' && doAdd()}
               disabled={busy || scanning}
-              style={
-                addr && !isValidAddress(addr.trim()) ? { borderColor: 'var(--error)' } : undefined
-              }
+              aria-invalid={addrInvalid}
+              data-invalid={addrInvalid ? 'true' : undefined}
             />
             <button className="primary" onClick={doAdd} disabled={busy || scanning || !addr.trim()}>
               {t('tokens.add')}
@@ -218,53 +224,35 @@ export function TokensView() {
         </div>
 
         {/* Opt-in scan. Deliberately explicit about the cost. */}
-        <div
-          style={{
-            marginTop: 'var(--sp-3)',
-            padding: 'var(--sp-3)',
-            background: 'var(--bg-elevated-2)',
-            borderRadius: 'var(--r-md)',
-            fontSize: 'var(--fs-xs)',
-            color: 'var(--text-muted)',
-          }}
-        >
-          {t('tokens.scanExplainer')}
-          <div
-            style={{
-              marginTop: 'var(--sp-2)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--sp-2)',
-            }}
-          >
-            {scanning ? (
-              <>
-                <span className="spinner" />
-                <span className="mono">
-                  {progress ? `${progress.scanned}/${progress.total} (${pct}%)` : '…'}
-                </span>
-                <span>{t('tokens.scanFound').replace('{n}', String(progress?.found ?? 0))}</span>
-                <button className="ghost" onClick={() => abortRef.current?.abort()}>
-                  {t('common.cancel')}
+        <div className="info-box">
+          <Icon name="search" size={16} />
+          <div className="stack tight grow">
+            <span>{t('tokens.scanExplainer')}</span>
+            <div className="row tight">
+              {scanning ? (
+                <>
+                  <span className="spinner" />
+                  <span className="mono">
+                    {progress ? `${progress.scanned}/${progress.total} (${pct}%)` : '…'}
+                  </span>
+                  <span>{t('tokens.scanFound').replace('{n}', String(progress?.found ?? 0))}</span>
+                  <button className="ghost btn-sm" onClick={() => abortRef.current?.abort()}>
+                    {t('common.cancel')}
+                  </button>
+                </>
+              ) : (
+                <button className="ghost btn-sm self-start" onClick={doScan} disabled={busy}>
+                  <Icon name="search" size={14} /> {t('tokens.scan')}
                 </button>
-              </>
-            ) : (
-              <button className="ghost" onClick={doScan} disabled={busy}>
-                🔍 {t('tokens.scan')}
-              </button>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
         {error && (
-          <div
-            style={{
-              marginTop: 'var(--sp-3)',
-              color: 'var(--error)',
-              fontSize: 'var(--fs-sm)',
-            }}
-          >
-            ⚠️ {error}
+          <div className="info-box err spaced-top" role="alert">
+            <Icon name="alert-triangle" size={16} />
+            <span>{error}</span>
           </div>
         )}
       </div>
@@ -272,16 +260,14 @@ export function TokensView() {
       <div className="card">
         <div className="card-header">
           <div className="card-title">{t('tokens.holdings')}</div>
-          {holdings.length > 0 && (
-            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
-              {holdings.length}
-            </span>
-          )}
+          {holdings.length > 0 && <span className="card-meta">{holdings.length}</span>}
         </div>
 
         {holdings.length === 0 ? (
           <div className="empty-state">
-            <div className="icon">💎</div>
+            <div className="icon">
+              <Icon name="gem" size={28} />
+            </div>
             <div className="title">{t('tokens.emptyTitle')}</div>
             <div className="desc">{t('tokens.emptyDesc')}</div>
           </div>
@@ -329,9 +315,9 @@ export function TokensView() {
                       <span className="token-raw-suffix"> {t('tokens.rawUnits')}</span>
                     )}
                   </div>
-                  <div style={{ display: 'flex', gap: 'var(--sp-1)' }}>
+                  <div className="row tight">
                     <button
-                      className="ghost"
+                      className="ghost btn-sm"
                       onClick={() => setSending(h)}
                       // Without decimals the amount cannot be scaled safely, so
                       // sending is blocked rather than risking a wrong amount.
@@ -340,7 +326,7 @@ export function TokensView() {
                     >
                       {t('tokenTx.send')}
                     </button>
-                    <button className="ghost" onClick={() => setConfirmRemove(h)}>
+                    <button className="ghost btn-sm" onClick={() => setConfirmRemove(h)}>
                       {t('tokens.remove')}
                     </button>
                   </div>
@@ -350,14 +336,9 @@ export function TokensView() {
           </div>
         )}
 
-        <div
-          style={{
-            marginTop: 'var(--sp-3)',
-            fontSize: 'var(--fs-xs)',
-            color: 'var(--text-muted)',
-          }}
-        >
-          ⚠️ {t('tokens.spoofWarning')}
+        <div className="field-note">
+          <Icon name="alert-triangle" size={14} />
+          <span>{t('tokens.spoofWarning')}</span>
         </div>
       </div>
 
@@ -369,6 +350,8 @@ export function TokensView() {
           confirmRemove?.symbol ?? confirmRemove?.contract ?? '',
         )}
         confirmLabel={t('tokens.remove')}
+        icon="trash"
+        danger
         onConfirm={doRemove}
         onCancel={() => setConfirmRemove(null)}
       />
@@ -385,6 +368,6 @@ export function TokensView() {
           }}
         />
       )}
-    </>
+    </div>
   );
 }

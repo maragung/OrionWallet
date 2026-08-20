@@ -6,6 +6,7 @@ import { listAccounts, unlockAccount, openWatchOnlyAccount } from '../api/wallet
 import type { ManifestEntry } from '../wallet/storage';
 import { PinModal } from './PinModal';
 import { useAnchoredMenu } from '../hooks/useAnchoredMenu';
+import { Icon } from './icons/Icon';
 
 /**
  * Compact account switcher for the top bar.
@@ -97,186 +98,104 @@ export function AccountPicker({ onManage }: { onManage?: () => void } = {}) {
 
   return (
     <>
-      <div>
-        <button
-          ref={anchorRef}
-          className="ghost account-picker-trigger"
-          onClick={() => setOpen(!open)}
-          title={wallet.addr}
-          aria-label={`Account: ${activeLabel}`}
-          aria-expanded={open}
-          style={{
-            minHeight: 32,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--sp-2)',
-            padding: 'var(--sp-1) var(--sp-3)',
-            borderRadius: 'var(--r-full)',
-            background: 'var(--bg-elevated-3)',
-            fontSize: 'var(--fs-xs)',
-            maxWidth: 200,
-          }}
-        >
-          <span
-            style={{ fontSize: 14 }}
-            title={wallet.watchOnly ? 'Watch-only account' : undefined}
-          >
-            {wallet.watchOnly ? '👁' : '👤'}
-          </span>
-          <span
-            style={{
-              fontWeight: 'var(--fw-semibold)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {activeLabel}
-          </span>
-          <span className="mono" style={{ color: 'var(--text-muted)' }}>
-            {wallet.addr.slice(0, 6)}…
-          </span>
-          <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>▾</span>
-        </button>
+      {/* No wrapper element around the trigger. The menu is portalled out, so a
+          wrapper's only effect was to sit between the button and the header's flex
+          row as a `min-width: auto` item that refused to shrink — which is how the
+          chip ended up 6px wider than the row and clipped on its left edge at 320px. */}
+      <button
+        ref={anchorRef}
+        className="chip account-picker-trigger"
+        onClick={() => setOpen(!open)}
+        title={wallet.addr}
+        aria-label={`Account: ${activeLabel}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <Icon
+          name={wallet.watchOnly ? 'eye' : 'user'}
+          size={14}
+          label={wallet.watchOnly ? 'Watch-only account' : undefined}
+        />
+        <span className="chip-text">{activeLabel}</span>
+        {/* The address hint disambiguates same-named accounts, but on a phone the
+            name is already fighting the network chip for room — and the menu shows
+            full addresses anyway. */}
+        <span className="mono muted only-wide">{wallet.addr.slice(0, 6)}…</span>
+        <Icon name="chevron-down" size={14} className="muted" />
+      </button>
 
-        {open &&
-          portal(
-            <div
-              ref={menuRef}
-              data-testid="account-menu"
-              style={{
-                background: 'var(--bg-elevated-1)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 'var(--r-md)',
-                boxShadow: 'var(--shadow-lg)',
-                animation: 'slideUp var(--t-fast)',
-                ...menuStyle,
-              }}
-            >
-              <div
-                style={{
-                  padding: 'var(--sp-2) var(--sp-3)',
-                  fontSize: 'var(--fs-xs)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  color: 'var(--text-muted)',
-                  fontWeight: 'var(--fw-semibold)',
-                  borderBottom: '1px solid var(--border-subtle)',
-                }}
-              >
-                Accounts
+      {open &&
+        portal(
+          <div
+            ref={menuRef}
+            className="menu-panel"
+            role="menu"
+            aria-label="Accounts"
+            data-testid="account-menu"
+            style={menuStyle}
+          >
+            <div className="menu-section">Accounts</div>
+
+            {loadError && (
+              <div className="menu-error">
+                <span>Could not read your accounts: {loadError}</span>
+                <button className="ghost btn-sm" onClick={() => void refresh()}>
+                  <Icon name="refresh" size={14} /> Try again
+                </button>
               </div>
+            )}
 
-              {loadError && (
-                <div
-                  style={{
-                    padding: 'var(--sp-3)',
-                    fontSize: 'var(--fs-xs)',
-                    color: 'var(--error)',
-                    borderBottom: '1px solid var(--border-subtle)',
-                  }}
-                >
-                  Could not read your accounts: {loadError}
+            {accounts.length === 0 && !loadError ? (
+              <div className="menu-empty">No accounts in manifest.</div>
+            ) : (
+              accounts.map((a) => {
+                const isActive = a.addr === wallet.addr;
+                return (
                   <button
-                    className="ghost"
-                    onClick={() => void refresh()}
-                    style={{ marginTop: 'var(--sp-2)', minHeight: 28, fontSize: 'var(--fs-xs)' }}
+                    key={a.addr}
+                    className={`menu-item two-line ${isActive ? 'active' : ''}`}
+                    role="menuitemradio"
+                    aria-checked={isActive}
+                    onClick={() => void handleSwitch(a)}
+                    title={a.addr}
                   >
-                    ↻ Try again
-                  </button>
-                </div>
-              )}
-
-              {accounts.length === 0 && !loadError ? (
-                <div
-                  style={{
-                    padding: 'var(--sp-3)',
-                    fontSize: 'var(--fs-xs)',
-                    color: 'var(--text-muted)',
-                  }}
-                >
-                  No accounts in manifest.
-                </div>
-              ) : (
-                accounts.map((a) => {
-                  const isActive = a.addr === wallet.addr;
-                  return (
-                    <button
-                      key={a.addr}
-                      className="ghost"
-                      onClick={() => void handleSwitch(a)}
-                      title={a.addr}
-                      style={{
-                        width: '100%',
-                        justifyContent: 'flex-start',
-                        gap: 'var(--sp-2)',
-                        padding: 'var(--sp-2) var(--sp-3)',
-                        minHeight: 40,
-                        background: isActive ? 'var(--accent-soft)' : 'transparent',
-                        color: isActive ? 'var(--accent)' : 'var(--text-primary)',
-                        fontWeight: isActive ? 'var(--fw-semibold)' : 'var(--fw-normal)',
-                        borderRadius: 0,
-                        borderBottom: '1px solid var(--border-subtle)',
-                        textAlign: 'left',
-                      }}
-                    >
-                      <span style={{ flex: 1, minWidth: 0 }}>
-                        <span
-                          style={{
-                            display: 'block',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {a.name}
-                          {a.watchOnly && (
-                            <span
-                              className="tag warn"
-                              style={{ marginLeft: 6, fontSize: 10 }}
-                              title="No keys — cannot sign"
-                            >
-                              👁
-                            </span>
-                          )}
-                        </span>
-                        <span
-                          className="mono"
-                          style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}
-                        >
-                          {a.addr.slice(0, 14)}…{a.addr.slice(-6)}
-                        </span>
+                    <span className="menu-item-main">
+                      <span>
+                        {a.name}
+                        {a.watchOnly && (
+                          <span className="tag warn" title="No keys — cannot sign">
+                            <Icon name="eye" size={11} /> Watch
+                          </span>
+                        )}
                       </span>
-                      {isActive && <span style={{ color: 'var(--accent)' }}>✓</span>}
-                    </button>
-                  );
-                })
-              )}
+                      <span className="menu-item-sub mono">
+                        {a.addr.slice(0, 14)}…{a.addr.slice(-6)}
+                      </span>
+                    </span>
+                    {isActive && <Icon name="check" size={16} />}
+                  </button>
+                );
+              })
+            )}
 
-              {onManage && (
+            {onManage && (
+              <>
+                <div className="menu-divider" />
                 <button
-                  className="ghost"
+                  className="menu-item"
+                  role="menuitem"
                   onClick={() => {
                     setOpen(false);
                     onManage();
                   }}
-                  style={{
-                    width: '100%',
-                    justifyContent: 'flex-start',
-                    gap: 'var(--sp-2)',
-                    padding: 'var(--sp-2) var(--sp-3)',
-                    minHeight: 36,
-                    borderRadius: 0,
-                    fontSize: 'var(--fs-xs)',
-                    color: 'var(--text-secondary)',
-                  }}
                 >
-                  ⚙️ Manage accounts
+                  <Icon name="settings" size={18} />
+                  <span>Manage accounts</span>
                 </button>
-              )}
-            </div>,
-          )}
-      </div>
+              </>
+            )}
+          </div>,
+        )}
 
       <PinModal
         open={pendingSwitch !== null}

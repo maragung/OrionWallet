@@ -5,7 +5,9 @@ import { createNewWallet, importMnemonic } from '../api/wallet-api';
 import { checkQuizAnswers, pickQuizIndexes } from '../wallet/mnemonic-quiz';
 import { ThemeToggle } from './ThemeToggle';
 import { ProcessingModal, type ProcessingStage } from './ProcessingModal';
-import { Tooltip } from './Tooltip';
+import { LanguageSwitcher } from './LanguageSwitcher';
+import { InfoHint } from './Tooltip';
+import { Icon } from './icons';
 
 type Mode = 'create' | 'import';
 
@@ -111,7 +113,7 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
       setQuizInput(idx.map(() => ''));
       setModalSuccess(true);
       setModalSuccessMsg(
-        `Wallet created successfully!\n\nAddress: ${wallet.addr}\n\n⚠️ Write down your recovery phrase now — the wallet opens once you confirm it.`,
+        `Wallet created successfully!\n\nAddress: ${wallet.addr}\n\nWrite down your recovery phrase now — the wallet opens once you confirm it.`,
       );
       pushToast('success', 'Wallet created — confirm your recovery phrase to continue');
     } catch (e) {
@@ -238,77 +240,67 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
     setModalSuccess(false);
   };
 
+  const pinMismatch = Boolean(pinConfirm) && pin !== pinConfirm;
+  const strength = getPinStrength(pin);
+
   return (
     <>
-      <div
-        style={{
-          minHeight: '100vh',
-          ...({ minHeight: '100dvh' } as React.CSSProperties),
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 'var(--sp-4)',
-          background:
-            'radial-gradient(ellipse at top, var(--bg-elevated-1) 0%, var(--bg-base) 60%)',
-          position: 'relative',
-        }}
-      >
-        <div style={{ position: 'absolute', top: 'var(--sp-4)', right: 'var(--sp-4)' }}>
+      <div className="auth-shell">
+        <div className="auth-corner">
+          <LanguageSwitcher />
           <ThemeToggle />
         </div>
 
-        <div
-          className="card"
-          style={{
-            width: '100%',
-            maxWidth: 560,
-            padding: 'var(--sp-8) var(--sp-6)',
-            boxShadow: 'var(--shadow-xl)',
-          }}
-        >
-          <div style={{ textAlign: 'center', marginBottom: 'var(--sp-5)' }}>
-            <img
-              src="/logo.png"
-              alt="Octra"
-              style={{ width: 48, height: 48, marginBottom: 'var(--sp-2)' }}
-            />
-            <h1 style={{ fontSize: 'var(--fs-xl)', fontWeight: 'var(--fw-bold)' }}>
+        <div className="card auth-card wide">
+          <div className="auth-head">
+            <img src="/logo.png" alt="Octra" className="auth-logo" />
+            <h1 className="auth-title">
               {mode === 'create' ? 'Create New Wallet' : 'Import Wallet'}
             </h1>
+            <p className="auth-sub">
+              {mode === 'create'
+                ? 'Everything is generated on this device. Nothing leaves it.'
+                : 'Restore an existing wallet from its BIP39 recovery phrase.'}
+            </p>
           </div>
 
-          <div className="tab-bar">
-            <div
+          {/* Real buttons, not clickable divs: these switch what the form does, and a
+              keyboard user could not reach them before. */}
+          <div className="tab-bar" role="tablist" aria-label="Wallet setup mode">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'create'}
               className={`tab ${mode === 'create' ? 'active' : ''}`}
               onClick={() => setMode('create')}
             >
-              Create New
-            </div>
-            <div
+              <Icon name="sparkles" size={16} /> Create New
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'import'}
               className={`tab ${mode === 'import' ? 'active' : ''}`}
               onClick={() => setMode('import')}
             >
-              Import from Mnemonic
-            </div>
+              <Icon name="upload" size={16} /> Import from Mnemonic
+            </button>
           </div>
 
           {mode === 'import' && (
             <div className="form-row">
               <label htmlFor="mnemonic">
                 Mnemonic (12/15/18/21/24 words){' '}
-                <Tooltip text="Enter your BIP39 mnemonic phrase. Words must be separated by spaces. The mnemonic is processed locally and never sent to any server.">
-                  <span style={{ color: 'var(--text-muted)', cursor: 'help' }}>ⓘ</span>
-                </Tooltip>
+                <InfoHint text="Enter your BIP39 mnemonic phrase. Words must be separated by spaces. The mnemonic is processed locally and never sent to any server." />
               </label>
               <textarea
                 id="mnemonic"
-                className="mono"
+                className="mono resize-y"
                 rows={3}
                 value={mnemonic}
                 onChange={(e) => setMnemonic(e.target.value)}
                 placeholder="abandon ability able about above absent absorb abstract absurd abuse access accident"
                 spellCheck={false}
-                style={{ resize: 'vertical' }}
               />
             </div>
           )}
@@ -328,11 +320,9 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
             <div className="form-row">
               <label htmlFor="pin">
                 PIN{' '}
-                <Tooltip text="8-64 characters. If under 15 chars: must include letter + digit + symbol. If 15+ chars: any characters allowed (passphrase-style).">
-                  <span style={{ color: 'var(--text-muted)', cursor: 'help' }}>ⓘ</span>
-                </Tooltip>
+                <InfoHint text="8-64 characters. If under 15 chars: must include letter + digit + symbol. If 15+ chars: any characters allowed (passphrase-style)." />
               </label>
-              <div style={{ position: 'relative' }}>
+              <div className="input-wrap">
                 <input
                   id="pin"
                   type={showPin ? 'text' : 'password'}
@@ -341,24 +331,15 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
                   onChange={(e) => setPin(e.target.value)}
                   placeholder="Min 8 chars"
                   autoComplete="new-password"
-                  style={{ paddingRight: 40 }}
                 />
                 <button
                   type="button"
-                  className="ghost icon"
+                  className="icon-btn plain input-affix"
                   onClick={() => setShowPin(!showPin)}
                   title={showPin ? 'Hide PIN' : 'Show PIN'}
-                  style={{
-                    position: 'absolute',
-                    right: 4,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    minHeight: 32,
-                    minWidth: 32,
-                    border: 'none',
-                  }}
+                  aria-label={showPin ? 'Hide PIN' : 'Show PIN'}
                 >
-                  {showPin ? '🙈' : '👁️'}
+                  <Icon name={showPin ? 'eye-off' : 'eye'} size={16} />
                 </button>
               </div>
             </div>
@@ -371,162 +352,94 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
                 value={pinConfirm}
                 onChange={(e) => setPinConfirm(e.target.value)}
                 autoComplete="new-password"
-                style={
-                  pinConfirm && pin !== pinConfirm ? { borderColor: 'var(--error)' } : undefined
-                }
+                aria-invalid={pinMismatch}
+                data-invalid={pinMismatch ? 'true' : undefined}
               />
-              {pinConfirm && pin !== pinConfirm && (
-                <div
-                  style={{
-                    color: 'var(--error)',
-                    fontSize: 'var(--fs-xs)',
-                    marginTop: 'var(--sp-1)',
-                  }}
-                >
-                  ⚠ PINs do not match
+              {pinMismatch && (
+                <div className="field-error">
+                  <Icon name="alert-triangle" size={12} /> PINs do not match
                 </div>
               )}
             </div>
           </div>
 
-          {/* PIN strength indicator */}
           {pin && (
-            <div style={{ marginBottom: 'var(--sp-3)' }}>
-              <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
-                {[1, 2, 3, 4].map((i) => {
-                  const strength = getPinStrength(pin);
-                  const filled = i <= strength;
-                  return (
-                    <div
-                      key={i}
-                      style={{
-                        flex: 1,
-                        height: 4,
-                        borderRadius: 2,
-                        background: filled
-                          ? strength <= 1
-                            ? 'var(--error)'
-                            : strength <= 2
-                              ? 'var(--warning)'
-                              : strength <= 3
-                                ? 'var(--info)'
-                                : 'var(--success)'
-                          : 'var(--bg-elevated-3)',
-                        transition: 'background var(--t-fast)',
-                      }}
-                    />
-                  );
-                })}
+            <div className="strength" data-level={strength}>
+              <div className="strength-track" aria-hidden="true">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className={`strength-seg ${i <= strength ? 'on' : ''}`} />
+                ))}
               </div>
-              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
+              {/* Announced politely: the meter updates on every keystroke, and an
+                  assertive region would interrupt the user mid-word. */}
+              <div className="strength-label" role="status">
                 {getPinStrengthLabel(pin)}
               </div>
             </div>
           )}
 
-          <div className="form-actions" style={{ flexDirection: 'column' }}>
+          <div className="form-actions stacked">
             {mode === 'create' ? (
-              <button
-                className="primary"
-                onClick={handleCreate}
-                disabled={!pin}
-                style={{ width: '100%' }}
-              >
-                ✨ Create Wallet
+              <button className="primary btn-lg" onClick={handleCreate} disabled={!pin}>
+                <Icon name="sparkles" size={18} /> Create Wallet
               </button>
             ) : (
               <button
-                className="primary"
+                className="primary btn-lg"
                 onClick={handleImport}
                 disabled={!mnemonic || !pin}
-                style={{ width: '100%' }}
               >
-                📥 Import Wallet
+                <Icon name="upload" size={18} /> Import Wallet
               </button>
             )}
-            <button
-              className="ghost"
-              onClick={onBack}
-              style={{ width: '100%', marginTop: 'var(--sp-2)' }}
-            >
-              ← Back to Unlock
+            <button className="ghost" onClick={onBack}>
+              <Icon name="arrow-left" size={16} /> Back to Unlock
             </button>
           </div>
 
           {generatedMnemonic && backupStep === 'show' && (
-            <div
-              style={{
-                marginTop: 'var(--sp-5)',
-                padding: 'var(--sp-4)',
-                background: 'var(--warning-soft)',
-                border: '1px solid var(--warning)',
-                borderRadius: 'var(--r-md)',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: 'var(--sp-2)',
-                }}
-              >
-                <strong style={{ color: 'var(--warning)', fontSize: 'var(--fs-sm)' }}>
-                  ⚠️ Save this mnemonic — shown only once!
-                </strong>
+            <div className="secret-box">
+              <div className="secret-head">
+                <span>
+                  <Icon name="alert-triangle" size={14} /> Save this mnemonic — shown only once!
+                </span>
                 <button
                   type="button"
-                  className="ghost icon"
+                  className="icon-btn plain"
                   onClick={() => setShowMnemonic(!showMnemonic)}
                   title={showMnemonic ? 'Hide' : 'Show'}
-                  style={{ minHeight: 28, minWidth: 28, fontSize: 14 }}
+                  aria-label={showMnemonic ? 'Hide recovery phrase' : 'Show recovery phrase'}
                 >
-                  {showMnemonic ? '🙈' : '👁️'}
+                  <Icon name={showMnemonic ? 'eye-off' : 'eye'} size={16} />
                 </button>
               </div>
               <div
-                className="mono"
+                className={`secret-value lg ${showMnemonic ? '' : 'blurred'}`}
                 data-testid="mnemonic-words"
-                style={{
-                  fontSize: 'var(--fs-sm)',
-                  wordBreak: 'break-word',
-                  color: 'var(--text-primary)',
-                  filter: showMnemonic ? 'none' : 'blur(6px)',
-                  transition: 'filter var(--t-base)',
-                  padding: 'var(--sp-2) 0',
-                }}
               >
                 {generatedMnemonic}
               </div>
-              <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 'var(--sp-2)' }}>
+              <div className="secret-actions">
                 <button
                   className="ghost"
-                  style={{ flex: 1, minHeight: 36 }}
                   onClick={() => {
                     copyText(generatedMnemonic);
                     pushToast('success', 'Mnemonic copied to clipboard');
                   }}
                 >
-                  📋 Copy Mnemonic
+                  <Icon name="copy" size={16} /> Copy Mnemonic
                 </button>
                 <button
                   className="primary"
-                  style={{ flex: 1, minHeight: 36 }}
                   onClick={() => {
                     setShowMnemonic(false);
                     setBackupStep('verify');
                   }}
                 >
-                  I&rsquo;ve Written It Down →
+                  I&rsquo;ve Written It Down <Icon name="arrow-right" size={16} />
                 </button>
               </div>
-              <div
-                style={{
-                  fontSize: 'var(--fs-xs)',
-                  color: 'var(--text-secondary)',
-                  marginTop: 'var(--sp-2)',
-                }}
-              >
+              <div className="secret-note">
                 The wallet opens once you confirm a few words from the phrase. You can reveal it
                 again later under Settings → Security with your PIN.
               </div>
@@ -534,35 +447,19 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
           )}
 
           {generatedMnemonic && backupStep === 'verify' && (
-            <div
-              style={{
-                marginTop: 'var(--sp-5)',
-                padding: 'var(--sp-4)',
-                background: 'var(--bg-elevated-2)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 'var(--r-md)',
-              }}
-            >
-              <strong style={{ fontSize: 'var(--fs-sm)' }}>✔ Confirm your recovery phrase</strong>
-              <div
-                style={{
-                  fontSize: 'var(--fs-xs)',
-                  color: 'var(--text-secondary)',
-                  margin: 'var(--sp-1) 0 var(--sp-3)',
-                }}
-              >
+            <div className="secret-box neutral">
+              <div className="secret-head">
+                <span>
+                  <Icon name="check-circle" size={16} /> Confirm your recovery phrase
+                </span>
+              </div>
+              <div className="secret-note">
                 Type the words at these positions, counting from 1. This is the only check that you
                 really have the phrase.
               </div>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: `repeat(${Math.max(1, quizIdx.length)}, minmax(0, 1fr))`,
-                  gap: 'var(--sp-2)',
-                }}
-              >
+              <div className="quiz-grid">
                 {quizIdx.map((wordIndex, slot) => (
-                  <div key={wordIndex} className="form-row" style={{ marginBottom: 0 }}>
+                  <div key={wordIndex} className="form-row">
                     <label htmlFor={`verify-word-${slot}`}>Word #{wordIndex + 1}</label>
                     <input
                       id={`verify-word-${slot}`}
@@ -588,31 +485,20 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
                 ))}
               </div>
               {quizFails > 0 && (
-                <div
-                  style={{
-                    color: 'var(--error)',
-                    fontSize: 'var(--fs-xs)',
-                    marginTop: 'var(--sp-2)',
-                  }}
-                >
-                  ⚠{' '}
+                <div className="field-error" role="alert">
+                  <Icon name="alert-triangle" size={12} />
                   {quizFails === 1
                     ? 'That did not match.'
                     : `That did not match (${quizFails} tries).`}{' '}
                   Check the phrase again if you need to.
                 </div>
               )}
-              <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 'var(--sp-3)' }}>
-                <button
-                  className="ghost"
-                  style={{ flex: 1, minHeight: 36 }}
-                  onClick={() => setBackupStep('show')}
-                >
-                  ← Show Phrase Again
+              <div className="secret-actions">
+                <button className="ghost" onClick={() => setBackupStep('show')}>
+                  <Icon name="arrow-left" size={16} /> Show Phrase Again
                 </button>
                 <button
                   className="primary"
-                  style={{ flex: 1, minHeight: 36 }}
                   onClick={confirmBackup}
                   disabled={quizInput.some((w) => !w.trim())}
                 >
@@ -654,7 +540,7 @@ function getPinStrength(pin: string): number {
 
 function getPinStrengthLabel(pin: string): string {
   if (!pin) return '';
-  if (pin.length < 8) return '⚠ Too short (min 8 chars)';
+  if (pin.length < 8) return 'Too short (min 8 chars)';
   const strength = getPinStrength(pin);
   if (strength <= 1) return 'Weak — add letters, digits, symbols';
   if (strength <= 2) return 'Fair — consider more length or complexity';

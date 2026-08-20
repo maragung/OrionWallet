@@ -82,7 +82,7 @@ export function ConnectApprovalHost() {
   if (approvals.length === 0 && !pendingUnlock) return null;
 
   return (
-    <div style={overlayStyle}>
+    <div className="connect-overlay approval-host">
       {pendingUnlock && (
         <PinModal
           open
@@ -113,17 +113,3 @@ export function ConnectApprovalHost() {
     </div>
   );
 }
-
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  background: 'rgba(0, 0, 0, 0.5)',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 'var(--sp-4)',
-  zIndex: 3000,
-  padding: 'var(--sp-4)',
-  overflowY: 'auto',
-};

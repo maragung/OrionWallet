@@ -4,6 +4,7 @@ import { useI18n } from '../i18n/useI18n';
 import { isValidAddress } from '../crypto/address';
 import { parseAmountToRaw, formatTokenAmount, type AmountError } from '../tokens/ocs01';
 import { transferToken, type TokenHolding } from '../api/tokens';
+import { Icon } from './icons/Icon';
 
 interface Props {
   token: TokenHolding;
@@ -91,47 +92,22 @@ export function TokenTransferForm({ token, onClose, onDone }: Props) {
       role="dialog"
       aria-modal="true"
       onClick={() => !busy && onClose()}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0, 0, 0, 0.6)',
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 3000,
-        padding: 'var(--sp-4)',
-        animation: 'fadeIn var(--t-base)',
-      }}
     >
-      <div
-        className="modal-content"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'var(--bg-elevated-1)',
-          border: '1px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          padding: 'var(--sp-6)',
-          maxWidth: 460,
-          width: '100%',
-          boxShadow: 'var(--shadow-xl)',
-          animation: 'slideUp var(--t-base)',
-        }}
-      >
-        <div className="card-header">
-          <div className="card-title">
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <span className="modal-icon accent">
+            <Icon name="send" size={20} />
+          </span>
+          <h3 className="modal-title">
             {t('tokenTx.title')} {symbol}
-          </div>
-          <button className="ghost icon" onClick={onClose} disabled={busy} aria-label="Close">
-            ✕
+          </h3>
+          <button className="icon-btn plain" onClick={onClose} disabled={busy} aria-label="Close">
+            <Icon name="x" size={18} />
           </button>
         </div>
 
         {token.decimals === null && (
-          <div className="tag warn" style={{ marginBottom: 'var(--sp-3)' }}>
-            {t('tokenTx.unknownDecimals')}
-          </div>
+          <div className="tag warn spaced">{t('tokenTx.unknownDecimals')}</div>
         )}
 
         {!confirming ? (
@@ -144,7 +120,8 @@ export function TokenTransferForm({ token, onClose, onDone }: Props) {
                 value={to}
                 onChange={(e) => setTo(e.target.value)}
                 placeholder="oct…"
-                style={to && !toValid ? { borderColor: 'var(--error)' } : undefined}
+                aria-invalid={to !== '' && !toValid}
+                data-invalid={to && !toValid ? 'true' : undefined}
               />
             </div>
 
@@ -160,17 +137,17 @@ export function TokenTransferForm({ token, onClose, onDone }: Props) {
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0.0"
                 disabled={token.decimals === null}
-                style={amountError || exceedsBalance ? { borderColor: 'var(--error)' } : undefined}
+                aria-invalid={amountError !== null || exceedsBalance}
+                data-invalid={amountError || exceedsBalance ? 'true' : undefined}
               />
-              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
+              <div className="field-note">
                 {t('tokenTx.available')}{' '}
                 <span className="mono" title={token.amount.exact}>
                   {token.amount.display}
                 </span>
                 {token.decimals !== null && (
                   <button
-                    className="ghost"
-                    style={{ marginLeft: 'var(--sp-2)' }}
+                    className="ghost btn-sm"
                     onClick={() => setAmount(formatTokenAmount(token.raw, token.decimals).exact)}
                   >
                     {t('tokenTx.max')}
@@ -180,8 +157,9 @@ export function TokenTransferForm({ token, onClose, onDone }: Props) {
             </div>
 
             {amountMessage() && (
-              <div style={{ color: 'var(--error)', fontSize: 'var(--fs-sm)' }}>
-                ⚠️ {amountMessage()}
+              <div className="field-error">
+                <Icon name="alert-triangle" size={14} />
+                <span>{amountMessage()}</span>
               </div>
             )}
 
@@ -222,12 +200,13 @@ export function TokenTransferForm({ token, onClose, onDone }: Props) {
               </div>
             </div>
 
-            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
-              {t('tokenTx.irreversible')}
-            </div>
+            <div className="field-note">{t('tokenTx.irreversible')}</div>
 
             {error && (
-              <div style={{ color: 'var(--error)', fontSize: 'var(--fs-sm)' }}>⚠️ {error}</div>
+              <div className="field-error" role="alert">
+                <Icon name="alert-triangle" size={14} />
+                <span>{error}</span>
+              </div>
             )}
 
             <div className="form-actions">

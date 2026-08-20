@@ -56,8 +56,10 @@ describe('ProcessingModal step rendering', () => {
       { id: 'c', label: 'Gamma', status: 'error', description: 'failure detail' },
       { id: 'd', label: 'Delta', status: 'pending' },
     ]);
-    expect(html).toContain('✓'); // done
-    expect(html).toContain('✗'); // error
+    // The done/error marks are icons from the wallet's own set, and each <svg>
+    // carries the name it was drawn from — an inline <path> is not identifiable.
+    expect(html).toContain('data-icon="check"'); // done
+    expect(html).toContain('data-icon="x"'); // error
     expect(html).toContain('completed detail');
     expect(html).toContain('failure detail');
     expect(html).toContain('>4<'); // pending step keeps its index
@@ -74,7 +76,10 @@ describe('ProcessingModal step rendering', () => {
 
   it('makes a long step list scrollable so all steps stay reachable', () => {
     const html = render(asPending(DECRYPT_STEPS));
-    expect(html).toContain('overflow-y:auto');
+    // The scrolling container is `.step-list`; the overflow itself now lives in
+    // the stylesheet, which jsdom does not load, so the class is what is checkable
+    // here. Its rendered height is asserted in the Playwright suite instead.
+    expect(html).toContain('class="step-list"');
   });
 
   it('hides the step list and shows the summary once successful', () => {

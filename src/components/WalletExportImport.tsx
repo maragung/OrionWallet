@@ -7,6 +7,7 @@ import { saveWalletEntry } from '../wallet/storage';
 import { addAccountToManifest } from '../wallet/storage';
 import { assertValidPin } from '../wallet/pin';
 import { ConfirmDialog } from './ConfirmDialog';
+import { Icon } from './icons';
 
 export function WalletExportImport() {
   const { wallet, setWallet, pushToast } = useWalletStore();
@@ -101,20 +102,26 @@ export function WalletExportImport() {
     }
   };
 
+  const pinMismatch = Boolean(importConfirmPin) && importNewPin !== importConfirmPin;
+
   return (
     <div className="card">
       <div className="card-header">
-        <div className="card-title">Export / Import Wallet File</div>
+        <div className="card-title">
+          <Icon name="save" size={18} /> Export / Import Wallet File
+        </div>
       </div>
 
-      <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
+      <p className="card-desc">
         Export your wallet as an encrypted <code>.oct</code> file (AES-256-GCM with PBKDF2 key
         derivation). Import the file on another device or browser to restore access. The PIN used to
         encrypt the file is required for import.
       </p>
 
-      <div style={{ marginBottom: 24 }}>
-        <strong style={{ display: 'block', marginBottom: 8 }}>Export Current Wallet</strong>
+      <div className="stack-section">
+        <div className="card-subhead flush">
+          <Icon name="download" size={16} /> Export Current Wallet
+        </div>
         <div className="form-row">
           <label htmlFor="exp-pin">Wallet PIN (to authorize export)</label>
           <input
@@ -125,15 +132,17 @@ export function WalletExportImport() {
             onChange={(e) => setExportPin(e.target.value)}
           />
         </div>
-        <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
+        <div className="form-actions start">
           <button className="primary" onClick={requestExport} disabled={!exportPin}>
-            Download .oct File
+            <Icon name="download" size={16} /> Download .oct File
           </button>
         </div>
       </div>
 
       <div>
-        <strong style={{ display: 'block', marginBottom: 8 }}>Import Wallet from File</strong>
+        <div className="card-subhead flush">
+          <Icon name="upload" size={16} /> Import Wallet from File
+        </div>
         <div className="form-row">
           <label htmlFor="imp-pin">File PIN (PIN used to encrypt the .oct file)</label>
           <input
@@ -163,27 +172,36 @@ export function WalletExportImport() {
               className="mono"
               value={importConfirmPin}
               onChange={(e) => setImportConfirmPin(e.target.value)}
+              aria-invalid={pinMismatch}
+              data-invalid={pinMismatch ? 'true' : undefined}
             />
+            {/* Said here rather than only on submit: the button is disabled until the two
+                match, and a disabled button with no reason beside it looks broken. */}
+            {pinMismatch && (
+              <div className="field-error">
+                <Icon name="alert-triangle" size={12} /> The two PINs do not match.
+              </div>
+            )}
           </div>
         </div>
         <input
           ref={fileInputRef}
           type="file"
           accept=".oct,application/octet-stream"
-          style={{ display: 'none' }}
+          className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
             if (f) handleImport(f);
             e.target.value = ''; // allow re-selecting the same file
           }}
         />
-        <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
+        <div className="form-actions start">
           <button
             className="primary"
             onClick={() => fileInputRef.current?.click()}
             disabled={!importPin || !importNewPin || importNewPin !== importConfirmPin}
           >
-            Choose .oct File...
+            <Icon name="upload" size={16} /> Choose .oct File…
           </button>
         </div>
       </div>
@@ -191,7 +209,7 @@ export function WalletExportImport() {
       <ConfirmDialog
         open={showExportConfirm}
         danger
-        icon="💾"
+        icon="save"
         title="Export Wallet File"
         message="This downloads an encrypted .oct file containing your wallet. Anyone with this file and its PIN can access your funds. Store it securely and never share it."
         confirmLabel="Download .oct File"

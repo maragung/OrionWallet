@@ -1,4 +1,17 @@
 import { useWalletStore } from '../store/wallet-store';
+import { Icon, type IconName } from './icons/Icon';
+
+/**
+ * Severity glyph per level. The level is also carried by the toast's left border
+ * colour and, for anything the user must act on, by the message text itself — the
+ * icon is a third, redundant signal rather than the only one.
+ */
+const TOAST_ICON: Record<string, IconName> = {
+  success: 'check-circle',
+  error: 'alert-octagon',
+  warning: 'alert-triangle',
+  info: 'info',
+};
 
 export function Toasts() {
   const { toasts, dismissToast } = useWalletStore();
@@ -6,36 +19,22 @@ export function Toasts() {
   return (
     <div className="toast-container">
       {toasts.map((t) => (
-        <div
-          key={t.id}
-          className={`toast ${t.level}`}
-          style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--sp-2)' }}
-        >
-          <div className="toast-msg" style={{ flex: 1, minWidth: 0 }}>
-            {t.message}
-          </div>
+        <div key={t.id} className={`toast ${t.level}`}>
+          <span className="toast-icon">
+            <Icon name={TOAST_ICON[t.level] ?? 'info'} size={18} />
+          </span>
+          <div className="toast-msg">{t.message}</div>
           <button
             type="button"
+            className="icon-btn plain"
             onClick={(e) => {
               e.stopPropagation();
               dismissToast(t.id);
             }}
             aria-label="Close notification"
             title="Close"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              fontSize: 16,
-              padding: '0 var(--sp-2)',
-              minHeight: 32,
-              minWidth: 32,
-              lineHeight: 1,
-              flexShrink: 0,
-            }}
           >
-            ✕
+            <Icon name="x" size={16} />
           </button>
         </div>
       ))}

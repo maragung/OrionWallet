@@ -13,6 +13,9 @@ import { DocsPanel } from './DocsPanel';
 import { SettingsPanel } from './SettingsPanel';
 import { AccountPicker } from './AccountPicker';
 import { NetworkSwitcher } from './NetworkSwitcher';
+import { ThemeToggle } from './ThemeToggle';
+import { HeaderMenu } from './HeaderMenu';
+import { Icon, type IconName } from './icons';
 import { ReceiveView } from './ReceiveView';
 import { CirclesPanel } from './CirclesPanel';
 import { BrowserPanel } from './BrowserPanel';
@@ -21,7 +24,6 @@ import { Toasts } from './Toasts';
 import { LoadingOverlay } from './LoadingOverlay';
 import { SessionRestoring } from './SessionRestoring';
 import { ErrorBoundary } from './ErrorBoundary';
-import { LanguageSwitcher } from './LanguageSwitcher';
 import { ConnectApprovalHost } from './ConnectApprovalHost';
 import { useTheme } from '../hooks/useTheme';
 import { useAutoLock } from '../hooks/useAutoLock';
@@ -53,8 +55,14 @@ interface NavItem {
   id: Tab;
   labelKey: string;
   shortLabelKey: string;
-  icon: string;
+  /** Name from the local icon set, not an emoji — see `components/icons/Icon.tsx`. */
+  icon: IconName;
   group: 'Wallet' | 'Privacy' | 'Contracts' | 'Advanced';
+  /**
+   * Appears in the phone bottom bar. Exactly four items set this: with the "More"
+   * button that is five slots, which is what fits on a 320px screen without the
+   * horizontal scroll the six-slot version silently produced.
+   */
   mobile?: boolean;
 }
 
@@ -64,7 +72,7 @@ const NAV_ITEMS: NavItem[] = [
     id: 'balance',
     labelKey: 'nav.balance',
     shortLabelKey: 'nav.home',
-    icon: '💰',
+    icon: 'wallet',
     group: 'Wallet',
     mobile: true,
   },
@@ -72,7 +80,7 @@ const NAV_ITEMS: NavItem[] = [
     id: 'send',
     labelKey: 'nav.send',
     shortLabelKey: 'nav.send',
-    icon: '📤',
+    icon: 'send',
     group: 'Wallet',
     mobile: true,
   },
@@ -80,7 +88,7 @@ const NAV_ITEMS: NavItem[] = [
     id: 'receive',
     labelKey: 'nav.receive',
     shortLabelKey: 'nav.receive',
-    icon: '📥',
+    icon: 'receive',
     group: 'Wallet',
     mobile: true,
   },
@@ -88,17 +96,16 @@ const NAV_ITEMS: NavItem[] = [
     id: 'history',
     labelKey: 'nav.history',
     shortLabelKey: 'nav.history',
-    icon: '📜',
+    icon: 'history',
     group: 'Wallet',
     mobile: true,
   },
   {
-    // Not in the mobile bottom bar: it already carries 5 items plus "More",
-    // and adding a 6th crowds it. Reachable via the "More" sheet instead.
+    // Also out of the bottom bar, for the same reason as Settings below.
     id: 'tokens',
     labelKey: 'nav.tokens',
     shortLabelKey: 'nav.tokens',
-    icon: '💎',
+    icon: 'gem',
     group: 'Wallet',
   },
   // ─── Privacy ───
@@ -106,14 +113,14 @@ const NAV_ITEMS: NavItem[] = [
     id: 'encrypt',
     labelKey: 'nav.encrypt',
     shortLabelKey: 'nav.encrypt',
-    icon: '🔐',
+    icon: 'shield-lock',
     group: 'Privacy',
   },
   {
     id: 'stealth',
     labelKey: 'nav.stealth',
     shortLabelKey: 'nav.stealth',
-    icon: '🤫',
+    icon: 'ghost',
     group: 'Privacy',
   },
   // ─── Contracts ───
@@ -121,14 +128,14 @@ const NAV_ITEMS: NavItem[] = [
     id: 'contract',
     labelKey: 'nav.deploy',
     shortLabelKey: 'nav.deploy',
-    icon: '📄',
+    icon: 'file-text',
     group: 'Contracts',
   },
   {
     id: 'contract-viewer',
     labelKey: 'nav.viewer',
     shortLabelKey: 'nav.viewer',
-    icon: '🔍',
+    icon: 'search',
     group: 'Contracts',
   },
   // ─── Advanced ───
@@ -136,29 +143,31 @@ const NAV_ITEMS: NavItem[] = [
     id: 'browser',
     labelKey: 'nav.browser',
     shortLabelKey: 'nav.browser',
-    icon: '🌐',
+    icon: 'globe',
     group: 'Advanced',
   },
   {
     id: 'circles',
     labelKey: 'nav.circles',
     shortLabelKey: 'nav.circles',
-    icon: '⭕',
+    icon: 'circle-dot',
     group: 'Advanced',
   },
   {
+    // Not in the bottom bar. Five slots is the limit at 320px, and of the six
+    // candidates Settings is the one you open least — it is one tap away in "More",
+    // and the header still carries the controls people actually reach for.
     id: 'settings',
     labelKey: 'nav.settings',
     shortLabelKey: 'nav.settings',
-    icon: '⚙️',
+    icon: 'settings',
     group: 'Advanced',
-    mobile: true,
   },
   {
     id: 'docs',
     labelKey: 'nav.docs',
     shortLabelKey: 'nav.docs',
-    icon: '📖',
+    icon: 'book-open',
     group: 'Advanced',
   },
 ];
@@ -178,25 +187,25 @@ function NavGroup({
 }) {
   if (items.length === 0) return null;
   return (
-    <div style={{ marginTop: 'var(--sp-2)' }}>
+    <div className="nav-group">
       <div className="nav-group-label">{title}</div>
       {items.map((item) => (
-        <div
+        <button
           key={item.id}
+          type="button"
           className={`nav-item ${tab === item.id ? 'active' : ''}`}
           onClick={() => setTab(item.id)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              setTab(item.id);
-            }
-          }}
+          aria-current={tab === item.id ? 'page' : undefined}
+          /* On the 768–1023px rail the label text is hidden, so `title` and
+             `aria-label` are the only remaining name for this control. */
+          title={t(item.labelKey)}
+          aria-label={t(item.labelKey)}
         >
-          <span className="icon">{item.icon}</span>
+          <span className="icon">
+            <Icon name={item.icon} size={18} />
+          </span>
           <span>{t(item.labelKey)}</span>
-        </div>
+        </button>
       ))}
     </div>
   );
@@ -230,43 +239,33 @@ function MobileNav({
     <>
       <nav className="mobile-nav" aria-label="Mobile navigation">
         {primary.map((item) => (
-          <div
+          <button
             key={item.id}
+            type="button"
             className={`mobile-nav-item ${tab === item.id ? 'active' : ''}`}
             onClick={() => select(item.id)}
-            role="button"
-            tabIndex={0}
             aria-current={tab === item.id ? 'page' : undefined}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                select(item.id);
-              }
-            }}
           >
-            <span className="icon">{item.icon}</span>
+            <span className="icon">
+              <Icon name={item.icon} size={22} />
+            </span>
             <span className="label">{t(item.shortLabelKey)}</span>
-          </div>
+          </button>
         ))}
 
         {overflow.length > 0 && (
-          <div
+          <button
+            type="button"
             className={`mobile-nav-item ${overflowActive ? 'active' : ''}`}
             onClick={() => setShowMore(true)}
-            role="button"
-            tabIndex={0}
             aria-haspopup="menu"
             aria-expanded={showMore}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                setShowMore(true);
-              }
-            }}
           >
-            <span className="icon">⋯</span>
+            <span className="icon">
+              <Icon name="more-horizontal" size={22} />
+            </span>
             <span className="label">{t('nav.more')}</span>
-          </div>
+          </button>
         )}
       </nav>
 
@@ -284,11 +283,12 @@ function MobileNav({
               {overflow.map((item) => (
                 <button
                   key={item.id}
+                  type="button"
                   className={`sheet-item ${tab === item.id ? 'active' : ''}`}
                   onClick={() => select(item.id)}
                   role="menuitem"
                 >
-                  <span style={{ fontSize: 24 }}>{item.icon}</span>
+                  <Icon name={item.icon} size={24} />
                   <span>{t(item.labelKey)}</span>
                 </button>
               ))}
@@ -313,9 +313,6 @@ export function Layout() {
     lock,
     isLoading,
     loadingMessage,
-    pvacStatus,
-    pvacError,
-    rpcWarning,
     settings,
   } = useWalletStore();
 
@@ -503,72 +500,31 @@ export function Layout() {
   const contractItems = NAV_ITEMS.filter((i) => i.group === 'Contracts');
   const advancedItems = NAV_ITEMS.filter((i) => i.group === 'Advanced');
 
-  // PVAC status indicator for header
-  const pvacIndicator = (() => {
-    switch (pvacStatus) {
-      case 'loading':
-        return (
-          <span className="tag info" title="Loading PVAC WASM module">
-            <span className="spinner" style={{ width: 8, height: 8, marginRight: 4 }} />
-            PVAC…
-          </span>
-        );
-      case 'ready':
-        return (
-          <span className="tag ok" title="PVAC WASM loaded and bridge initialized">
-            ● PVAC
-          </span>
-        );
-      case 'failed':
-        return (
-          <span className="tag err" title={`PVAC failed: ${pvacError ?? ''}`}>
-            ● PVAC
-          </span>
-        );
-      case 'unavailable':
-        return (
-          <span
-            className="tag warn"
-            title="PVAC WASM not compiled — run npm run build:wasm to enable FHE operations"
-          >
-            ○ PVAC
-          </span>
-        );
-      default:
-        return null;
-    }
-  })();
-
   return (
     <div className="app">
+      {/* Left: identity. Right: the two controls you change often, then the two you
+          change rarely, then everything occasional behind one overflow menu. The PVAC
+          tag, the insecure-RPC warning and the language switcher used to sit inline
+          here and were then hidden on phones, which made them unreachable on the
+          device where the header is most cramped. */}
       <header className="app-header">
         <div className="brand">
           <img src="/logo.png" alt="Octra" />
           <span className="wordmark">Orion Wallet</span>
-          {pvacIndicator}
-          {rpcWarning && (
-            <button
-              className="tag warn"
-              onClick={() => setTab('settings')}
-              title={`${rpcWarning}\n\nClick to open Settings → Network.`}
-              style={{ border: 'none', cursor: 'pointer', minHeight: 0 }}
-            >
-              ⚠️ Insecure RPC
-            </button>
-          )}
         </div>
         <div className="actions">
           <AccountPicker onManage={() => setTab('settings')} />
           <NetworkSwitcher />
-          <LanguageSwitcher />
+          <ThemeToggle className="only-wide" />
           <button
-            className="ghost icon"
+            className="icon-btn only-wide"
             onClick={lock}
             title="Lock wallet"
             aria-label="Lock wallet"
           >
-            🔒
+            <Icon name="lock" size={18} />
           </button>
+          <HeaderMenu onOpenSettings={() => setTab('settings')} onLock={lock} />
         </div>
       </header>
 

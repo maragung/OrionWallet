@@ -12,6 +12,7 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 import { useWalletStore } from '../store/wallet-store';
+import { applyThemeColorMeta } from '../styles/theme-colors';
 
 export type ThemeMode = 'dark' | 'light' | 'system';
 export type EffectiveTheme = 'dark' | 'light';
@@ -33,10 +34,7 @@ function applyTheme(theme: EffectiveTheme): void {
   if (typeof document === 'undefined') return;
   document.documentElement.setAttribute('data-theme', theme);
   // Update theme-color meta for mobile browser chrome
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) {
-    meta.setAttribute('content', theme === 'light' ? '#fafafa' : '#0a0a0f');
-  }
+  applyThemeColorMeta(theme);
 }
 
 /**

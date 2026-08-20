@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { completeMnemonicBackup } from './helpers';
 
 /**
  * Verify the "Cannot read properties of undefined (reading 'importKey')" bug
@@ -38,17 +39,16 @@ test('wallet creation works with crypto.subtle unavailable (non-secure ctx)', as
   await page.fill('input[id="name"]', 'HTTP Fallback');
   await page.fill('input[id="pin"]', 'Pass1word!abc');
   await page.fill('input[id="pin2"]', 'Pass1word!abc');
-  await page.check('input[type="checkbox"]');
   await page.click('button:has-text("Create Wallet")');
 
   // Wallet must be created successfully (mnemonic screen appears).
   await expect(page.locator('text=Save this mnemonic')).toBeVisible({ timeout: 30_000 });
 
-  const viewMnemonicBtn = page.locator('button:has-text("View Mnemonic")');
-  if (await viewMnemonicBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-    await viewMnemonicBtn.click();
-  }
-  await page.click('button:has-text("Continue")');
+  /* Walking the backup flow is the point, not incidental: confirming the phrase decrypts
+     and re-encrypts the vault, so it exercises the same PBKDF2 + AES-GCM fallback path a
+     second time. The "View Mnemonic" button this used to click has not existed for some
+     time, and neither has the acknowledgement checkbox above. */
+  await completeMnemonicBackup(page);
   await expect(page.locator('.app-header')).toBeVisible({ timeout: 30_000 });
 
   const importKeyErrors = errors.filter((e) => /importKey/i.test(e));

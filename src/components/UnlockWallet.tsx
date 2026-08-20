@@ -11,6 +11,9 @@ import {
 } from '../wallet/passkey';
 import { ProcessingModal, type ProcessingStage } from './ProcessingModal';
 import { Tooltip } from './Tooltip';
+import { ThemeToggle } from './ThemeToggle';
+import { LanguageSwitcher } from './LanguageSwitcher';
+import { Icon } from './icons';
 import { closeDb, type StoredWalletEntry } from '../wallet/storage';
 
 export interface UnlockWalletProps {
@@ -212,93 +215,52 @@ export function UnlockWallet({ onCreate, notice }: UnlockWalletProps) {
 
   return (
     <>
-      <div
-        style={{
-          minHeight: '100vh',
-          ...({ minHeight: '100dvh' } as React.CSSProperties),
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 'var(--sp-4)',
-          background:
-            'radial-gradient(ellipse at top, var(--bg-elevated-1) 0%, var(--bg-base) 60%)',
-          position: 'relative',
-        }}
-      >
-        <div
-          className="card"
-          style={{
-            width: '100%',
-            maxWidth: 420,
-            padding: 'var(--sp-8) var(--sp-6)',
-            boxShadow: 'var(--shadow-xl)',
-          }}
-        >
-          <div style={{ textAlign: 'center', marginBottom: 'var(--sp-6)' }}>
-            <img
-              src="/logo.png"
-              alt="Octra"
-              style={{ width: 56, height: 56, marginBottom: 'var(--sp-3)' }}
-            />
-            <h1
-              style={{
-                fontSize: 'var(--fs-xl)',
-                fontWeight: 'var(--fw-bold)',
-                marginBottom: 'var(--sp-1)',
-              }}
-            >
-              Welcome Back
-            </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-sm)' }}>
-              Unlock your Octra wallet to continue
-            </p>
+      <div className="auth-shell">
+        {/* Theme and language both have to exist before the wallet is open: this is
+            the screen a first-time user lands on, and it was the one screen with no
+            way out of a theme that is painful to read or a language you cannot
+            read at all. */}
+        <div className="auth-corner">
+          <LanguageSwitcher />
+          <ThemeToggle />
+        </div>
+
+        <div className="card auth-card">
+          <div className="auth-head">
+            <img src="/logo.png" alt="Octra" className="auth-logo" />
+            <h1 className="auth-title">Welcome Back</h1>
+            <p className="auth-sub">Unlock your Octra wallet to continue</p>
           </div>
 
           {notice && (
-            <div
-              className="info-box"
-              style={{
-                marginBottom: 'var(--sp-4)',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 'var(--sp-2)',
-                fontSize: 'var(--fs-sm)',
-              }}
-            >
-              <span>🔒</span>
-              <div style={{ flex: 1, minWidth: 0 }}>{notice}</div>
+            <div className="info-box spaced">
+              <Icon name="shield-lock" size={18} />
+              <div className="info-box-body">{notice}</div>
             </div>
           )}
 
           {loadError && (
-            <div
-              className="info-box err"
-              style={{
-                marginBottom: 'var(--sp-4)',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 'var(--sp-2)',
-              }}
-            >
-              <span>⚠️</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="info-box err spaced">
+              <Icon name="alert-triangle" size={18} />
+              <div className="info-box-body">
                 <div>Could not read your saved wallets: {loadError}</div>
-                <div style={{ marginTop: 'var(--sp-1)' }}>
+                <div>
                   Nothing has been lost — the accounts are still on this device. Close any other
                   Orion tab or connect popup, then try again.
                 </div>
                 <button
-                  className="ghost"
+                  className="ghost btn-sm self-start"
                   onClick={() => void handleRetryProbe()}
                   disabled={probing}
-                  style={{ marginTop: 'var(--sp-2)', minHeight: 32 }}
                 >
                   {probing ? (
                     <>
                       <span className="spinner" /> Checking…
                     </>
                   ) : (
-                    <>↻ Try again</>
+                    <>
+                      <Icon name="refresh" size={16} /> Try again
+                    </>
                   )}
                 </button>
               </div>
@@ -306,31 +268,15 @@ export function UnlockWallet({ onCreate, notice }: UnlockWalletProps) {
           )}
 
           {hasStored === false && !loadError && (
-            <div
-              className="info-box warn"
-              style={{
-                marginBottom: 'var(--sp-4)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--sp-2)',
-              }}
-            >
-              <span>ℹ️</span>
+            <div className="info-box warn spaced">
+              <Icon name="info" size={18} />
               <span>No stored wallet found. Create a new wallet to get started.</span>
             </div>
           )}
 
           {!webCryptoOk && (
-            <div
-              className="info-box warn"
-              style={{
-                marginBottom: 'var(--sp-4)',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 'var(--sp-2)',
-              }}
-            >
-              <span>🐌</span>
+            <div className="info-box warn spaced">
+              <Icon name="timer" size={18} />
               <span>
                 Insecure context — WebCrypto is unavailable, so unlocking falls back to pure JS and
                 can take many seconds. Use HTTPS or localhost for fast unlocks.
@@ -339,14 +285,13 @@ export function UnlockWallet({ onCreate, notice }: UnlockWalletProps) {
           )}
 
           {storedEntries.length > 1 && (
-            <div className="form-row" style={{ marginBottom: 'var(--sp-3)' }}>
+            <div className="form-row">
               <label htmlFor="unlock-account">Connect with account</label>
               <select
                 id="unlock-account"
                 className="connect-select"
                 value={selectedId}
                 onChange={(e) => setSelectedId(e.target.value)}
-                style={{ width: '100%' }}
               >
                 {orderedEntries.map((e) => (
                   <option key={e.id} value={e.id}>
@@ -360,38 +305,26 @@ export function UnlockWallet({ onCreate, notice }: UnlockWalletProps) {
           {passkey && (
             <>
               <button
-                className="primary"
+                className="primary btn-block"
                 onClick={() => void handlePasskeyUnlock()}
                 disabled={passkeyBusy || unlocking}
                 title={`Unlock ${passkey.name} (${passkey.addr.slice(0, 12)}…) with this device`}
-                style={{ width: '100%' }}
               >
                 {passkeyBusy ? (
                   <>
                     <span className="spinner" /> Waiting for your device…
                   </>
                 ) : (
-                  <>👆 Unlock with passkey</>
+                  <>
+                    <Icon name="fingerprint" size={18} /> Unlock with passkey
+                  </>
                 )}
               </button>
               {/* Offered first because it is one tap against a PIN that takes a
                   line of typing. It used to sit below the PIN button, under a
                   field that grabbed focus on mount — so the faster route was the
                   one you had to go looking for. */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--sp-2)',
-                  margin: 'var(--sp-4) 0 var(--sp-3)',
-                  color: 'var(--text-muted)',
-                  fontSize: 'var(--fs-xs)',
-                }}
-              >
-                <span style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
-                or use your PIN
-                <span style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
-              </div>
+              <div className="auth-divider">or use your PIN</div>
             </>
           )}
 
@@ -399,10 +332,12 @@ export function UnlockWallet({ onCreate, notice }: UnlockWalletProps) {
             <label htmlFor="pin">
               PIN{' '}
               <Tooltip text="Enter the PIN you set when creating or importing your wallet. The PIN decrypts your locally-stored encrypted wallet.">
-                <span style={{ color: 'var(--text-muted)', cursor: 'help' }}>ⓘ</span>
+                <span className="help-hint">
+                  <Icon name="info" size={14} />
+                </span>
               </Tooltip>
             </label>
-            <div style={{ position: 'relative' }}>
+            <div className="input-wrap">
               <input
                 id="pin"
                 type={showPin ? 'text' : 'password'}
@@ -423,66 +358,42 @@ export function UnlockWallet({ onCreate, notice }: UnlockWalletProps) {
                 aria-invalid={pinError ? true : undefined}
                 aria-describedby={pinError ? 'pin-error' : undefined}
                 disabled={unlocking}
-                style={{ paddingRight: 48 }}
               />
               <button
                 type="button"
-                className="ghost icon"
+                className="icon-btn input-affix"
                 onClick={() => setShowPin(!showPin)}
                 title={showPin ? 'Hide PIN' : 'Show PIN'}
                 aria-label={showPin ? 'Hide PIN' : 'Show PIN'}
-                style={{
-                  position: 'absolute',
-                  right: 4,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  minHeight: 36,
-                  minWidth: 36,
-                  border: 'none',
-                }}
               >
-                {showPin ? '🙈' : '👁️'}
+                <Icon name={showPin ? 'eye-off' : 'eye'} size={18} />
               </button>
             </div>
             {pinError && (
-              <div
-                id="pin-error"
-                role="alert"
-                style={{
-                  marginTop: 'var(--sp-2)',
-                  color: 'var(--error)',
-                  fontSize: 'var(--fs-xs)',
-                }}
-              >
+              <div id="pin-error" role="alert" className="field-error">
+                <Icon name="alert-triangle" size={14} />
                 {pinError}
               </div>
             )}
           </div>
 
-          <div
-            className="form-actions"
-            style={{ flexDirection: 'column', marginTop: 'var(--sp-6)' }}
-          >
+          <div className="form-actions stacked">
             <button
               className={passkey ? 'ghost' : 'primary'}
               onClick={() => void handleUnlock()}
               disabled={!pin || unlocking}
-              style={{ width: '100%' }}
             >
               {unlocking ? (
                 <>
                   <span className="spinner" /> Unlocking…
                 </>
               ) : (
-                <>🔓 Unlock Wallet</>
+                <>
+                  <Icon name="unlock" size={18} /> Unlock Wallet
+                </>
               )}
             </button>
-            <button
-              className="ghost"
-              onClick={onCreate}
-              disabled={unlocking}
-              style={{ width: '100%', marginTop: 'var(--sp-2)' }}
-            >
+            <button className="ghost" onClick={onCreate} disabled={unlocking}>
               Create New Wallet
             </button>
           </div>

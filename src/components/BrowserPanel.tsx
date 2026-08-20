@@ -15,6 +15,10 @@ import {
 } from '../browser/circleClient';
 import { materializeHtml, sandboxFor, type RenderMode } from '../browser/materialize';
 import { addBookmark, listBookmarks, removeBookmark, type Bookmark } from '../browser/bookmarks';
+import { Icon } from './icons/Icon';
+import { PageHead } from './PageHead';
+import { getCurrentTheme } from '../hooks/useTheme';
+import { THEME_COLORS } from '../styles/theme-colors';
 
 interface NavState {
   history: string[]; // stack of oct:// uris
@@ -136,11 +140,14 @@ export function BrowserPanel() {
           });
         } else if (entry.contentType.startsWith('image/')) {
           const b64 = btoa(String.fromCharCode(...entry.bytes));
-          html = `<!DOCTYPE html><html><body style="margin:0;display:flex;align-items:center;justify-content:center;background:#0a0a0f;min-height:100vh"><img src="data:${entry.contentType};base64,${b64}" style="max-width:100%"></body></html>`;
+          html = fallbackDoc(
+            `<img src="data:${entry.contentType};base64,${b64}" alt="">`,
+            'centered',
+          );
         } else {
           // Textual / other → show as preformatted text.
           const text = entry.text || `[${entry.contentType}, ${entry.bytes.length} bytes]`;
-          html = `<!DOCTYPE html><html><body style="margin:0;background:#0a0a0f;color:#ddd"><pre style="white-space:pre-wrap;word-break:break-word;padding:16px;font-family:monospace">${escapeHtml(text)}</pre></body></html>`;
+          html = fallbackDoc(`<pre>${escapeHtml(text)}</pre>`, 'text');
         }
 
         setRenderMode(mode);
@@ -231,211 +238,227 @@ export function BrowserPanel() {
   if (!rpc) return <PanelSkeleton title={t('nav.browser')} rows={2} />;
 
   return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-      {/* Address bar + controls */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 'var(--sp-1)',
-          alignItems: 'center',
-          padding: 'var(--sp-2)',
-          borderBottom: '1px solid var(--border-subtle)',
-          flexWrap: 'wrap',
-        }}
-      >
-        <button className="ghost" onClick={back} disabled={!canBack} aria-label={t('browser.back')}>
-          ←
-        </button>
-        <button
-          className="ghost"
-          onClick={forward}
-          disabled={!canForward}
-          aria-label={t('browser.forward')}
-        >
-          →
-        </button>
-        <button
-          className="ghost"
-          onClick={reload}
-          disabled={!currentUri || loading}
-          aria-label={t('browser.reload')}
-        >
-          ⟳
-        </button>
-        <input
-          className="mono"
-          style={{ flex: 1, minWidth: 180 }}
-          placeholder="oct://oct…/index.html"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') go();
-          }}
-          spellCheck={false}
-        />
-        <button className="primary" onClick={go} disabled={loading}>
-          {loading ? <span className="spinner" /> : t('browser.open')}
-        </button>
-        <button
-          className="ghost"
-          onClick={toggleBookmark}
-          disabled={!currentUri}
-          aria-label={t('browser.bookmark')}
-          title={t('browser.bookmark')}
-        >
-          {isCurrentBookmarked ? '★' : '☆'}
-        </button>
-        <button
-          className="ghost"
-          onClick={() => setShowBookmarks((v) => !v)}
-          aria-label={t('browser.bookmarks')}
-          title={t('browser.bookmarks')}
-        >
-          ☰
-        </button>
-      </div>
+    <div className="page">
+      <PageHead
+        icon="app-window"
+        title="Circle Browser"
+        sub="Open an oct:// circle page. Sealed circles are decrypted in-wallet and rendered in a sandbox."
+      />
 
-      {/* Mode badge / status */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--sp-2)',
-          padding: 'var(--sp-1) var(--sp-2)',
-          fontSize: 'var(--fs-xs)',
-          color: 'var(--text-muted)',
-          borderBottom: '1px solid var(--border-subtle)',
-        }}
-      >
-        {srcDoc && (
-          <span className={`tag ${renderMode === 'sealed' ? 'warn' : ''}`}>
-            {renderMode === 'sealed' ? `🔒 ${t('browser.sealed')}` : `🌐 ${t('browser.public')}`}
-          </span>
-        )}
-        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {pageTitle}
-        </span>
-      </div>
-
-      {/* Bookmarks drawer */}
-      {showBookmarks && (
-        <div style={{ borderBottom: '1px solid var(--border-subtle)', padding: 'var(--sp-2)' }}>
-          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginBottom: 6 }}>
-            {t('browser.bookmarks')}
-          </div>
-          {bookmarks.length === 0 ? (
-            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
-              {t('browser.noBookmarks')}
-            </div>
-          ) : (
-            bookmarks.map((b) => (
-              <div
-                key={b.uri}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--sp-2)',
-                  padding: '4px 0',
-                }}
-              >
-                <button
-                  className="ghost"
-                  style={{ flex: 1, justifyContent: 'flex-start', textAlign: 'left', minWidth: 0 }}
-                  onClick={() => {
-                    setShowBookmarks(false);
-                    setAddress(b.uri);
-                    const parsed = parseCircleUri(b.uri);
-                    if (parsed) void render(parsed, true);
-                  }}
-                >
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block' }}>{b.title}</span>
-                    <span
-                      className="mono"
-                      style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}
-                    >
-                      {b.uri}
-                    </span>
-                  </span>
-                </button>
-                <button
-                  className="ghost danger"
-                  onClick={async () => {
-                    await removeBookmark(b.uri);
-                    refreshBookmarks();
-                  }}
-                  aria-label={t('common.delete')}
-                >
-                  ✕
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {/* Sealed passphrase prompt */}
-      {needPass && (
-        <div style={{ padding: 'var(--sp-3)', borderBottom: '1px solid var(--border-subtle)' }}>
-          <div style={{ marginBottom: 'var(--sp-2)', fontSize: 13 }}>
-            🔒 {t('browser.passphrasePrompt')}
-          </div>
-          <div style={{ display: 'flex', gap: 'var(--sp-1)' }}>
-            <input
-              type="password"
-              style={{ flex: 1 }}
-              placeholder={t('browser.passphrase')}
-              value={passInput}
-              onChange={(e) => setPassInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') submitPassphrase();
-              }}
-              autoFocus
-            />
-            <button className="primary" onClick={submitPassphrase} disabled={!passInput}>
-              {t('browser.unlock')}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Error */}
-      {error && (
-        <div style={{ padding: 'var(--sp-3)', color: 'var(--danger)', fontSize: 13 }}>
-          {t('browser.error')}: {error}
-        </div>
-      )}
-
-      {/* Rendered circle */}
-      {srcDoc ? (
-        <iframe
-          title="oct-circle"
-          srcDoc={srcDoc}
-          sandbox={sandboxFor(renderMode)}
-          referrerPolicy="no-referrer"
-          style={{
-            width: '100%',
-            height: '68vh',
-            border: 'none',
-            background: '#0a0a0f',
-          }}
-        />
-      ) : (
-        !error &&
-        !needPass && (
-          <div
-            style={{
-              padding: 32,
-              textAlign: 'center',
-              color: 'var(--text-muted)',
-              fontSize: 13,
-            }}
+      <div className="card browser-shell">
+        {/* Address bar + controls */}
+        <div className="browser-bar">
+          <button
+            className="icon-btn"
+            onClick={back}
+            disabled={!canBack}
+            aria-label={t('browser.back')}
+            title={t('browser.back')}
           >
-            {t('browser.emptyHint')}
+            <Icon name="arrow-left" size={18} />
+          </button>
+          <button
+            className="icon-btn"
+            onClick={forward}
+            disabled={!canForward}
+            aria-label={t('browser.forward')}
+            title={t('browser.forward')}
+          >
+            <Icon name="arrow-right" size={18} />
+          </button>
+          <button
+            className="icon-btn"
+            onClick={reload}
+            disabled={!currentUri || loading}
+            aria-label={t('browser.reload')}
+            title={t('browser.reload')}
+          >
+            <Icon
+              name={loading ? 'loader' : 'refresh'}
+              size={18}
+              className={loading ? 'icon-spin' : undefined}
+            />
+          </button>
+          <input
+            className="mono browser-url"
+            placeholder="oct://oct…/index.html"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') go();
+            }}
+            spellCheck={false}
+            aria-label={t('browser.open')}
+          />
+          <button className="primary btn-sm" onClick={go} disabled={loading}>
+            {t('browser.open')}
+          </button>
+          {/* `aria-pressed`, not a swapped glyph: the button is a toggle, and a filled
+            versus hollow star is invisible to a screen reader. */}
+          <button
+            className={`icon-btn ${isCurrentBookmarked ? 'on' : ''}`}
+            onClick={toggleBookmark}
+            disabled={!currentUri}
+            aria-label={t('browser.bookmark')}
+            aria-pressed={isCurrentBookmarked}
+            title={t('browser.bookmark')}
+          >
+            <Icon name="star" size={18} />
+          </button>
+          <button
+            className="icon-btn"
+            onClick={() => setShowBookmarks((v) => !v)}
+            aria-label={t('browser.bookmarks')}
+            aria-expanded={showBookmarks}
+            title={t('browser.bookmarks')}
+          >
+            <Icon name="menu" size={18} />
+          </button>
+        </div>
+
+        {/* Mode badge / status */}
+        <div className="browser-status">
+          {srcDoc && (
+            <span className={`tag ${renderMode === 'sealed' ? 'warn' : ''}`}>
+              {renderMode === 'sealed' ? (
+                <>
+                  <Icon name="lock" size={12} /> {t('browser.sealed')}
+                </>
+              ) : (
+                <>
+                  <Icon name="globe" size={12} /> {t('browser.public')}
+                </>
+              )}
+            </span>
+          )}
+          <span className="browser-title">{pageTitle}</span>
+        </div>
+
+        {/* Bookmarks drawer */}
+        {showBookmarks && (
+          <div className="browser-drawer">
+            <div className="browser-drawer-head">{t('browser.bookmarks')}</div>
+            {bookmarks.length === 0 ? (
+              <div className="browser-drawer-empty">{t('browser.noBookmarks')}</div>
+            ) : (
+              bookmarks.map((b) => (
+                <div key={b.uri} className="bookmark-row">
+                  <button
+                    className="ghost bookmark-open"
+                    onClick={() => {
+                      setShowBookmarks(false);
+                      setAddress(b.uri);
+                      const parsed = parseCircleUri(b.uri);
+                      if (parsed) void render(parsed, true);
+                    }}
+                  >
+                    <span className="bookmark-title">{b.title}</span>
+                    <span className="mono bookmark-uri">{b.uri}</span>
+                  </button>
+                  <button
+                    className="icon-btn plain danger"
+                    onClick={async () => {
+                      await removeBookmark(b.uri);
+                      refreshBookmarks();
+                    }}
+                    aria-label={t('common.delete')}
+                    title={t('common.delete')}
+                  >
+                    <Icon name="x" size={16} />
+                  </button>
+                </div>
+              ))
+            )}
           </div>
-        )
-      )}
+        )}
+
+        {/* Sealed passphrase prompt */}
+        {needPass && (
+          <div className="browser-drawer">
+            <div className="browser-pass-head">
+              <Icon name="lock" size={16} /> {t('browser.passphrasePrompt')}
+            </div>
+            <div className="input-row">
+              <input
+                type="password"
+                placeholder={t('browser.passphrase')}
+                value={passInput}
+                onChange={(e) => setPassInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') submitPassphrase();
+                }}
+                aria-label={t('browser.passphrase')}
+                autoFocus
+              />
+              <button className="primary" onClick={submitPassphrase} disabled={!passInput}>
+                <Icon name="unlock" size={16} /> {t('browser.unlock')}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="browser-error">
+            <Icon name="alert-triangle" size={16} />
+            <span>
+              {t('browser.error')}: {error}
+            </span>
+          </div>
+        )}
+
+        {/* Rendered circle */}
+        {srcDoc ? (
+          <iframe
+            title="oct-circle"
+            srcDoc={srcDoc}
+            sandbox={sandboxFor(renderMode)}
+            referrerPolicy="no-referrer"
+            className="browser-frame"
+          />
+        ) : (
+          !error &&
+          !needPass && (
+            <div className="browser-empty">
+              <Icon name="app-window" size={28} />
+              <span>{t('browser.emptyHint')}</span>
+            </div>
+          )
+        )}
+      </div>
     </div>
+  );
+}
+
+/**
+ * Chrome for an asset the circle did not ship as HTML — a bare image, or text.
+ *
+ * The frame is a separate document, so it cannot reach `global.css` or its custom
+ * properties; the two colours have to be inlined. They are read from `THEME_COLORS`
+ * rather than written as literals, because the pair that used to be hardcoded here
+ * (`#0a0a0f` on `#ddd`) was the *previous* palette's base and stayed black after the
+ * theme switched to light — a black slab in the middle of a white page.
+ *
+ * The colours are a snapshot taken when the asset loads. Flipping the theme while a
+ * non-HTML asset is on screen leaves the frame on the old pair until the next
+ * navigation; re-tinting it would mean re-fetching the asset for a cosmetic change.
+ */
+function fallbackDoc(body: string, kind: 'centered' | 'text'): string {
+  const theme = getCurrentTheme();
+  const bg = THEME_COLORS[theme];
+  const fg = theme === 'light' ? '#4b5162' : '#a8b0be';
+  const layout =
+    kind === 'centered'
+      ? 'display:flex;align-items:center;justify-content:center;min-height:100vh'
+      : '';
+  return (
+    `<!DOCTYPE html><html><head><meta name="color-scheme" content="${theme}">` +
+    `<style>html{color-scheme:${theme}}` +
+    `body{margin:0;background:${bg};color:${fg};${layout}}` +
+    `img{max-width:100%;height:auto}` +
+    `pre{white-space:pre-wrap;word-break:break-word;padding:16px;margin:0;` +
+    `font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.6}` +
+    `</style></head><body>${body}</body></html>`
   );
 }
 

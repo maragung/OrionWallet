@@ -12,6 +12,8 @@ import {
   type PasskeyInfo,
 } from '../wallet/passkey';
 import { ConfirmDialog } from './ConfirmDialog';
+import { PageHead } from './PageHead';
+import { Icon, networkIcon, type IconName } from './icons';
 import { AccountSwitcher } from './AccountSwitcher';
 import { AddressBookPanel } from './AddressBookPanel';
 import { ConnectedSitesPanel } from './ConnectedSitesPanel';
@@ -144,13 +146,11 @@ export function SettingsPanel() {
         <div className="card-header">
           <div className="card-title">Settings</div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
-          <div className="skeleton" style={{ height: 20, width: 160 }} />
-          <div className="skeleton" style={{ height: 36 }} />
-          <div className="skeleton" style={{ height: 36 }} />
-          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
-            Loading settings…
-          </div>
+        <div className="stack">
+          <div className="skeleton title" />
+          <div className="skeleton row" />
+          <div className="skeleton row" />
+          <div className="field-note">Loading settings…</div>
         </div>
       </div>
     );
@@ -224,51 +224,64 @@ export function SettingsPanel() {
       case 'loading':
         return (
           <span className="tag info">
-            <span className="spinner" style={{ marginRight: 6 }} />
+            <span className="spinner" />
             Loading...
           </span>
         );
       case 'ready':
-        return <span className="tag ok">● Ready</span>;
+        return (
+          <span className="tag ok">
+            <Icon name="check-circle" size={12} /> Ready
+          </span>
+        );
       case 'failed':
-        return <span className="tag err">● Failed</span>;
+        return (
+          <span className="tag err">
+            <Icon name="x-circle" size={12} /> Failed
+          </span>
+        );
       case 'unavailable':
-        return <span className="tag warn">● Unavailable</span>;
+        return (
+          <span className="tag warn">
+            <Icon name="alert-triangle" size={12} /> Unavailable
+          </span>
+        );
       default:
         return <span className="tag">{pvacStatus}</span>;
     }
   })();
 
-  const SECTIONS: Array<{ id: typeof section; label: string; icon: string }> = [
-    { id: 'general', label: 'General', icon: '⚙️' },
-    { id: 'accounts', label: 'Accounts', icon: '👥' },
-    { id: 'contacts', label: 'Contacts', icon: '📇' },
-    { id: 'connections', label: 'Connections', icon: '🔗' },
-    { id: 'backup', label: 'Backup', icon: '💾' },
-    { id: 'security', label: 'Security', icon: '🔑' },
+  const SECTIONS: Array<{ id: typeof section; label: string; icon: IconName }> = [
+    { id: 'general', label: 'General', icon: 'settings' },
+    { id: 'accounts', label: 'Accounts', icon: 'users' },
+    { id: 'contacts', label: 'Contacts', icon: 'contact' },
+    { id: 'connections', label: 'Connections', icon: 'link' },
+    { id: 'backup', label: 'Backup', icon: 'save' },
+    { id: 'security', label: 'Security', icon: 'key' },
   ];
 
   return (
-    <>
+    <div className="page">
+      <PageHead
+        icon="settings"
+        title="Settings"
+        sub="Appearance, network endpoints, accounts and the keys behind them."
+      />
+
       {/* Settings sub-navigation */}
-      <div className="tab-bar" style={{ marginBottom: 'var(--sp-4)' }}>
+      <div className="tab-bar" role="tablist" aria-label="Settings sections">
         {SECTIONS.map((s) => (
-          <div
+          <button
             key={s.id}
+            type="button"
             className={`tab ${section === s.id ? 'active' : ''}`}
             onClick={() => setSection(s.id)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                setSection(s.id);
-              }
-            }}
+            role="tab"
+            aria-selected={section === s.id}
           >
-            <span style={{ marginRight: 'var(--sp-1)' }}>{s.icon}</span>
+            <Icon name={s.icon} size={16} />
             {s.label}
-          </div>
+          </button>
         ))}
       </div>
 
@@ -284,24 +297,27 @@ export function SettingsPanel() {
           </div>
           <div className="form-row">
             <label htmlFor="theme">{t('settings.theme')}</label>
-            <select
-              id="theme"
-              value={themeMode}
-              onChange={(e) => setThemeMode(e.target.value as ThemeMode)}
-            >
-              <option value="dark">{t('settings.themeDark')}</option>
-              <option value="light">{t('settings.themeLight')}</option>
-              <option value="system">{t('settings.themeSystem')}</option>
-            </select>
-            <div
-              style={{
-                fontSize: 'var(--fs-xs)',
-                color: 'var(--text-muted)',
-                marginTop: 'var(--sp-2)',
-              }}
-            >
-              {t('common.done')} — 20 languages available.
+            {/* The options are text — an <option> cannot hold an SVG — so the
+                selected mode's icon is drawn beside the closed control. */}
+            <div className="select-with-icon">
+              <Icon
+                name={themeMode === 'dark' ? 'moon' : themeMode === 'light' ? 'sun' : 'monitor'}
+                size={16}
+              />
+              <select
+                id="theme"
+                value={themeMode}
+                onChange={(e) => setThemeMode(e.target.value as ThemeMode)}
+              >
+                <option value="dark">{t('settings.themeDark')}</option>
+                <option value="light">{t('settings.themeLight')}</option>
+                <option value="system">{t('settings.themeSystem')}</option>
+              </select>
             </div>
+            {/* This note used to read "Done — 20 languages available." under *Theme*:
+                the language row's helper text, prefixed with an unrelated
+                `common.done`. Each control now describes itself. */}
+            <div className="field-note">Dark, light, or follow your system setting.</div>
           </div>
           <div className="form-row">
             <label htmlFor="language">{t('settings.language')}</label>
@@ -316,14 +332,8 @@ export function SettingsPanel() {
                 </option>
               ))}
             </select>
-            <div
-              style={{
-                fontSize: 'var(--fs-xs)',
-                color: 'var(--text-muted)',
-                marginTop: 'var(--sp-2)',
-              }}
-            >
-              {t('common.done')} — Switch instantly without page refresh.
+            <div className="field-note">
+              20 languages. Switches instantly, with no page refresh.
             </div>
           </div>
         </div>
@@ -360,9 +370,13 @@ export function SettingsPanel() {
                 }
               }}
             >
+              {/* No glyph here on purpose: an <option> is drawn by the OS and cannot
+                  contain an SVG, and the emoji that used to stand in rendered
+                  differently in every browser's dropdown. The name and URL identify
+                  the network without it. */}
               {allNetworks(settings.customNetworks).map((net) => (
                 <option key={net.id} value={net.id}>
-                  {net.icon ?? '🌐'} {net.name} ({net.rpcUrl})
+                  {net.name} ({net.rpcUrl})
                 </option>
               ))}
             </select>
@@ -384,23 +398,18 @@ export function SettingsPanel() {
               value={settings.explorerUrl || 'https://devnet.octrascan.io'}
               onChange={(e) => setLocalSettings({ ...settings, explorerUrl: e.target.value })}
             />
-            <div
-              style={{
-                fontSize: 'var(--fs-xs)',
-                color: 'var(--text-muted)',
-                marginTop: 'var(--sp-1)',
-              }}
-            >
-              {settings.explorerUrl && (
+            {settings.explorerUrl && (
+              <div className="field-note">
                 <a
                   href={`${settings.explorerUrl}/account/${wallet.addr}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  {t('settings.viewOnExplorer')} →
+                  {t('settings.viewOnExplorer')}
                 </a>
-              )}
-            </div>
+                <Icon name="external-link" size={12} />
+              </div>
+            )}
           </div>
           <div className="form-row">
             <label htmlFor="relayer-url">{t('settings.relayerUrl')}</label>
@@ -411,15 +420,7 @@ export function SettingsPanel() {
               value={settings.relayerUrl ?? ''}
               onChange={(e) => setLocalSettings({ ...settings, relayerUrl: e.target.value })}
             />
-            <div
-              style={{
-                fontSize: 'var(--fs-xs)',
-                color: 'var(--text-muted)',
-                marginTop: 'var(--sp-1)',
-              }}
-            >
-              {t('settings.relayerHint')}
-            </div>
+            <div className="field-note">{t('settings.relayerHint')}</div>
           </div>
           <div className="form-row">
             <label htmlFor="rpc-proxy">RPC proxy (optional)</label>
@@ -430,13 +431,7 @@ export function SettingsPanel() {
               value={settings.rpcProxyUrl ?? ''}
               onChange={(e) => setLocalSettings({ ...settings, rpcProxyUrl: e.target.value })}
             />
-            <div
-              style={{
-                fontSize: 'var(--fs-xs)',
-                color: 'var(--text-muted)',
-                marginTop: 'var(--sp-1)',
-              }}
-            >
+            <div className="field-note">
               The RPC URL is appended percent-encoded, so the browser only ever connects to the
               proxy. Use it to reach a node that has no TLS or no CORS headers — the proxy sees
               every request, so run your own.
@@ -444,24 +439,19 @@ export function SettingsPanel() {
           </div>
 
           {rpcVerdict && rpcVerdict.kind !== 'https' && (
-            <div
-              style={{
-                marginBottom: 'var(--sp-4)',
-                padding: 'var(--sp-3)',
-                background: rpcVerdict.allowed ? 'var(--bg-elevated-2)' : 'var(--warning-soft)',
-                border: `1px solid ${rpcVerdict.allowed ? 'var(--border-default)' : 'var(--warning)'}`,
-                borderRadius: 'var(--r-md)',
-                fontSize: 'var(--fs-xs)',
-              }}
-            >
-              <div style={{ marginBottom: 'var(--sp-2)' }}>
-                {rpcVerdict.allowed ? 'ℹ️' : '⚠️'} {rpcVerdict.message}
+            <div className={`info-box spaced ${rpcVerdict.allowed ? '' : 'warn'}`}>
+              <Icon name={rpcVerdict.allowed ? 'info' : 'alert-triangle'} size={16} />
+              <div className="stack tight grow">
+                <span>{rpcVerdict.message}</span>
+                {rpcVerdict.kind === 'not-allowlisted' && rpcVerdict.origin && (
+                  <button
+                    className="ghost btn-sm self-start"
+                    onClick={() => void trustOrigin(rpcVerdict.origin!)}
+                  >
+                    <Icon name="shield-check" size={14} /> Trust {rpcVerdict.origin}
+                  </button>
+                )}
               </div>
-              {rpcVerdict.kind === 'not-allowlisted' && rpcVerdict.origin && (
-                <button className="ghost" onClick={() => void trustOrigin(rpcVerdict.origin!)}>
-                  Trust {rpcVerdict.origin}
-                </button>
-              )}
             </div>
           )}
 
@@ -469,26 +459,14 @@ export function SettingsPanel() {
             <div className="form-row">
               <label>Trusted plaintext endpoints</label>
               {(settings.allowedInsecureOrigins ?? []).map((origin) => (
-                <div
-                  key={origin}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 'var(--sp-2)',
-                    padding: 'var(--sp-1) 0',
-                  }}
-                >
-                  <span className="mono" style={{ fontSize: 'var(--fs-xs)' }}>
-                    {origin}
-                  </span>
+                <div key={origin} className="data-row">
+                  <span className="data-row-main data-row-sub mono">{origin}</span>
                   <button
-                    className="ghost"
+                    className="ghost danger btn-sm"
                     onClick={() => void untrustOrigin(origin)}
                     title={`Stop trusting ${origin}`}
-                    style={{ minHeight: 28, fontSize: 'var(--fs-xs)' }}
                   >
-                    Remove
+                    <Icon name="trash" size={14} /> Remove
                   </button>
                 </div>
               ))}
@@ -512,18 +490,12 @@ export function SettingsPanel() {
                 handleSave();
               }}
             >
-              {t('settings.saveUrls')}
+              <Icon name="save" size={16} /> {t('settings.saveUrls')}
             </button>
-            <div
-              style={{
-                fontSize: 'var(--fs-xs)',
-                color: 'var(--text-muted)',
-                marginTop: 'var(--sp-2)',
-              }}
-            >
-              {t('settings.networkApplyNote')}
-            </div>
           </div>
+          {/* Outside `.form-actions`: that is a flex row, so the note used to sit
+              beside the button and be squeezed to one word per line on a phone. */}
+          <div className="field-note">{t('settings.networkApplyNote')}</div>
         </div>
       )}
 
@@ -533,31 +505,16 @@ export function SettingsPanel() {
             <div className="card-title">{t('settings.customNetworks')}</div>
           </div>
           {(settings.customNetworks?.length ?? 0) > 0 && (
-            <div style={{ marginBottom: 'var(--sp-3)' }}>
+            <div className="data-rows">
               {(settings.customNetworks ?? []).map((cn) => (
-                <div
-                  key={cn.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--sp-2)',
-                    padding: 'var(--sp-2) 0',
-                    borderBottom: '1px solid var(--border-subtle)',
-                  }}
-                >
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block' }}>
-                      {cn.icon ?? '🌐'} {cn.name}
-                    </span>
-                    <span
-                      className="mono"
-                      style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}
-                    >
-                      {cn.rpcUrl}
-                    </span>
+                <div key={cn.id} className="data-row">
+                  <Icon name={networkIcon(cn)} size={18} />
+                  <span className="data-row-main">
+                    {cn.name}
+                    <span className="data-row-sub mono">{cn.rpcUrl}</span>
                   </span>
                   <button
-                    className="ghost danger"
+                    className="ghost danger btn-sm"
                     onClick={async () => {
                       const remaining = (settings.customNetworks ?? []).filter(
                         (n) => n.id !== cn.id,
@@ -583,7 +540,7 @@ export function SettingsPanel() {
                       }
                     }}
                   >
-                    {t('common.delete')}
+                    <Icon name="trash" size={14} /> {t('common.delete')}
                   </button>
                 </div>
               ))}
@@ -651,6 +608,11 @@ export function SettingsPanel() {
                   rpcUrl: cnRpc.trim(),
                   explorerUrl: cnExplorer.trim() || cnRpc.trim(),
                   relayerUrl: cnRelayer.trim() || undefined,
+                  // Stored data, not a rendered glyph: `NetworkDef.icon` is
+                  // persisted in settings and handed to dApps over the connect API,
+                  // and `networkIcon()` maps it to one of our own stroke icons for
+                  // display. Changing the field would be a breaking data change for
+                  // a cosmetic reason.
                   icon: '🌐',
                 };
                 const next: Settings = {
@@ -670,7 +632,7 @@ export function SettingsPanel() {
                 }
               }}
             >
-              {t('settings.addNetwork')}
+              <Icon name="plus" size={16} /> {t('settings.addNetwork')}
             </button>
           </div>
         </div>
@@ -682,124 +644,105 @@ export function SettingsPanel() {
             <div className="card-title">PVAC (FHE) Module — Auto-Load</div>
             {pvacStatusTag}
           </div>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+          <p className="card-desc">
             The PVAC WASM module provides encrypted balance operations (FHE) and zero-knowledge
             proofs. It is automatically loaded when a wallet is unlocked — no manual action
             required.
           </p>
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 8,
-              marginBottom: 12,
-              padding: 12,
-              background: 'var(--bg-tertiary)',
-              borderRadius: 8,
-              fontSize: 12,
-            }}
-          >
+          <div className="stat-grid">
             <div>
-              <div style={{ color: 'var(--text-muted)' }}>WASM Module</div>
-              <div style={{ marginTop: 2 }}>
+              <div className="stat-label">WASM Module</div>
+              <div className="stat-value">
                 {pvacAvailable ? (
-                  <span style={{ color: 'var(--success)' }}>✓ Loaded</span>
+                  <span className="ok-text">
+                    <Icon name="check-circle" size={14} /> Loaded
+                  </span>
                 ) : (
-                  <span style={{ color: 'var(--warning)' }}>○ Not loaded</span>
+                  <span className="warn-text">
+                    <Icon name="circle-dot" size={14} /> Not loaded
+                  </span>
                 )}
               </div>
             </div>
             <div>
-              <div style={{ color: 'var(--text-muted)' }}>Bridge Initialized</div>
-              <div style={{ marginTop: 2 }}>
+              <div className="stat-label">Bridge Initialized</div>
+              <div className="stat-value">
                 {pvacBridgeReady ? (
-                  <span style={{ color: 'var(--success)' }}>✓ Ready (FHE keygen done)</span>
+                  <span className="ok-text">
+                    <Icon name="check-circle" size={14} /> Ready (FHE keygen done)
+                  </span>
                 ) : (
-                  <span style={{ color: 'var(--text-muted)' }}>○ Not initialized</span>
+                  <span className="muted">
+                    <Icon name="circle-dot" size={14} /> Not initialized
+                  </span>
                 )}
               </div>
             </div>
           </div>
 
           {pvacError && (
-            <div
-              style={{
-                marginBottom: 12,
-                padding: 8,
-                background: 'rgba(239, 68, 68, 0.1)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                borderRadius: 6,
-                fontSize: 12,
-                color: 'var(--error)',
-                wordBreak: 'break-word',
-              }}
-            >
-              <strong>Error:</strong> {pvacError}
+            <div className="info-box err spaced" role="alert">
+              <Icon name="alert-octagon" size={16} />
+              <span className="mono-line">
+                <strong>Error:</strong> {pvacError}
+              </span>
             </div>
           )}
 
           {pvacStatus === 'unavailable' && (
-            <div
-              style={{
-                marginBottom: 12,
-                padding: 12,
-                background: 'var(--bg-elevated-2)',
-                borderRadius: 6,
-                fontSize: 12,
-                color: 'var(--text-muted)',
-              }}
-            >
-              <span style={{ color: 'var(--warning)' }}>
-                ⚠ Encrypted balance (FHE) is unavailable.
-              </span>{' '}
-              All standard wallet features — send, receive, history, and contracts — work normally.
-              {pvacError ? (
-                <>
-                  <br />
-                  <br />
-                  The diagnosis and the exact fix are shown in the Error box above.
-                </>
-              ) : (
-                <>
-                  <br />
-                  To enable FHE operations, build the WASM module: <code>npm run build:wasm</code>
-                </>
-              )}
+            <div className="info-box warn spaced">
+              <Icon name="alert-triangle" size={16} />
+              <span>
+                Encrypted balance (FHE) is unavailable. All standard wallet features — send,
+                receive, history, and contracts — work normally.
+                {pvacError ? (
+                  <>
+                    <br />
+                    <br />
+                    The diagnosis and the exact fix are shown in the Error box above.
+                  </>
+                ) : (
+                  <>
+                    <br />
+                    To enable FHE operations, build the WASM module: <code>npm run build:wasm</code>
+                  </>
+                )}
+              </span>
             </div>
           )}
 
-          <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
+          <div className="form-actions start">
             <button
               className="ghost"
               onClick={handleReloadPvac}
               disabled={pvacStatus === 'loading'}
             >
-              {pvacStatus === 'loading' ? <span className="spinner" /> : '↻ Reload PVAC'}
+              {pvacStatus === 'loading' ? (
+                <span className="spinner" />
+              ) : (
+                <>
+                  <Icon name="refresh" size={16} /> Reload PVAC
+                </>
+              )}
             </button>
           </div>
 
-          <div
-            style={{
-              marginTop: 12,
-              padding: 12,
-              background: 'var(--bg-tertiary)',
-              borderRadius: 8,
-              fontSize: 11,
-              color: 'var(--text-muted)',
-            }}
-          >
-            <strong>How auto-load works:</strong>
-            <br />
-            1. Wallet unlock triggers <code>setWallet()</code> in the Zustand store
-            <br />
-            2. Store calls <code>loadPvacWasm()</code> which dynamically imports{' '}
-            <code>{`${import.meta.env.BASE_URL}wasm/pvac.js`}</code> {/* @vite-ignore */}
-            <br />
-            3. <code>WasmPvacBridge.init(privB64)</code> runs FHE keygen from the wallet seed
-            <br />
-            4. Status updates flow to <code>pvacStatus</code> ('loading' → 'ready' / 'failed' /
-            'unavailable')
+          <div className="info-box spaced-top">
+            <Icon name="info" size={16} />
+            <span>
+              <strong>How auto-load works:</strong>
+              <br />
+              1. Wallet unlock triggers <code>setWallet()</code> in the Zustand store
+              <br />
+              2. Store calls <code>loadPvacWasm()</code> which dynamically imports{' '}
+              <code>{`${import.meta.env.BASE_URL}wasm/pvac.js`}</code> {/* @vite-ignore */}
+              <br />
+              3. <code>WasmPvacBridge.init(privB64)</code> runs FHE keygen from the wallet seed
+              <br />
+              4. Status updates flow to <code>pvacStatus</code> ('loading' → 'ready' / 'failed' /
+              'unavailable')
+            </span>
           </div>
         </div>
       )}
@@ -809,21 +752,12 @@ export function SettingsPanel() {
           <div className="card-header">
             <div className="card-title">Session &amp; Auto-Lock</div>
           </div>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+          <p className="card-desc">
             While the session is alive, reloading the page brings the wallet back without the PIN.
             The keys are sealed for this browser tab only: closing it, locking the wallet, or
             letting the session expire ends it, and an unlock is never kept longer than 8 hours.
           </p>
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: 'var(--sp-2)',
-              marginBottom: 'var(--sp-3)',
-              fontSize: 13,
-              cursor: 'pointer',
-            }}
-          >
+          <label className="check-row">
             <input
               type="checkbox"
               checked={settings.keepUnlocked !== false}
@@ -847,11 +781,7 @@ export function SettingsPanel() {
             />
             <span>
               Stay unlocked after a page refresh
-              <span
-                style={{ display: 'block', color: 'var(--text-muted)', fontSize: 'var(--fs-xs)' }}
-              >
-                Turn off to require the PIN on every reload.
-              </span>
+              <span className="check-sub">Turn off to require the PIN on every reload.</span>
             </span>
           </label>
           <div className="form-row">
@@ -882,13 +812,7 @@ export function SettingsPanel() {
               <option value="60">1 hour</option>
               <option value="0">Never (until the tab closes)</option>
             </select>
-            <div
-              style={{
-                fontSize: 'var(--fs-xs)',
-                color: 'var(--text-muted)',
-                marginTop: 'var(--sp-1)',
-              }}
-            >
+            <div className="field-note">
               Counted from your last interaction — clicks, typing and scrolling all reset it. The
               8-hour cap on a single unlock applies either way.
             </div>
@@ -897,16 +821,18 @@ export function SettingsPanel() {
       )}
 
       {section === 'security' && (
-        <div className="card" style={{ marginBottom: 'var(--sp-4)' }}>
+        <div className="card">
           <div className="card-header">
-            <div className="card-title">Passkey Unlock</div>
+            <div className="card-title">
+              <Icon name="fingerprint" size={18} /> Passkey Unlock
+            </div>
             {passkey && (
-              <span className="tag ok" style={{ fontSize: 10 }}>
-                enabled
+              <span className="tag ok">
+                <Icon name="check" size={12} /> enabled
               </span>
             )}
           </div>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+          <p className="card-desc">
             Opens the wallet with this device&apos;s fingerprint, face or screen lock instead of the
             PIN. The keys are sealed with a value only your authenticator can reproduce, so the
             stored copy is useless on its own — but anyone who can pass this device&apos;s unlock
@@ -914,58 +840,44 @@ export function SettingsPanel() {
             accounts, and it keeps working as the way in.
           </p>
           {!passkeyOk ? (
-            <div
-              style={{
-                padding: 'var(--sp-3)',
-                background: 'var(--warning-soft)',
-                border: '1px solid var(--warning)',
-                borderRadius: 'var(--r-md)',
-                fontSize: 'var(--fs-xs)',
-              }}
-            >
-              ⚠️ This browser cannot use passkeys here. They need a secure context — https:// or
-              localhost.
+            <div className="info-box warn">
+              <Icon name="alert-triangle" size={16} />
+              <span>
+                This browser cannot use passkeys here. They need a secure context — https:// or
+                localhost.
+              </span>
             </div>
           ) : passkey ? (
             <>
-              <div
-                style={{
-                  padding: 'var(--sp-3)',
-                  background: 'var(--bg-elevated-2)',
-                  borderRadius: 'var(--r-md)',
-                  fontSize: 'var(--fs-xs)',
-                  marginBottom: 'var(--sp-3)',
-                }}
-              >
-                Registered for <strong>{passkey.name}</strong>{' '}
-                <span className="mono">
-                  {passkey.addr.slice(0, 14)}…{passkey.addr.slice(-6)}
+              <div className="info-box ok">
+                <Icon name="shield-check" size={16} />
+                <span>
+                  Registered for <strong>{passkey.name}</strong>{' '}
+                  <span className="mono">
+                    {passkey.addr.slice(0, 14)}…{passkey.addr.slice(-6)}
+                  </span>
+                  <br />
+                  Added {new Date(passkey.createdAt).toLocaleString()}
                 </span>
-                <br />
-                Added {new Date(passkey.createdAt).toLocaleString()}
               </div>
               <div className="form-actions">
-                <button className="ghost" onClick={() => void handleDisablePasskey()}>
+                <button className="ghost danger" onClick={() => void handleDisablePasskey()}>
                   Turn off passkey unlock
                 </button>
               </div>
             </>
           ) : wallet?.watchOnly ? (
-            <div
-              style={{
-                padding: 'var(--sp-3)',
-                background: 'var(--bg-elevated-2)',
-                borderRadius: 'var(--r-md)',
-                fontSize: 'var(--fs-xs)',
-              }}
-            >
-              👁 This is a watch-only account — it holds no keys, so there is nothing for a passkey
-              to seal. Switch to an account with keys to register one.
+            <div className="info-box">
+              <Icon name="eye" size={16} />
+              <span>
+                This is a watch-only account — it holds no keys, so there is nothing for a passkey
+                to seal. Switch to an account with keys to register one.
+              </span>
             </div>
           ) : (
             <div className="form-actions">
               <button onClick={() => void handleEnablePasskey()} disabled={!wallet}>
-                👆 Enable passkey unlock
+                <Icon name="fingerprint" size={16} /> Enable passkey unlock
               </button>
             </div>
           )}
@@ -973,11 +885,13 @@ export function SettingsPanel() {
       )}
 
       {section === 'security' && (
-        <div className="card" style={{ marginBottom: 'var(--sp-4)' }}>
+        <div className="card">
           <div className="card-header">
-            <div className="card-title">Recovery Phrase</div>
+            <div className="card-title">
+              <Icon name="file-text" size={18} /> Recovery Phrase
+            </div>
           </div>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+          <p className="card-desc">
             Shows the 12-word BIP39 phrase for this account. It restores the wallet on any device,
             so treat it exactly like the funds themselves. Uses the PIN field below.
           </p>
@@ -989,65 +903,38 @@ export function SettingsPanel() {
               }}
               disabled={!pin}
             >
-              Reveal Recovery Phrase
+              <Icon name="eye" size={16} /> Reveal Recovery Phrase
             </button>
           </div>
           {phrase && (
-            <div
-              style={{
-                marginTop: 16,
-                padding: 12,
-                background: 'var(--warning-soft)',
-                border: '1px solid var(--warning)',
-                borderRadius: 8,
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: 4,
-                }}
-              >
-                <span style={{ fontSize: 12, color: 'var(--warning)', fontWeight: 600 }}>
-                  ⚠️ Recovery phrase (never share it)
+            <div className="secret-box">
+              <div className="secret-head">
+                <span className="warn-text">
+                  <Icon name="alert-triangle" size={14} /> Recovery phrase (never share it)
                 </span>
                 <button
                   type="button"
-                  className="ghost icon"
+                  className="icon-btn plain"
                   onClick={() => setShowPhrase(!showPhrase)}
                   title={showPhrase ? 'Hide' : 'Show'}
                   aria-label={showPhrase ? 'Hide recovery phrase' : 'Show recovery phrase'}
-                  style={{ minHeight: 28, minWidth: 28, fontSize: 14 }}
                 >
-                  {showPhrase ? '🙈' : '👁️'}
+                  <Icon name={showPhrase ? 'eye-off' : 'eye'} size={16} />
                 </button>
               </div>
-              <div
-                className="mono"
-                style={{
-                  fontSize: 12,
-                  wordBreak: 'break-word',
-                  filter: showPhrase ? 'none' : 'blur(6px)',
-                  transition: 'filter var(--t-base)',
-                  padding: '4px 0',
-                }}
-              >
-                {phrase}
-              </div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                <button className="ghost" onClick={() => copyText(phrase)}>
-                  Copy
+              <div className={`secret-value ${showPhrase ? '' : 'blurred'}`}>{phrase}</div>
+              <div className="row tight">
+                <button className="ghost btn-sm" onClick={() => copyText(phrase)}>
+                  <Icon name="copy" size={14} /> Copy
                 </button>
                 <button
-                  className="ghost"
+                  className="ghost btn-sm"
                   onClick={() => {
                     setPhrase(null);
                     setShowPhrase(false);
                   }}
                 >
-                  Hide & clear
+                  <Icon name="eye-off" size={14} /> Hide &amp; clear
                 </button>
               </div>
             </div>
@@ -1058,9 +945,11 @@ export function SettingsPanel() {
       {section === 'security' && (
         <div className="card">
           <div className="card-header">
-            <div className="card-title">Export Private Key</div>
+            <div className="card-title">
+              <Icon name="key" size={18} /> Export Private Key
+            </div>
           </div>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+          <p className="card-desc">
             Exports the 64-byte Ed25519 secret key (seed||pub) as base64. Anyone with this key can
             control your wallet — handle with extreme care.
           </p>
@@ -1083,30 +972,22 @@ export function SettingsPanel() {
               }}
               disabled={!pin}
             >
-              Export Private Key
+              <Icon name="key" size={16} /> Export Private Key
             </button>
           </div>
           {privKey && (
-            <div
-              style={{
-                marginTop: 16,
-                padding: 12,
-                background: 'rgba(239, 68, 68, 0.1)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                borderRadius: 8,
-              }}
-            >
-              <div
-                style={{ fontSize: 12, color: 'var(--error)', marginBottom: 4, fontWeight: 600 }}
-              >
-                ⚠️ Private Key (do not share!)
+            <div className="secret-box danger">
+              <div className="secret-head">
+                <span className="err-text">
+                  <Icon name="alert-triangle" size={14} /> Private Key (do not share!)
+                </span>
               </div>
-              <div className="mono" style={{ fontSize: 11, wordBreak: 'break-all' }}>
-                {privKey}
+              <div className="secret-value">{privKey}</div>
+              <div className="row tight">
+                <button className="ghost btn-sm" onClick={() => copyText(privKey)}>
+                  <Icon name="copy" size={14} /> Copy
+                </button>
               </div>
-              <button className="ghost" style={{ marginTop: 8 }} onClick={() => copyText(privKey)}>
-                Copy
-              </button>
             </div>
           )}
         </div>
@@ -1114,7 +995,7 @@ export function SettingsPanel() {
 
       <ConfirmDialog
         open={showPhraseConfirm}
-        icon="📝"
+        icon="file-text"
         title="Reveal Recovery Phrase"
         message="This shows your 12-word recovery phrase on screen. Anyone who reads or photographs it gains full control of this wallet on any device. Only proceed somewhere private."
         confirmLabel="Reveal Phrase"
@@ -1127,7 +1008,7 @@ export function SettingsPanel() {
       <ConfirmDialog
         open={showPrivConfirm}
         danger
-        icon="🔑"
+        icon="key"
         title="Export Private Key"
         message="This reveals your raw Ed25519 secret key on screen. Anyone who sees it gains full control of your wallet and funds. Only proceed in a private, secure environment."
         confirmLabel="Reveal Private Key"
@@ -1144,6 +1025,6 @@ export function SettingsPanel() {
         dismissible
         onClose={panelLoading.hide}
       />
-    </>
+    </div>
   );
 }

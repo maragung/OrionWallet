@@ -28,21 +28,7 @@ export function QrCode({
 
   if (error || !qr) {
     return (
-      <div
-        style={{
-          width: size,
-          height: size,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'var(--bg-elevated-2)',
-          borderRadius: 'var(--r-md)',
-          color: 'var(--text-muted)',
-          fontSize: 'var(--fs-xs)',
-          textAlign: 'center',
-          padding: 'var(--sp-3)',
-        }}
-      >
+      <div className="qr-fallback" style={{ width: size, height: size }}>
         QR unavailable
       </div>
     );
@@ -63,14 +49,13 @@ export function QrCode({
 
   return (
     <svg
-      className={className}
+      className={className ? `qr-svg ${className}` : 'qr-svg'}
       width={size}
       height={size}
       viewBox={`0 0 ${total} ${total}`}
       shapeRendering="crispEdges"
       role="img"
       aria-label="QR code"
-      style={{ borderRadius: 'var(--r-md)', display: 'block' }}
     >
       <rect width={total} height={total} fill="#ffffff" />
       <path d={path} fill="#000000" />

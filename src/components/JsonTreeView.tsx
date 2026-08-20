@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Icon } from './icons/Icon';
 
 /**
  * Collapsible JSON tree view. Objects and arrays render as expandable nodes;
@@ -20,28 +21,24 @@ function isBranch(v: Json): boolean {
 }
 
 function Primitive({ value }: { value: Json }) {
-  let color = 'var(--text-primary)';
+  let kind = 'other';
   let text: string;
   if (value === null) {
-    color = 'var(--text-muted)';
+    kind = 'null';
     text = 'null';
   } else if (typeof value === 'string') {
-    color = 'var(--success)';
+    kind = 'str';
     text = `"${value}"`;
   } else if (typeof value === 'number') {
-    color = 'var(--accent)';
+    kind = 'num';
     text = String(value);
   } else if (typeof value === 'boolean') {
-    color = 'var(--warning)';
+    kind = 'bool';
     text = String(value);
   } else {
     text = String(value);
   }
-  return (
-    <span className="mono" style={{ color, wordBreak: 'break-all' }}>
-      {text}
-    </span>
-  );
+  return <span className={`mono json-val ${kind}`}>{text}</span>;
 }
 
 function TreeNode({
@@ -63,83 +60,45 @@ function TreeNode({
       : Object.entries(value as Record<string, Json>)
     : [];
 
+  const label = (
+    <>
+      <span className="json-caret">
+        {branch && <Icon name={open ? 'chevron-down' : 'chevron-right'} size={12} />}
+      </span>
+
+      {nodeKey !== null && (
+        <span className="mono json-key">
+          {nodeKey}
+          <span className="json-punct">: </span>
+        </span>
+      )}
+
+      {branch ? <span className="json-type">{typeLabel(value)}</span> : <Primitive value={value} />}
+    </>
+  );
+
   return (
-    <div style={{ paddingLeft: depth === 0 ? 0 : 'var(--sp-4)' }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 'var(--sp-1)',
-          padding: '2px 0',
-          cursor: branch ? 'pointer' : 'default',
-        }}
-        onClick={branch ? () => setOpen((o) => !o) : undefined}
-        role={branch ? 'button' : undefined}
-        tabIndex={branch ? 0 : undefined}
-        onKeyDown={
-          branch
-            ? (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  setOpen((o) => !o);
-                }
-              }
-            : undefined
-        }
-      >
-        {branch ? (
-          <span
-            style={{
-              width: 12,
-              color: 'var(--text-muted)',
-              fontSize: 10,
-              lineHeight: '18px',
-              flexShrink: 0,
-              userSelect: 'none',
-            }}
-          >
-            {open ? '▼' : '▶'}
-          </span>
-        ) : (
-          <span style={{ width: 12, flexShrink: 0 }} />
-        )}
-
-        {nodeKey !== null && (
-          <span
-            className="mono"
-            style={{ color: 'var(--text-secondary)', fontWeight: 'var(--fw-semibold)' }}
-          >
-            {nodeKey}
-            <span style={{ color: 'var(--text-muted)' }}>: </span>
-          </span>
-        )}
-
-        {branch ? (
-          <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-xs)' }}>
-            {typeLabel(value)}
-          </span>
-        ) : (
-          <Primitive value={value} />
-        )}
-      </div>
+    <div className="json-node">
+      {/* A branch row is a real button, so Enter and Space toggle it without a
+          hand-written key handler; a leaf is not focusable because there is
+          nothing to activate. */}
+      {branch ? (
+        <button
+          type="button"
+          className="json-row"
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+        >
+          {label}
+        </button>
+      ) : (
+        <div className="json-row">{label}</div>
+      )}
 
       {branch && open && (
-        <div
-          style={{
-            borderLeft: '1px solid var(--border-subtle)',
-            marginLeft: 5,
-          }}
-        >
+        <div className="json-children">
           {entries.length === 0 ? (
-            <div
-              style={{
-                paddingLeft: 'var(--sp-4)',
-                color: 'var(--text-muted)',
-                fontSize: 'var(--fs-xs)',
-              }}
-            >
-              (empty)
-            </div>
+            <div className="json-empty">(empty)</div>
           ) : (
             entries.map(([k, v]) => (
               <TreeNode
@@ -159,17 +118,7 @@ function TreeNode({
 
 export function JsonTreeView({ data, defaultOpen = true }: { data: Json; defaultOpen?: boolean }) {
   return (
-    <div
-      style={{
-        fontSize: 'var(--fs-sm)',
-        padding: 'var(--sp-3)',
-        background: 'var(--bg-elevated-2)',
-        borderRadius: 'var(--r-md)',
-        overflowX: 'auto',
-        maxHeight: 460,
-        overflowY: 'auto',
-      }}
-    >
+    <div className="json-tree">
       <TreeNode nodeKey={null} value={data} depth={0} defaultOpen={defaultOpen} />
     </div>
   );

@@ -10,8 +10,10 @@ import { listContacts, upsertContact, type ContactEntry } from '../wallet/storag
 import { ProcessingModal, type ProcessingStage } from './ProcessingModal';
 import { ConfirmDialog } from './ConfirmDialog';
 import { QrScanner } from './QrScanner';
-import { Tooltip } from './Tooltip';
+import { InfoHint } from './Tooltip';
 import { PanelSkeleton } from './PanelSkeleton';
+import { PageHead } from './PageHead';
+import { Icon } from './icons/Icon';
 
 export function SendForm() {
   const { wallet, rpc, pushToast } = useWalletStore();
@@ -218,59 +220,49 @@ export function SendForm() {
   };
 
   return (
-    <>
+    <div className="page">
+      <PageHead
+        icon="send"
+        title="Send"
+        sub="Transfer OCT to any Octra address. Amounts and fees are shown before you sign."
+      />
+
       <div className="card">
         <div className="card-header">
-          <div className="card-title">📤 Send OCT</div>
-          <Tooltip text="Send a standard transfer to another Octra address. The recipient will receive the funds immediately after the transaction is confirmed.">
-            <span style={{ color: 'var(--text-muted)', cursor: 'help' }}>ⓘ</span>
-          </Tooltip>
+          <div className="card-title">
+            <Icon name="send" size={18} /> Send OCT
+          </div>
+          <InfoHint text="Send a standard transfer to another Octra address. The recipient will receive the funds immediately after the transaction is confirmed." />
         </div>
 
         {wallet.watchOnly && (
-          <div
-            style={{
-              marginBottom: 'var(--sp-4)',
-              padding: 'var(--sp-3)',
-              background: 'var(--warning-soft)',
-              border: '1px solid var(--warning)',
-              borderRadius: 'var(--r-md)',
-              fontSize: 'var(--fs-xs)',
-            }}
-          >
-            👁 This is a <strong>watch-only</strong> account. It holds no private key, so it cannot
-            sign or send. Switch to an account with keys, or import the recovery phrase for this
-            address.
+          <div className="info-box warn spaced">
+            <Icon name="eye" size={18} />
+            <span>
+              This is a <strong>watch-only</strong> account. It holds no private key, so it cannot
+              sign or send. Switch to an account with keys, or import the recovery phrase for this
+              address.
+            </span>
           </div>
         )}
 
         <div className="form-row">
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 'var(--sp-2)',
-              flexWrap: 'wrap',
-            }}
-          >
-            <label htmlFor="to" style={{ marginBottom: 0 }}>
+          <div className="field-head">
+            <label htmlFor="to">
               Recipient Address{' '}
-              <Tooltip text="The Octra address of the recipient. Must start with 'oct' and be 47 characters long.">
-                <span style={{ color: 'var(--text-muted)', cursor: 'help' }}>ⓘ</span>
-              </Tooltip>
+              <InfoHint text="The Octra address of the recipient. Must start with 'oct' and be 47 characters long." />
             </label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
+            <div className="field-head-actions">
               {contacts.length > 0 && (
                 <select
+                  className="field-inline"
                   aria-label="Pick a saved contact"
                   value={knownContact?.addr ?? ''}
                   onChange={(e) => {
                     if (e.target.value) setTo(e.target.value);
                   }}
-                  style={{ maxWidth: 180, fontSize: 'var(--fs-xs)' }}
                 >
-                  <option value="">📇 Contacts…</option>
+                  <option value="">Contacts…</option>
                   {contacts.map((c) => (
                     <option key={c.addr} value={c.addr}>
                       {c.name}
@@ -280,12 +272,11 @@ export function SendForm() {
               )}
               <button
                 type="button"
-                className="ghost"
+                className="ghost btn-sm"
                 onClick={() => setShowScan(true)}
                 aria-label="Scan a QR code for the recipient"
-                style={{ fontSize: 'var(--fs-xs)', padding: 'var(--sp-1) var(--sp-2)' }}
               >
-                📷 Scan
+                <Icon name="camera" size={14} /> Scan
               </button>
             </div>
           </div>
@@ -298,38 +289,36 @@ export function SendForm() {
             inputMode="text"
             autoComplete="off"
             spellCheck={false}
-            style={to && !validTo ? { borderColor: 'var(--error)' } : undefined}
+            aria-invalid={to !== '' && !validTo}
+            /* The invalid border is a class, not an inline style, so that light
+               theme and the focus ring can both still override it. */
+            data-invalid={to && !validTo ? 'true' : undefined}
           />
           {to && !validTo && (
-            <div
-              style={{ color: 'var(--error)', fontSize: 'var(--fs-xs)', marginTop: 'var(--sp-1)' }}
-            >
-              ⚠ Address must be 47 chars, start with "oct", and use valid base58.
+            <div className="field-error">
+              <Icon name="alert-triangle" size={14} />
+              <span>Address must be 47 chars, start with "oct", and use valid base58.</span>
             </div>
           )}
           {validTo && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--sp-2)',
-                flexWrap: 'wrap',
-                fontSize: 'var(--fs-xs)',
-                marginTop: 'var(--sp-1)',
-              }}
-            >
-              <span style={{ color: 'var(--success)' }}>✓ Valid Octra address</span>
+            <div className="field-note">
+              <span className="ok-text">
+                <Icon name="check-circle" size={14} /> Valid Octra address
+              </span>
               {knownContact ? (
-                <span style={{ color: 'var(--text-secondary)' }}>— 📇 {knownContact.name}</span>
+                <span className="row tight">
+                  <Icon name="contact" size={14} className="muted" />
+                  {knownContact.name}
+                </span>
               ) : showSave ? (
                 <>
                   <input
+                    className="field-inline"
                     value={saveName}
                     onChange={(e) => setSaveName(e.target.value)}
                     placeholder="Contact name"
                     aria-label="Contact name"
                     maxLength={64}
-                    style={{ maxWidth: 160, fontSize: 'var(--fs-xs)' }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -339,32 +328,25 @@ export function SendForm() {
                   />
                   <button
                     type="button"
-                    className="ghost"
+                    className="ghost btn-sm"
                     onClick={() => void saveRecipient()}
-                    style={{ fontSize: 'var(--fs-xs)', padding: 'var(--sp-1) var(--sp-2)' }}
                   >
                     Save
                   </button>
                   <button
                     type="button"
-                    className="ghost"
+                    className="ghost btn-sm"
                     onClick={() => {
                       setShowSave(false);
                       setSaveName('');
                     }}
-                    style={{ fontSize: 'var(--fs-xs)', padding: 'var(--sp-1) var(--sp-2)' }}
                   >
                     Cancel
                   </button>
                 </>
               ) : (
-                <button
-                  type="button"
-                  className="ghost"
-                  onClick={() => setShowSave(true)}
-                  style={{ fontSize: 'var(--fs-xs)', padding: 'var(--sp-1) var(--sp-2)' }}
-                >
-                  ＋ Save to contacts
+                <button type="button" className="ghost btn-sm" onClick={() => setShowSave(true)}>
+                  <Icon name="plus" size={14} /> Save to contacts
                 </button>
               )}
             </div>
@@ -374,9 +356,7 @@ export function SendForm() {
         <div className="form-row">
           <label htmlFor="amount">
             Amount (OCT){' '}
-            <Tooltip text="Enter the amount in OCT (e.g., 1.5). The minimum unit is 0.000001 OCT (1 raw). Transaction fee is additional.">
-              <span style={{ color: 'var(--text-muted)', cursor: 'help' }}>ⓘ</span>
-            </Tooltip>
+            <InfoHint text="Enter the amount in OCT (e.g., 1.5). The minimum unit is 0.000001 OCT (1 raw). Transaction fee is additional." />
           </label>
           <input
             id="amount"
@@ -386,29 +366,18 @@ export function SendForm() {
             placeholder="1.5"
             inputMode="decimal"
             autoComplete="off"
-            style={amount && !validAmount ? { borderColor: 'var(--error)' } : undefined}
+            aria-invalid={amount !== '' && !validAmount}
+            data-invalid={amount && !validAmount ? 'true' : undefined}
           />
           {amountRaw && (
-            <div
-              style={{
-                color: 'var(--text-muted)',
-                fontSize: 'var(--fs-xs)',
-                marginTop: 'var(--sp-1)',
-              }}
-            >
+            <div className="field-note">
               Raw: {amountRaw} (≈ {formatAmount(amountRaw)} OCT) + fee {formatAmount(fee)} OCT
             </div>
           )}
           {/* Quick amount buttons */}
-          <div style={{ display: 'flex', gap: 'var(--sp-1)', marginTop: 'var(--sp-2)' }}>
+          <div className="preset-row">
             {['0.1', '1', '10', '100'].map((v) => (
-              <button
-                key={v}
-                type="button"
-                className="ghost"
-                onClick={() => setAmount(v)}
-                style={{ flex: 1, minHeight: 32, fontSize: 'var(--fs-xs)', padding: 'var(--sp-1)' }}
-              >
+              <button key={v} type="button" className="ghost btn-sm" onClick={() => setAmount(v)}>
                 {v}
               </button>
             ))}
@@ -418,9 +387,7 @@ export function SendForm() {
         <div className="form-row">
           <label htmlFor="message">
             Message (optional){' '}
-            <Tooltip text="Optional memo attached to the transaction. Visible to the recipient and on the explorer. Max 256 characters.">
-              <span style={{ color: 'var(--text-muted)', cursor: 'help' }}>ⓘ</span>
-            </Tooltip>
+            <InfoHint text="Optional memo attached to the transaction. Visible to the recipient and on the explorer. Max 256 characters." />
           </label>
           <input
             id="message"
@@ -430,27 +397,15 @@ export function SendForm() {
             maxLength={256}
             autoComplete="off"
           />
-          {message && (
-            <div
-              style={{
-                fontSize: 'var(--fs-xs)',
-                color: 'var(--text-muted)',
-                marginTop: 'var(--sp-1)',
-              }}
-            >
-              {message.length}/256 characters
-            </div>
-          )}
+          {message && <div className="field-note">{message.length}/256 characters</div>}
         </div>
 
         <div className="form-row">
           <label htmlFor="pin">
             PIN{' '}
-            <Tooltip text="Your wallet PIN is required to authorize this transaction. It decrypts your private key temporarily to sign the transaction.">
-              <span style={{ color: 'var(--text-muted)', cursor: 'help' }}>ⓘ</span>
-            </Tooltip>
+            <InfoHint text="Your wallet PIN is required to authorize this transaction. It decrypts your private key temporarily to sign the transaction." />
           </label>
-          <div style={{ position: 'relative' }}>
+          <div className="input-wrap">
             <input
               id="pin"
               type={showPin ? 'text' : 'password'}
@@ -459,24 +414,15 @@ export function SendForm() {
               onChange={(e) => setPin(e.target.value)}
               placeholder="Enter your wallet PIN"
               autoComplete="current-password"
-              style={{ paddingRight: 40 }}
             />
             <button
               type="button"
-              className="ghost icon"
+              className="icon-btn plain input-affix"
               onClick={() => setShowPin(!showPin)}
               title={showPin ? 'Hide PIN' : 'Show PIN'}
-              style={{
-                position: 'absolute',
-                right: 4,
-                top: '50%',
-                transform: 'translateY(-50%)',
-                minHeight: 36,
-                minWidth: 36,
-                border: 'none',
-              }}
+              aria-label={showPin ? 'Hide PIN' : 'Show PIN'}
             >
-              {showPin ? '🙈' : '👁️'}
+              <Icon name={showPin ? 'eye-off' : 'eye'} size={18} />
             </button>
           </div>
         </div>
@@ -488,49 +434,27 @@ export function SendForm() {
             disabled={!validTo || !validAmount || !pin || wallet.watchOnly === true}
             title={wallet.watchOnly ? 'Watch-only accounts cannot sign transactions' : undefined}
           >
-            🔏 Sign & Send
+            <Icon name="signature" size={18} /> Sign &amp; Send
           </button>
         </div>
 
         {result && (
-          <div
-            style={{
-              marginTop: 'var(--sp-4)',
-              padding: 'var(--sp-3)',
-              background: 'var(--success-soft)',
-              border: '1px solid var(--success)',
-              borderRadius: 'var(--r-md)',
-            }}
-          >
-            <div
-              style={{
-                fontSize: 'var(--fs-xs)',
-                color: 'var(--success)',
-                marginBottom: 'var(--sp-1)',
-                fontWeight: 'var(--fw-semibold)',
-              }}
-            >
-              ✓ Transaction Submitted
+          <div className="info-box ok spaced">
+            <Icon name="check-circle" size={18} />
+            <div className="info-box-body">
+              <strong className="ok-text">Transaction Submitted</strong>
+              <div className="mono mono-line">Hash: {result.hash}</div>
+              <div className="mono mono-line muted">Nonce: {result.nonce}</div>
+              <button
+                className="ghost btn-sm self-start"
+                onClick={() => {
+                  copyText(result.hash);
+                  pushToast('success', 'Hash copied');
+                }}
+              >
+                <Icon name="copy" size={14} /> Copy Hash
+              </button>
             </div>
-            <div className="mono" style={{ fontSize: 'var(--fs-xs)', wordBreak: 'break-all' }}>
-              Hash: {result.hash}
-            </div>
-            <div
-              className="mono"
-              style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: 4 }}
-            >
-              Nonce: {result.nonce}
-            </div>
-            <button
-              className="ghost"
-              style={{ marginTop: 'var(--sp-2)', minHeight: 32, fontSize: 'var(--fs-xs)' }}
-              onClick={() => {
-                copyText(result.hash);
-                pushToast('success', 'Hash copied');
-              }}
-            >
-              📋 Copy Hash
-            </button>
           </div>
         )}
       </div>
@@ -545,7 +469,7 @@ export function SendForm() {
 
       <ConfirmDialog
         open={showConfirm}
-        icon="📤"
+        icon="send"
         title="Confirm Transaction"
         message="Please review the transaction details before signing and broadcasting. This action cannot be undone."
         confirmLabel="Sign & Send"
@@ -584,6 +508,6 @@ export function SendForm() {
         dismissible={!!modalSuccess || !!modalError}
         onCopySuccess={copySuccessDetails}
       />
-    </>
+    </div>
   );
 }

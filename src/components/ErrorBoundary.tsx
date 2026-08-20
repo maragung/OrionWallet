@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { Icon } from './icons/Icon';
 
 /**
  * ErrorBoundary — keeps a render-time crash from blanking the whole app.
@@ -48,24 +49,19 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <div className="card">
         <div className="card-header">
-          <div className="card-title">⚠️ {this.props.title ?? 'Something went wrong'}</div>
-        </div>
-        <div className="empty-state" style={{ padding: 'var(--sp-6)' }}>
-          <div className="icon">💥</div>
-          <div className="title">This panel failed to render</div>
-          <div className="desc" style={{ wordBreak: 'break-word' }}>
-            {error.message || String(error)}
+          <div className="card-title">
+            <Icon name="alert-triangle" size={18} /> {this.props.title ?? 'Something went wrong'}
           </div>
-          <div
-            style={{
-              display: 'flex',
-              gap: 'var(--sp-2)',
-              justifyContent: 'center',
-              marginTop: 'var(--sp-4)',
-            }}
-          >
+        </div>
+        <div className="empty-state danger compact">
+          <div className="icon">
+            <Icon name="alert-octagon" size={28} />
+          </div>
+          <div className="title">This panel failed to render</div>
+          <div className="desc break-word">{error.message || String(error)}</div>
+          <div className="empty-actions">
             <button className="primary" onClick={this.handleRetry}>
-              ↻ Retry
+              <Icon name="refresh" size={16} /> Retry
             </button>
             <button className="ghost" onClick={() => window.location.reload()}>
               Reload app

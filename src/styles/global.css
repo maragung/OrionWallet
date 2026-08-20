@@ -1,79 +1,117 @@
 /* ════════════════════════════════════════════════════════════════════
-   Orion Wallet — Modern Theme System
+   Orion Wallet — Design tokens & component layer
    ════════════════════════════════════════════════════════════════════
    - Dark theme (default) and Light theme via [data-theme="light"]
-   - Mobile-first responsive: PC sidebar, mobile bottom nav
-   - Touch-friendly tap targets (min 44px on mobile)
+   - Three responsive tiers: phone bottom nav ≤767, icon rail 768–1023,
+     full sidebar ≥1024 (plus a wide tier at ≥1600)
+   - Touch-friendly tap targets (min 44px on touch devices)
    - iOS safe-area insets for notches
-   - Smooth transitions, modern shadows, subtle glassmorphism
+   - Self-hosted Inter / JetBrains Mono (see ./fonts.css)
+
+   TOKEN NAMING: `--surface-*`, `--line-*`, `--fg-*` are the primitives. The older
+   `--bg-elevated-*`, `--border-*`, `--text-*` names are kept as ALIASES of them, because
+   ~500 inline `style={{}}` objects across the components still reference the old names.
+   Aliasing means a palette change lands everywhere at once instead of leaving half the app
+   on the previous colours; the aliases can be retired once the inline styles are gone.
 */
+@import './fonts.css';
 
 /* ─── Dark theme (default) ────────────────────────────────────────── */
 :root {
-  /* Backgrounds */
-  --bg-base: #0a0a0f;
-  --bg-elevated-1: #14141d;
-  --bg-elevated-2: #1c1c28;
-  --bg-elevated-3: #242435;
-  --bg-hover: #2e2e42;
-  --bg-active: #353550;
+  /* ── Primitives: surfaces, lines, foregrounds ── */
+  --surface-0: #0b0d12;
+  --surface-1: #12151c;
+  --surface-2: #191d26;
+  --surface-3: #222732;
+  --surface-4: #2b3140;
+  --surface-5: #343b4d;
 
-  /* Borders */
-  --border-subtle: #2a2a3d;
-  --border-default: #2e2e42;
-  --border-strong: #3d3d55;
-  --border-focus: #6366f1;
+  --line-1: #232833;
+  --line-2: #2c3340;
+  --line-3: #3a4252;
 
-  /* Text */
-  --text-primary: #f5f5fa;
-  --text-secondary: #b8b8c8;
-  --text-muted: #6e6e85;
-  --text-disabled: #4a4a5e;
-  --text-inverse: #0a0a0f;
+  --fg-1: #f2f4f8;
+  --fg-2: #a8b0be;
+  /* --fg-3 is the muted text role (`--text-muted`): metric labels, page subtitles, the
+     address under the balance. Measured, not eyeballed — the old #6d7688 was 4.00:1 on
+     --surface-1 and 3.27:1 on --surface-3, so every one of those roles was below the 4.5:1
+     WCAG AA floor for text under 18px. This clears it on all four surfaces (5.76 / 5.32 /
+     4.72 on surface-1 / -2 / -3). --fg-4 stays where it is: it is only --text-disabled,
+     which AA exempts. */
+  --fg-3: #8891a3;
+  --fg-4: #4a5162;
 
-  /* Accent */
+  /* ── Accent ramp ── */
   --accent: #6366f1;
+  --accent-2: #8b5cf6;
+  --accent-3: #a855f7;
   --accent-hover: #818cf8;
   --accent-active: #4f46e5;
-  --accent-soft: rgba(99, 102, 241, 0.15);
+  --accent-soft: rgba(99, 102, 241, 0.16);
   --accent-text: #ffffff;
+  /* Two different jobs, two tokens. --accent-text is ink laid ON the accent (white on the
+     primary button). --accent-fg is the accent used AS ink, on a neutral surface: the active
+     nav item, the quick-action labels, links. --accent itself is only 4.09:1 on --surface-1
+     and 3.35:1 on --surface-3, so using it for text failed AA everywhere a card was
+     involved; this is the same hue two steps lighter and clears 5.25:1 at worst. */
+  --accent-fg: #8b8ff7;
+  /* The focus ring must be visible against BOTH surface-0 and the gradient hero, so it is
+     its own token rather than a reuse of --accent-soft (which is too faint to see). */
+  --accent-ring: rgba(99, 102, 241, 0.45);
+  /* One ramp for both themes — the hero is a saturated panel that does not need to change
+     with the surface behind it. The stops are a step darker than the accent ramp above
+     because everything drawn on this gradient is white: the old 500-level stops put white
+     at 4.47 / 4.23 / 3.96:1, i.e. below AA at the violet end, so the balance's own label
+     was the least legible text in the wallet. These put white at 6.41 / 5.70 / 5.41. */
+  --grad-accent: linear-gradient(135deg, #5145e0 0%, #7d3ce8 55%, #9436e2 100%);
+  /* Highlight laid over the hero gradient so it reads as a lit surface, not flat fill. */
+  --grad-hero-sheen: radial-gradient(
+    120% 140% at 12% 0%,
+    rgba(255, 255, 255, 0.22),
+    transparent 60%
+  );
 
-  /* Status colors */
+  /* ── Status ── */
   --success: #10b981;
-  --success-soft: rgba(16, 185, 129, 0.15);
+  --success-soft: rgba(16, 185, 129, 0.16);
   --warning: #f59e0b;
-  --warning-soft: rgba(245, 158, 11, 0.15);
+  --warning-soft: rgba(245, 158, 11, 0.16);
   --error: #ef4444;
-  --error-soft: rgba(239, 68, 68, 0.15);
+  --error-soft: rgba(239, 68, 68, 0.16);
   --info: #3b82f6;
-  --info-soft: rgba(59, 130, 246, 0.15);
+  --info-soft: rgba(59, 130, 246, 0.16);
 
-  /* Shadows */
+  /* ── Shadows ── */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0, 0, 0, 0.25);
-  --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.45), 0 4px 8px rgba(0, 0, 0, 0.3);
-  --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.55), 0 8px 16px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 14px 32px rgba(0, 0, 0, 0.5), 0 4px 10px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 28px 60px rgba(0, 0, 0, 0.6), 0 8px 20px rgba(0, 0, 0, 0.4);
+  --shadow-accent: 0 6px 18px rgba(99, 102, 241, 0.35);
   --shadow-glow: 0 0 0 3px var(--accent-soft);
+  --ring: 0 0 0 3px var(--accent-ring);
 
-  /* Glass effect */
-  --glass-bg: rgba(20, 20, 29, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.06);
+  /* ── Glass ── */
+  --glass-bg: rgba(11, 13, 18, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.07);
 
-  /* Layout */
+  /* ── Layout ── */
   --header-height: 60px;
-  --sidebar-width: 240px;
-  --mobile-nav-height: 64px;
+  --sidebar-width: 248px;
+  --rail-width: 76px;
+  --mobile-nav-height: 68px;
   --content-max-width: 1200px;
 
-  /* Radius */
-  --r-sm: 6px;
-  --r-md: 8px;
-  --r-lg: 12px;
-  --r-xl: 16px;
+  /* ── Radius ── */
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --r-2xl: 28px;
   --r-full: 999px;
 
-  /* Spacing scale (4px base) */
+  /* ── Spacing scale (4px base) ── */
   --sp-1: 4px;
   --sp-2: 8px;
   --sp-3: 12px;
@@ -84,29 +122,39 @@
   --sp-10: 40px;
   --sp-12: 48px;
 
-  /* Transitions */
+  /* ── Transitions ── */
   --t-fast: 0.12s ease;
   --t-base: 0.2s ease;
   --t-slow: 0.3s ease;
 
-  /* Typography */
+  /* ── Typography ── */
+  /* Emoji families are listed explicitly at the end of both stacks. Inter and
+     JetBrains Mono are Latin-only subsets, so every emoji the app still shows — the
+     20 country flags in the language menu, most of all — depends on a fallback. Naming
+     the platform emoji fonts is what makes that fallback deterministic instead of
+     whatever the browser's last-resort font happens to be. */
   --font-sans:
-    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Text', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', ui-monospace, Consolas, monospace;
+    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Text', Roboto, 'Helvetica Neue',
+    sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji';
+  --font-mono:
+    'JetBrains Mono', 'SF Mono', 'Fira Code', ui-monospace, Consolas, monospace,
+    'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji';
   --fs-xs: 11px;
   --fs-sm: 13px;
   --fs-base: 14px;
-  --fs-md: 15px;
-  --fs-lg: 17px;
-  --fs-xl: 20px;
-  --fs-2xl: 24px;
+  --fs-md: 16px;
+  --fs-lg: 18px;
+  --fs-xl: 22px;
+  --fs-2xl: 26px;
   --fs-3xl: 32px;
+  --fs-4xl: 40px;
+  --fs-5xl: 52px;
   --fw-normal: 400;
   --fw-medium: 500;
   --fw-semibold: 600;
   --fw-bold: 700;
 
-  /* Z-index scale */
+  /* ── Z-index scale ── */
   --z-base: 1;
   --z-elevated: 10;
   --z-header: 100;
@@ -117,51 +165,90 @@
      in the same corner), below overlays and modals. */
   --z-dropdown: 1500;
   --z-overlay: 2000;
+  --z-sheet: 2500;
   --z-modal: 3000;
+
+  /* ── Legacy aliases — see TOKEN NAMING above ── */
+  --bg-base: var(--surface-0);
+  --bg-elevated-1: var(--surface-1);
+  --bg-elevated-2: var(--surface-2);
+  --bg-elevated-3: var(--surface-3);
+  --bg-hover: var(--surface-4);
+  --bg-active: var(--surface-5);
+  --border-subtle: var(--line-1);
+  --border-default: var(--line-2);
+  --border-strong: var(--line-3);
+  --border-focus: var(--accent);
+  --text-primary: var(--fg-1);
+  --text-secondary: var(--fg-2);
+  --text-muted: var(--fg-3);
+  --text-disabled: var(--fg-4);
+  --text-inverse: var(--surface-0);
+  /* These three were referenced by components but never declared, so the whole
+     declaration was being dropped (transparent background, missing border). */
+  --bg-tertiary: var(--surface-3);
+  --border: var(--line-2);
+  --danger: var(--error);
 }
 
 /* ─── Light theme ─────────────────────────────────────────────────── */
+/* Only the primitives are redefined; every alias above resolves through them. */
 [data-theme='light'] {
-  --bg-base: #fafafa;
-  --bg-elevated-1: #ffffff;
-  --bg-elevated-2: #f4f4f7;
-  --bg-elevated-3: #ececf2;
-  --bg-hover: #e4e4eb;
-  --bg-active: #d8d8e0;
+  --surface-0: #f7f8fa;
+  --surface-1: #ffffff;
+  --surface-2: #f1f3f7;
+  --surface-3: #e7eaf1;
+  --surface-4: #dde1ea;
+  --surface-5: #ced4e0;
 
-  --border-subtle: #e8e8ee;
-  --border-default: #d4d4de;
-  --border-strong: #b8b8c5;
-  --border-focus: #6366f1;
+  --line-1: #e6e8ee;
+  --line-2: #d6dae3;
+  --line-3: #b6bdcc;
 
-  --text-primary: #1a1a2e;
-  --text-secondary: #4a4a5e;
-  --text-muted: #7a7a8e;
-  --text-disabled: #b0b0c0;
-  --text-inverse: #ffffff;
+  --fg-1: #111420;
+  --fg-2: #4b5162;
+  /* Was #7b8194 — 3.49:1 on --surface-2, below AA. See the dark block. */
+  --fg-3: #666d7e;
+  --fg-4: #a8aebd;
 
-  --accent: #6366f1;
+  --accent: #5b5ef0;
+  --accent-2: #7c4ef0;
+  --accent-3: #9a45ef;
   --accent-hover: #4f46e5;
   --accent-active: #4338ca;
-  --accent-soft: rgba(99, 102, 241, 0.1);
+  --accent-soft: rgba(91, 94, 240, 0.12);
+  /* 4.39:1 on --surface-2 is not enough for 11px labels, so accent-as-ink is a step darker
+     here than --accent, exactly as in the dark theme. See the dark block for the split. */
+  --accent-fg: #5145e0;
+  /* Deliberately stronger than --accent-soft: a 0.1-alpha ring is invisible on white. */
+  --accent-ring: rgba(91, 94, 240, 0.4);
+  /* No --grad-accent override: the hero gradient is deliberately theme-independent. The
+     override that used to sit here was a second ramp to keep in step with the first, and it
+     put white at 4.70:1 on its last stop. */
+  --grad-hero-sheen: radial-gradient(
+    120% 140% at 12% 0%,
+    rgba(255, 255, 255, 0.3),
+    transparent 60%
+  );
 
   --success: #059669;
-  --success-soft: rgba(5, 150, 105, 0.1);
+  --success-soft: rgba(5, 150, 105, 0.12);
   --warning: #d97706;
-  --warning-soft: rgba(217, 119, 6, 0.1);
+  --warning-soft: rgba(217, 119, 6, 0.12);
   --error: #dc2626;
-  --error-soft: rgba(220, 38, 38, 0.1);
+  --error-soft: rgba(220, 38, 38, 0.12);
   --info: #2563eb;
-  --info-soft: rgba(37, 99, 235, 0.1);
+  --info-soft: rgba(37, 99, 235, 0.12);
 
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
-  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.08), 0 4px 8px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.08);
+  --shadow-xs: 0 1px 2px rgba(17, 20, 32, 0.05);
+  --shadow-sm: 0 1px 2px rgba(17, 20, 32, 0.06), 0 1px 1px rgba(17, 20, 32, 0.03);
+  --shadow-md: 0 4px 10px rgba(17, 20, 32, 0.08), 0 2px 4px rgba(17, 20, 32, 0.04);
+  --shadow-lg: 0 14px 32px rgba(17, 20, 32, 0.1), 0 4px 10px rgba(17, 20, 32, 0.06);
+  --shadow-xl: 0 28px 60px rgba(17, 20, 32, 0.14), 0 8px 20px rgba(17, 20, 32, 0.08);
+  --shadow-accent: 0 6px 18px rgba(91, 94, 240, 0.28);
 
-  --glass-bg: rgba(255, 255, 255, 0.75);
-  --glass-border: rgba(0, 0, 0, 0.05);
+  --glass-bg: rgba(255, 255, 255, 0.82);
+  --glass-border: rgba(17, 20, 32, 0.07);
 }
 
 /* ─── Reset & base ────────────────────────────────────────────────── */
@@ -177,6 +264,21 @@ html,
 body,
 #root {
   height: 100%;
+}
+
+/* Native controls follow `color-scheme`, not our tokens — checkbox chrome, scrollbars,
+   spin buttons, autofill backgrounds and the default caret all come from the UA. The
+   `<meta name="color-scheme" content="dark light">` in index.html only says the page
+   *supports* both, so the UA picks from the OS preference: on a light OS the wallet in
+   dark mode drew a bright white checkbox and light scrollbars inside dark cards. Binding
+   it here to the same `data-theme` the tokens use makes the UA follow the app's theme
+   instead of the OS. The CSS declaration overrides the meta; the meta stays because it
+   applies before this stylesheet has loaded. */
+:root {
+  color-scheme: dark;
+}
+[data-theme='light'] {
+  color-scheme: light;
 }
 
 html {
@@ -203,7 +305,7 @@ body {
 /* Mobile: the app shell owns the viewport and `.app-main` scrolls internally.
    Letting the body scroll too produces a confusing double-scroll and lets the
    page rubber-band away from the fixed header/nav. */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   body {
     overflow: hidden;
     overscroll-behavior: none;
@@ -256,7 +358,7 @@ h6 {
 }
 
 a {
-  color: var(--accent);
+  color: var(--accent-fg);
   text-decoration: none;
   transition: color var(--t-fast);
 }
@@ -269,6 +371,26 @@ code,
 pre,
 .mono {
   font-family: var(--font-mono);
+}
+
+/* Figures must not change width as they change value, or a balance that ticks from
+   12.480391 to 12.480392 visibly jitters and a column of amounts fails to line up.
+   Inter and JetBrains Mono both ship tabular figures as an OpenType feature. */
+.mono,
+.balance-display,
+.metric-value,
+.hero-amount,
+.history-table td,
+.list-amount {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Icons normally inherit their surrounding text colour (see icons/Icon.tsx). This is
+   the one deliberate exception: a transient "it worked" check — CopyButton's, after a
+   copy — reads as confirmation only if it is green, and the button's own label must
+   stay in its usual colour. Applied to the <svg>, so it beats the inherited value. */
+.icon-ok {
+  color: var(--success);
 }
 
 /* ─── Form controls ───────────────────────────────────────────────── */
@@ -300,8 +422,42 @@ select:hover {
 input:focus,
 textarea:focus,
 select:focus {
-  border-color: var(--accent);
-  box-shadow: var(--shadow-glow);
+  border-color: var(--accent-fg);
+  box-shadow: var(--ring);
+}
+
+/* ─── Focus ring ───────────────────────────────────────────────────
+   One rule for every interactive element. `:focus-visible` (not `:focus`) so a
+   mouse click does not leave a ring behind, while keyboard and assistive-tech
+   focus always show one. This is the only reason `outline: none` above is safe:
+   without it, the inputs had NO focus indicator at all for keyboard users, and
+   the `role="button"` divs in the sidebar had only the UA default. */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: var(--r-sm);
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  border-color: var(--accent-fg);
+  border-radius: var(--r-md);
+}
+button:focus-visible,
+a:focus-visible,
+[role='button']:focus-visible,
+[tabindex]:focus-visible,
+.nav-item:focus-visible,
+.mobile-nav-item:focus-visible,
+.tab:focus-visible,
+.sheet-item:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+/* On the gradient hero the indigo ring disappears into the background, so
+   controls sitting on it get a white ring instead. */
+.hero-balance :focus-visible {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.7);
 }
 
 input:disabled,
@@ -309,6 +465,27 @@ textarea:disabled,
 select:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* An input the form has judged invalid. A data attribute rather than an inline
+   `borderColor`, so the focus ring and the light-theme border still win when they
+   should — an inline style could not be overridden by either. */
+input[data-invalid='true'],
+textarea[data-invalid='true'],
+select[data-invalid='true'] {
+  border-color: var(--error);
+}
+input[data-invalid='true']:focus-visible,
+textarea[data-invalid='true']:focus-visible {
+  border-color: var(--error);
+  box-shadow: 0 0 0 3px var(--error-soft);
+}
+
+/* A mono line that may hold an entire hash or address: it breaks mid-string
+   rather than pushing its container sideways. */
+.mono-line {
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
 }
 
 input.mono,
@@ -351,14 +528,15 @@ button {
   user-select: none;
 }
 
+/* No `transform` on hover: the app has icon buttons inside table rows and toolbars,
+   and lifting each one by a pixel made whole rows twitch as the pointer crossed them.
+   Colour change alone is enough of an affordance. */
 button:hover:not(:disabled) {
   background: var(--bg-elevated-3);
   border-color: var(--border-strong);
-  transform: translateY(-1px);
 }
 
 button:active:not(:disabled) {
-  transform: translateY(0);
   background: var(--bg-active);
 }
 
@@ -369,14 +547,32 @@ button:disabled {
 }
 
 button.primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--grad-accent);
+  border-color: transparent;
   color: var(--accent-text);
+  box-shadow: var(--shadow-accent);
 }
+/* A gradient cannot be transitioned, so hover brightens the whole button instead
+   of cross-fading to a second gradient (which would flash).
+
+   `background` is restated in both state rules for the same reason `.nav-item` restates
+   its own further down: `button:hover:not(:disabled)` and `button:active:not(:disabled)`
+   are (0,2,1), while `button.primary` is only (0,1,1), so the generic rules win over the
+   variant. Worse than a wrong shade — they use the `background` shorthand, which resets
+   `background-image` to `none`. Every primary button in the wallet dropped its gradient
+   and went flat grey the instant the pointer touched it, keeping only its accent glow:
+   the main action lost its identity at exactly the moment before the click. */
 button.primary:hover:not(:disabled) {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
-  box-shadow: 0 4px 12px var(--accent-soft);
+  background: var(--grad-accent);
+  filter: brightness(1.1);
+  box-shadow: var(--shadow-accent);
+}
+button.primary:active:not(:disabled) {
+  background: var(--grad-accent);
+  filter: brightness(0.95);
+}
+button.primary:disabled {
+  box-shadow: none;
 }
 
 button.danger {
@@ -388,6 +584,12 @@ button.danger:hover:not(:disabled) {
   background: #dc2626;
   border-color: #dc2626;
 }
+/* Pressing with a pointer also hovers, so the rule above covers it; activating with
+   the keyboard does not, and `button:active:not(:disabled)` would then win and flash
+   the button neutral grey mid-press. See `button.primary:hover` for the arithmetic. */
+button.danger:active:not(:disabled) {
+  background: #dc2626;
+}
 
 button.ghost {
   background: transparent;
@@ -398,6 +600,19 @@ button.ghost:hover:not(:disabled) {
   background: var(--bg-elevated-2);
   color: var(--text-primary);
 }
+/* A destructive action that must not shout as loudly as a filled red button — a
+   Delete sitting in a list of five rows. Order matters: `.ghost` comes after
+   `.danger` and resets its background, so without this the pair rendered as an
+   ordinary ghost button and the destructive intent was invisible. */
+button.ghost.danger {
+  background: transparent;
+  border-color: transparent;
+  color: var(--error);
+}
+button.ghost.danger:hover:not(:disabled) {
+  background: var(--error-soft);
+  color: var(--error);
+}
 
 button.icon {
   padding: var(--sp-2);
@@ -406,17 +621,42 @@ button.icon {
   width: auto;
 }
 
+/* Three heights, so a button can match the density of what it sits next to:
+   32 inside table rows and chips, 40 by default, 48 for a page's main action. */
+button.btn-sm {
+  min-height: 32px;
+  padding: var(--sp-1) var(--sp-3);
+  font-size: var(--fs-sm);
+  border-radius: var(--r-sm);
+}
+button.btn-lg {
+  min-height: 48px;
+  padding: var(--sp-3) var(--sp-6);
+  font-size: var(--fs-md);
+  border-radius: var(--r-lg);
+}
+button.btn-block {
+  width: 100%;
+}
+
 /* ─── App layout ──────────────────────────────────────────────────── */
 .app {
   display: grid;
-  grid-template-columns: var(--sidebar-width) 1fr;
-  grid-template-rows: var(--header-height) 1fr;
+  /* `minmax(0, 1fr)`, not `1fr`. A bare `1fr` track is `minmax(auto, 1fr)`, whose
+     automatic minimum is the *min-content* width of what is in it — so one
+     unshrinkable child (a long account name in the header, a wide table) widened the
+     whole grid past the viewport and gave the document a horizontal scrollbar. It was
+     371px wide on a 320px screen, which is why the fifth bottom-nav slot was cut off. */
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  grid-template-rows: var(--header-height) minmax(0, 1fr);
   grid-template-areas:
     'header header'
     'sidebar main';
-  margin: 3vh 3vw;
-  height: 94vh;
-  height: 94dvh;
+  /* Full-bleed. The old `margin: 3vh 3vw; height: 94vh` floated the whole app as an
+     inset box inside the page — it read as a screenshot of an app rather than the app,
+     and the 94vh had to be repeated in `.app-sidebar` to keep the two in step. */
+  height: 100vh;
+  height: 100dvh;
   background: var(--bg-base);
 }
 
@@ -451,18 +691,15 @@ button.icon {
   border-radius: var(--r-sm);
   flex-shrink: 0;
 }
+.app-header .brand .wordmark {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
 .app-header .actions {
   flex-shrink: 0;
-}
-.app-header .network-pill {
-  background: var(--bg-elevated-3);
-  padding: var(--sp-1) var(--sp-3);
-  border-radius: var(--r-full);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  font-weight: var(--fw-medium);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  min-width: 0;
 }
 .app-header .actions {
   display: flex;
@@ -481,8 +718,8 @@ button.icon {
   overflow-y: auto;
   position: sticky;
   top: var(--header-height);
-  height: calc(94vh - var(--header-height));
-  height: calc(94dvh - var(--header-height));
+  height: calc(100vh - var(--header-height));
+  height: calc(100dvh - var(--header-height));
 }
 
 .app-main {
@@ -496,6 +733,9 @@ button.icon {
 }
 
 /* ─── Nav items ───────────────────────────────────────────────────── */
+.nav-group {
+  margin-top: var(--sp-2);
+}
 .nav-group-label {
   font-size: var(--fs-xs);
   text-transform: uppercase;
@@ -505,11 +745,20 @@ button.icon {
   font-weight: var(--fw-semibold);
 }
 
+/* A nav item is a real <button>, so the properties below are doing double duty:
+   they style the row *and* undo the global `button` chrome (border, background,
+   centred content, nowrap). They live on the class, not on `button.nav-item`, so
+   that the icon-rail block further down can still override them at (0,1,0). */
 .nav-item {
+  position: relative;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: var(--sp-3);
+  width: 100%;
   padding: var(--sp-3) var(--sp-4);
+  border: none;
+  background: transparent;
   border-radius: var(--r-md);
   color: var(--text-secondary);
   cursor: pointer;
@@ -518,23 +767,52 @@ button.icon {
   min-height: 40px;
   font-size: var(--fs-base);
   font-weight: var(--fw-medium);
+  /* A long localised label wraps rather than spilling out of the sidebar. */
+  white-space: normal;
+  text-align: left;
 }
 
+/* State rules have to outrank `button:hover:not(:disabled)` / `button:active`,
+   which are (0,2,1) — a plain `.nav-item:hover` is (0,2,0) and would lose, so a
+   hovered row would take the generic grey and a hovered *active* row would lose
+   its accent tint entirely. */
+button.nav-item:hover:not(:disabled),
 .nav-item:hover {
   background: var(--bg-elevated-2);
   color: var(--text-primary);
 }
+button.nav-item:active:not(:disabled) {
+  background: var(--bg-active);
+}
 
-.nav-item.active {
+.nav-item.active,
+button.nav-item.active:hover:not(:disabled) {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-fg);
   font-weight: var(--fw-semibold);
+}
+/* Colour alone is not a state indicator: at the two lowest sidebar contrasts the
+   indigo-on-indigo-soft difference is subtle, and it disappears entirely for a
+   red-green colour-blind user comparing it to a hover row. The bar is the actual
+   signal; the tint is decoration. */
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 18px;
+  border-radius: 0 var(--r-xs) var(--r-xs) 0;
+  background: var(--accent);
 }
 
 .nav-item .icon {
-  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 20px;
-  text-align: center;
+  flex-shrink: 0;
 }
 
 /* ─── Cards ───────────────────────────────────────────────────────── */
@@ -549,8 +827,14 @@ button.icon {
     box-shadow var(--t-base),
     border-color var(--t-base);
 }
-.card:hover {
+/* Only cards that actually do something on click react to hover. A static card that
+   brightens under the pointer promises an interaction that isn't there. */
+.card.interactive {
+  cursor: pointer;
+}
+.card.interactive:hover {
   box-shadow: var(--shadow-md);
+  border-color: var(--border-default);
 }
 
 .card-header {
@@ -563,9 +847,41 @@ button.icon {
 }
 
 .card-title {
+  /* A row, not a bare block: every card title now opens with an icon, and an inline
+     SVG in a block would sit on the baseline and drag the line-height around. */
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
   font-size: var(--fs-md);
   font-weight: var(--fw-semibold);
   color: var(--text-primary);
+}
+.card-title > .icon-svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.card-title.centered {
+  justify-content: center;
+}
+/* The paragraph directly under a card header that explains what the card does. It
+   was an inline `fontSize: 13` in six places — a size that is in no scale and sat
+   between --fs-sm (13) and --fs-base (14) by accident. */
+.card-desc {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-bottom: var(--sp-4);
+  max-width: 76ch;
+}
+/* The small status line a card header carries opposite its title — "Updated 12:04",
+   "Cached", a count. Tabular figures so a ticking clock does not shuffle the row. */
+.card-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ─── Forms ───────────────────────────────────────────────────────── */
@@ -587,6 +903,26 @@ button.icon {
   justify-content: flex-end;
   margin-top: var(--sp-4);
   flex-wrap: wrap;
+}
+/* A form that unfolds inside a card ("Derive new account", "Watch an address").
+   Tinted and inset so its fields read as a sub-task of the card rather than as more
+   of the card, and so the card's own controls above it stay findable. */
+.inset-panel {
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-4);
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+}
+.inset-panel > .form-row:last-child,
+.inset-panel > .card-desc:last-child {
+  margin-bottom: 0;
+}
+
+/* Left-aligned when the action is a utility rather than the form's commit — a
+   "Reload module" button has no cancel beside it to line up against. */
+.form-actions.start {
+  justify-content: flex-start;
 }
 
 /* ─── Balance display ─────────────────────────────────────────────── */
@@ -621,14 +957,85 @@ button.icon {
   word-break: break-all;
   border: 1px solid var(--border-subtle);
 }
+.address-display.sm {
+  font-size: var(--fs-xs);
+  padding: var(--sp-2) var(--sp-3);
+}
+/* Centred variant, for the Receive panel where the address sits directly under
+   the QR code it encodes — a left-aligned line there reads as belonging to the
+   caption above it rather than to the code. */
+.address-display.center {
+  justify-content: center;
+  text-align: center;
+}
 
-/* ─── Toast notifications ─────────────────────────────────────────── */
-.toast-container {
-  position: fixed;
-  top: calc(var(--header-height) + var(--sp-4));
-  right: var(--sp-5);
+/* ─── Receive panel ───────────────────────────────────────────────── */
+/* The QR frame stays white in both themes on purpose: a scanner needs the light
+   modules to be genuinely light, and inverting the code for dark mode breaks
+   readers that assume dark-on-light. `line-height: 0` keeps the frame from
+   inheriting a text leading the <svg> would otherwise sit inside. */
+.qr-frame {
+  padding: var(--sp-3);
+  background: #ffffff;
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
+  line-height: 0;
+}
+/* The <svg> itself: block, so the frame does not add a text baseline gap. */
+.qr-svg {
+  display: block;
+  border-radius: var(--r-md);
+}
+/* Shown instead of the code when the payload cannot be encoded. Its width and
+   height stay inline, because they mirror the `size` prop the caller chose. */
+.qr-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-3);
+  background: var(--bg-elevated-2);
+  border-radius: var(--r-md);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  text-align: center;
+}
+.receive-stack {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
+}
+/* Everything under the code is full-width; only the frame itself is intrinsic. */
+.receive-stack > :not(.qr-frame) {
+  width: 100%;
+}
+.receive-stack > .form-row {
+  margin-bottom: 0;
+}
+.receive-caption {
+  margin-bottom: var(--sp-2);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  text-align: center;
+}
+.receive-actions {
+  justify-content: center;
+}
+
+/* ─── Toast notifications ─────────────────────────────────────────── */
+/* Bottom-right, not top-right. Anchored to the top they landed exactly on the
+   balance hero and its refresh button — three stacked toasts covered the number the
+   user had just navigated to. At the bottom they sit under the content the page is
+   about. `column-reverse` makes the stack grow upwards from a fixed bottom edge, so
+   a toast already on screen never moves when the next one arrives — otherwise a tap
+   aimed at a close button lands on whatever slid into its place. */
+.toast-container {
+  position: fixed;
+  top: auto;
+  bottom: var(--sp-5);
+  right: var(--sp-5);
+  display: flex;
+  flex-direction: column-reverse;
   gap: var(--sp-2);
   z-index: var(--z-toast);
   pointer-events: none;
@@ -650,7 +1057,6 @@ button.icon {
   display: flex;
   align-items: flex-start;
   gap: var(--sp-3);
-  cursor: pointer;
 }
 
 .toast.success {
@@ -666,18 +1072,41 @@ button.icon {
   background: linear-gradient(90deg, var(--warning-soft) 0%, var(--bg-elevated-3) 30%);
 }
 
+/* A fixed slot, so the message text of every toast in a stack starts on the same
+   vertical line regardless of which icon is in it. */
 .toast .toast-icon {
-  font-size: 16px;
+  display: flex;
+  flex-shrink: 0;
   margin-top: 1px;
 }
+.toast.success .toast-icon {
+  color: var(--success);
+}
+.toast.error .toast-icon {
+  color: var(--error);
+}
+.toast.warning .toast-icon {
+  color: var(--warning);
+}
+.toast.info .toast-icon {
+  color: var(--info);
+}
+.toast-msg {
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.5;
+}
 
+/* Rises rather than flying in from the right: the container is bottom-anchored now,
+   and the same keyframe reads correctly on a phone, where the stack is full-width
+   and has no right edge to fly in from. */
 @keyframes toastIn {
   from {
-    transform: translateX(120%);
+    transform: translateY(12px);
     opacity: 0;
   }
   to {
-    transform: translateX(0);
+    transform: translateY(0);
     opacity: 1;
   }
 }
@@ -687,7 +1116,7 @@ button.icon {
   width: 14px;
   height: 14px;
   border: 2px solid var(--border-default);
-  border-top-color: var(--accent);
+  border-top-color: var(--accent-fg);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   display: inline-block;
@@ -737,11 +1166,178 @@ button.icon {
   }
 }
 
+/* ─── Modals ──────────────────────────────────────────────────────────
+   `.modal-overlay` / `.modal-content` were class names with no rules at all:
+   every one of the five modals re-declared the same fixed backdrop and the same
+   440px panel inline, which is why they had drifted apart (three different
+   backdrop alphas, two different radii). The shapes live here now, so a modal
+   component only says what is *in* the panel.
+
+   The overlay scrolls, not the panel, and the panel is capped at the viewport —
+   a long details block on a 320×568 phone stays reachable instead of running off
+   the bottom of the screen. */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 6, 12, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+  padding: var(--sp-4);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  animation: fadeIn var(--t-fast);
+}
+.modal-content {
+  width: 100%;
+  max-width: 440px;
+  max-height: calc(100dvh - var(--sp-8));
+  overflow-y: auto;
+  background: var(--surface-1);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-xl);
+  padding: var(--sp-6);
+  box-shadow: var(--shadow-xl);
+  animation: modal-in var(--t-base);
+}
+.modal-content.sm {
+  max-width: 360px;
+}
+.modal-content.lg {
+  max-width: 560px;
+}
+/* Rises less than `slideUp` does: a dialog appears where it will stay, so a 20px
+   travel reads as a lurch rather than as a transition. */
+@keyframes modal-in {
+  from {
+    transform: translateY(10px) scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.modal-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+.modal-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.modal-icon.danger {
+  background: var(--error-soft);
+  color: var(--error);
+}
+.modal-icon.info {
+  background: var(--info-soft);
+  color: var(--info);
+}
+.modal-icon.accent {
+  background: var(--accent-soft);
+  color: var(--accent-fg);
+}
+.modal-icon.ok {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.modal-title {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  line-height: 1.35;
+  margin: 0;
+  /* The head is a flex row and the title is the only part that may wrap, so it
+     needs to be allowed to shrink below its longest word. */
+  min-width: 0;
+  flex: 1;
+}
+/* Title plus a status line under it (elapsed time, step count). The group is what
+   flexes, so the title inside it can stay a plain heading. */
+.modal-title-group {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.modal-sub {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+/* A single control on its own line inside a dialog body (Copy Details). */
+.modal-inline-action {
+  margin-bottom: var(--sp-4);
+}
+.modal-progress {
+  margin-bottom: var(--sp-4);
+}
+.modal-text {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin: 0 0 var(--sp-4);
+}
+.modal-details {
+  padding: var(--sp-3);
+  background: var(--surface-2);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-md);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-bottom: var(--sp-4);
+  word-break: break-all;
+  white-space: pre-wrap;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.modal-actions {
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+/* Same reversal as `.form-actions`: stacked, the primary action belongs under the
+   thumb, and Cancel must not be the button sitting where Confirm was. */
+@media (max-width: 480px) {
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+  .modal-actions > button {
+    width: 100%;
+  }
+}
+
 /* ─── Tables ──────────────────────────────────────────────────────── */
+/* Any table wide enough to overflow scrolls inside its own wrapper, at every
+   breakpoint — not just on phones. At 768–1023px the icon rail leaves ~690px of
+   content and an eight-column history table is wider than that, so scoping this to
+   the phone query is what let the whole document scroll sideways on a tablet. */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
 .history-table {
   width: 100%;
+  /* Eight columns need this much before addresses and hashes start colliding. Below
+     it the wrapper scrolls; the phone tier never sees the table at all (it gets
+     `.list-rows`), so this floor only has to hold from the tablet rail up. */
+  min-width: 640px;
   border-collapse: collapse;
   font-size: var(--fs-sm);
+  white-space: nowrap;
 }
 .history-table th,
 .history-table td {
@@ -768,6 +1364,21 @@ button.icon {
 .history-table td.mono {
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
+}
+/* Right-aligned numeric columns. As inline `textAlign: 'right'` this had to be
+   repeated on the header cell and the body cell of every numeric column, and the
+   two drifted — the Fee header was left-aligned over right-aligned figures. */
+.history-table th.num,
+.history-table td.num {
+  text-align: right;
+}
+/* An incoming amount is the only coloured figure in the table; a plain `.muted`
+   covers the fee and time columns. */
+.history-table td.num.pos {
+  color: var(--success);
+}
+.history-table td.nowrap {
+  white-space: nowrap;
 }
 
 /* ─── Badges & tags ───────────────────────────────────────────────── */
@@ -821,7 +1432,7 @@ button.icon {
 }
 .tag.info {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-fg);
 }
 
 /* ─── Tab bar ─────────────────────────────────────────────────────── */
@@ -834,6 +1445,7 @@ button.icon {
   -webkit-overflow-scrolling: touch;
 }
 .tab-bar .tab {
+  gap: var(--sp-2);
   padding: var(--sp-3) var(--sp-5);
   cursor: pointer;
   color: var(--text-secondary);
@@ -851,8 +1463,27 @@ button.icon {
   color: var(--text-primary);
 }
 .tab-bar .tab.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
+  color: var(--accent-fg);
+  border-bottom-color: var(--accent-fg);
+}
+/* A tab is a control, so it is a real `<button>` — which means undoing the button
+   chrome, because a tab's affordance is its underline and not a box. The `.active`
+   selector is repeated with `:hover` because the hover reset below it would
+   otherwise out-specify the underline and blank it on pointer-over. */
+.tab-bar button.tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+}
+.tab-bar button.tab:hover:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-primary);
+}
+.tab-bar button.tab.active,
+.tab-bar button.tab.active:hover:not(:disabled) {
+  border-bottom-color: var(--accent-fg);
 }
 
 /* ─── Grid utilities ──────────────────────────────────────────────── */
@@ -874,12 +1505,59 @@ button.icon {
 
 /* ─── Stat / info boxes ───────────────────────────────────────────── */
 .info-box {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
   padding: var(--sp-3) var(--sp-4);
   background: var(--bg-elevated-2);
   border-radius: var(--r-md);
   border: 1px solid var(--border-subtle);
   font-size: var(--fs-sm);
   color: var(--text-secondary);
+  line-height: 1.55;
+}
+/* The leading icon must not shrink or stretch: it is a fixed 18px slot, and the
+   text beside it wraps against a straight left edge. */
+.info-box > .icon-svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.info-box > .icon-svg:first-child {
+  color: var(--accent-fg);
+}
+.info-box.warn > .icon-svg:first-child {
+  color: var(--warning);
+}
+.info-box.err > .icon-svg:first-child {
+  color: var(--error);
+}
+.info-box.ok > .icon-svg:first-child {
+  color: var(--success);
+}
+.info-box-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+/* An info box that sits between other blocks rather than inside a gapped stack. */
+.info-box.spaced {
+  margin-bottom: var(--sp-4);
+}
+/* The mirror case: a box appended below content, such as an error under a form. */
+.info-box.spaced-top {
+  margin-top: var(--sp-4);
+}
+/* The same idea at field scale: a second control that belongs to the one above it,
+   such as the custom-method box under a method picker. Kept separate from
+   `.info-box.spaced-top` because a field's gap is `--sp-2`, not `--sp-4`. */
+.spaced-top {
+  margin-top: var(--sp-2);
+}
+/* Same idea for a standalone tag used as a notice rather than as a row label. */
+.tag.spaced {
+  margin-bottom: var(--sp-3);
 }
 .info-box.warn {
   background: var(--warning-soft);
@@ -891,11 +1569,23 @@ button.icon {
   border-color: var(--error);
   color: var(--error);
 }
+/* `ok` deliberately does not recolour its text the way `warn` and `err` do: a
+   success box is normally a receipt — a hash, a nonce, a copy button — and green
+   body text there is harder to read rather than clearer. The tint and the icon
+   carry the meaning. */
+.info-box.ok {
+  background: var(--success-soft);
+  border-color: var(--success);
+}
 
 /* ════════════════════════════════════════════════════════════════════
-   RESPONSIVE: Mobile (Android/iOS) — bottom navigation
+   RESPONSIVE: Phone — bottom navigation
+   ────────────────────────────────────────────────────────────────────
+   767, not 768: an iPad in portrait is exactly 768px wide, and it used to fall inside
+   this block and get a phone bottom bar with the sidebar hidden. It now lands in the
+   icon-rail tier below, which is what a 768×1024 screen should get.
    ════════════════════════════════════════════════════════════════════ */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   :root {
     --header-height: 56px;
     --mobile-nav-height: 72px;
@@ -906,8 +1596,10 @@ button.icon {
      shorter than the visual viewport when browser chrome hides/shows.
      Safe-area insets handle notches instead. */
   .app {
-    grid-template-columns: 1fr;
-    grid-template-rows: calc(var(--header-height) + env(safe-area-inset-top, 0px)) 1fr auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows:
+      calc(var(--header-height) + env(safe-area-inset-top, 0px)) minmax(0, 1fr)
+      auto;
     grid-template-areas:
       'header'
       'main'
@@ -935,16 +1627,15 @@ button.icon {
   .app-header .brand .wordmark {
     display: none;
   }
-  /* Secondary controls live on their own pages on mobile (Receive has copy,
-     Settings has theme + language), so drop them from the cramped header. */
-  .app-header .actions .theme-toggle,
-  .app-header .actions .lang-switcher {
-    display: none;
-  }
   /* Let the account name truncate rather than push the row wider. */
   .app-header .actions .account-picker-trigger {
-    max-width: 38vw;
+    max-width: 40vw;
     min-width: 0;
+  }
+  /* Both chips lose their padding luxury before they lose their text. */
+  .app-header .actions .chip {
+    padding: var(--sp-1) var(--sp-2);
+    gap: var(--sp-1);
   }
   .app-header .actions {
     gap: var(--sp-1);
@@ -989,22 +1680,24 @@ button.icon {
     padding: var(--sp-2) var(--sp-2);
     padding-bottom: max(var(--sp-2), env(safe-area-inset-bottom, 0px));
     z-index: var(--z-mobile-nav);
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    /* `hidden`, never `auto`. With 6 items at `min-width: 64px` the bar overflowed a
+       360px phone into a horizontal scroll with no scrollbar and no visual hint — the
+       last item was simply unreachable. The bar now carries exactly 5 slots that
+       divide the width, and everything else lives in the "More" sheet. */
+    overflow-x: hidden;
   }
-  .mobile-nav::-webkit-scrollbar {
-    display: none;
-  }
+  /* Also a real <button>: `border`/`background` undo the global button chrome. */
   .mobile-nav-item {
-    flex: 1;
-    min-width: 64px;
+    flex: 1 1 0;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: var(--sp-1);
     padding: var(--sp-2) var(--sp-1);
+    border: none;
+    background: transparent;
     color: var(--text-muted);
     cursor: pointer;
     transition: color var(--t-fast);
@@ -1012,20 +1705,33 @@ button.icon {
     min-height: 56px;
     border-radius: var(--r-md);
   }
+  /* A tap must not leave the pressed tint behind, and on a narrow desktop window
+     (where this bar is also shown) `button:hover` would otherwise grey every slot. */
+  button.mobile-nav-item:hover:not(:disabled) {
+    background: transparent;
+  }
+  button.mobile-nav-item:active:not(:disabled),
   .mobile-nav-item:active {
     background: var(--bg-elevated-2);
   }
   .mobile-nav-item.active {
-    color: var(--accent);
+    color: var(--accent-fg);
   }
   .mobile-nav-item .icon {
-    font-size: 22px;
-    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .mobile-nav-item .label {
     font-size: 10px;
     font-weight: var(--fw-medium);
     text-align: center;
+    /* 5 slots on a 320px screen leaves ~60px each; a long localised label
+       (Indonesian "Riwayat", Turkish "Geçmiş") must clip, not wrap into 3 lines. */
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* iOS Safari auto-zooms the page when a focused input's font-size is
@@ -1066,10 +1772,10 @@ button.icon {
     width: 100%;
   }
 
-  /* Mobile: toast takes full width at bottom */
+  /* Mobile: toast takes full width, clear of the bottom nav and the home bar. */
   .toast-container {
     top: auto;
-    bottom: calc(var(--mobile-nav-height) + var(--sp-3));
+    bottom: calc(var(--mobile-nav-height) + var(--sp-3) + env(safe-area-inset-bottom, 0px));
     left: var(--sp-3);
     right: var(--sp-3);
     max-width: none;
@@ -1083,24 +1789,47 @@ button.icon {
      NOTE: do NOT set `display: block` on the table and then force children
      back to `table-cell` — that collapses the row structure. Wrap instead. */
   .table-scroll {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-x: contain;
+    /* Bleed to the card's edges so the scrollable strip is obviously the table and
+       not the page. */
     margin: 0 calc(-1 * var(--sp-4));
     padding: 0 var(--sp-4);
   }
-  .history-table {
-    white-space: nowrap;
-    min-width: 520px;
+
+  /* A 520px table inside a 360px screen is a sideways scroll that hides the amount
+     column — the one thing you open History to read. Phones get the card list
+     instead; both are rendered and CSS picks one, so there is no JS breakpoint to
+     keep in sync with these media queries.
+
+     `!important`, for the same reason `.only-wide` below carries it: these are
+     utilities that sit *beside* a layout class on the same element
+     (`class="list-rows list-only-phone"`). Both are single class selectors, so the
+     cascade falls through to source order — and `.list-rows { display: flex }` is
+     defined several hundred lines further down than this block, which meant the phone
+     card list also rendered on desktop, underneath the table. Whether a display
+     toggle wins must not depend on where in the file its neighbour happens to sit. */
+  .list-only-phone {
+    display: flex !important;
+  }
+  .table-only-wide {
+    display: none !important;
+  }
+  /* Generic form of the pair above, for controls rather than layouts: the header
+     shows Lock and the theme button inline on a wide screen and moves both into the
+     overflow menu on a phone. Both are always rendered; CSS picks one, so there is
+     no JS breakpoint to drift out of step with these queries. */
+  .only-wide {
+    display: none !important;
   }
 }
 
 /* ─── Quick actions (balance page shortcuts) ──────────────────────── */
 .quick-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
-  gap: var(--sp-2);
-  margin-bottom: var(--sp-4);
+  /* Capped, not `1fr`: with four actions on a 1440px page, `1fr` stretched each tile
+     into a 340px slab whose icon floated in the middle of nowhere. */
+  grid-template-columns: repeat(auto-fit, minmax(84px, 140px));
+  justify-content: start;
+  gap: var(--sp-3);
 }
 .quick-action {
   display: flex;
@@ -1119,13 +1848,14 @@ button.icon {
 }
 .quick-action:hover:not(:disabled) {
   background: var(--bg-elevated-2);
-  border-color: var(--accent);
-  color: var(--accent);
-  transform: translateY(-1px);
+  border-color: var(--accent-fg);
+  color: var(--accent-fg);
 }
 .quick-action .qa-icon {
-  font-size: 22px;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-fg);
 }
 
 /* ─── Bottom sheet (mobile "More" menu) ───────────────────────────── */
@@ -1135,7 +1865,7 @@ button.icon {
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  z-index: 2500;
+  z-index: var(--z-sheet);
   display: flex;
   align-items: flex-end;
   animation: fadeIn var(--t-fast);
@@ -1191,20 +1921,52 @@ button.icon {
 }
 .sheet-item.active {
   background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--accent-fg);
+  color: var(--accent-fg);
   font-weight: var(--fw-semibold);
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   RESPONSIVE: Tablet
+   RESPONSIVE: Tablet — collapsed icon rail
+   ────────────────────────────────────────────────────────────────────
+   768–1023px has room for a persistent sidebar but not for one with labels: at
+   200px wide (the old value) the sidebar ate a quarter of an iPad's width to show
+   text the icons already convey. The rail keeps navigation one tap away and gives
+   the content back ~170px. Labels stay in the DOM as `title`/`aria-label`, so
+   nothing is lost to a screen reader.
    ════════════════════════════════════════════════════════════════════ */
-@media (min-width: 769px) and (max-width: 1024px) {
+@media (min-width: 768px) and (max-width: 1023px) {
   :root {
-    --sidebar-width: 200px;
+    --sidebar-width: var(--rail-width);
   }
-  .mobile-nav {
+  .app-sidebar {
+    padding: var(--sp-3) var(--sp-2);
+    align-items: center;
+  }
+  .nav-item {
+    justify-content: center;
+    padding: var(--sp-3);
+    width: 100%;
+    min-height: 48px;
+  }
+  /* The label text itself is hidden; the icon and the `title` carry the meaning. */
+  .nav-item > span:not(.icon) {
     display: none;
+  }
+  /* A group heading is unreadable at 76px, so the groups are separated by a
+     hairline instead of by a word. */
+  .nav-group-label {
+    height: 1px;
+    padding: 0;
+    margin: var(--sp-3) auto;
+    width: 28px;
+    background: var(--border-default);
+    overflow: hidden;
+    text-indent: -999px;
+    white-space: nowrap;
+  }
+  .app-main {
+    padding: var(--sp-5);
   }
 }
 
@@ -1220,10 +1982,42 @@ button.icon {
   }
 }
 
-/* Desktop: hide mobile nav */
-@media (min-width: 769px) {
+/* Anything wider than a phone: no bottom bar, and History is a table. */
+@media (min-width: 768px) {
   .mobile-nav {
     display: none;
+  }
+  /* See the max-width twin for why these carry `!important`. */
+  .list-only-phone {
+    display: none !important;
+  }
+  .table-only-wide {
+    display: block !important;
+  }
+  .only-phone {
+    display: none !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   RESPONSIVE: Wide desktop
+   ────────────────────────────────────────────────────────────────────
+   Above 1600px a 1200px column leaves the content stranded in the middle of the
+   screen with the sidebar far off to one side. Widening it (and letting the
+   balance page go two-column) uses the space instead of padding it.
+   ════════════════════════════════════════════════════════════════════ */
+@media (min-width: 1600px) {
+  :root {
+    --content-max-width: 1440px;
+  }
+  .app-main {
+    padding: var(--sp-8);
+  }
+  .balance-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    gap: var(--sp-6);
+    align-items: start;
   }
 }
 
@@ -1231,9 +2025,10 @@ button.icon {
    Theme toggle button
    ════════════════════════════════════════════════════════════════════ */
 .theme-toggle {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--r-full);
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  border-radius: var(--r-md);
   background: var(--bg-elevated-2);
   border: 1px solid var(--border-default);
   display: flex;
@@ -1242,11 +2037,13 @@ button.icon {
   cursor: pointer;
   transition: all var(--t-fast);
   padding: 0;
-  font-size: 18px;
+  color: var(--text-secondary);
 }
+/* The old `transform: rotate(15deg)` on hover tilted the icon off-axis and made the
+   button feel like it was about to fall over. */
 .theme-toggle:hover {
   background: var(--bg-elevated-3);
-  transform: rotate(15deg);
+  color: var(--text-primary);
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -1280,6 +2077,22 @@ button.icon {
   margin-bottom: 0;
   width: 60%;
 }
+/* Named placeholder sizes. These were inline `height: 20` / `height: 36` numbers,
+   which meant a placeholder could not follow the type scale or the 44px input height
+   when either changed — the skeleton and the thing it stands in for drifted apart. */
+.skeleton.title {
+  height: 20px;
+  max-width: 160px;
+}
+.skeleton.row {
+  height: 36px;
+}
+.skeleton.field {
+  height: 44px;
+}
+.skeleton.block {
+  height: 72px;
+}
 
 /* ════════════════════════════════════════════════════════════════════
    Empty state
@@ -1290,9 +2103,14 @@ button.icon {
   color: var(--text-muted);
 }
 .empty-state .icon {
-  font-size: 48px;
+  display: flex;
+  justify-content: center;
   margin-bottom: var(--sp-4);
-  opacity: 0.4;
+  color: var(--text-disabled);
+}
+/* Inside a card that already carries padding, the full 48px block leaves a hole. */
+.empty-state.compact {
+  padding: var(--sp-6) var(--sp-4);
 }
 .empty-state .title {
   font-size: var(--fs-md);
@@ -1302,6 +2120,34 @@ button.icon {
 }
 .empty-state .desc {
   font-size: var(--fs-sm);
+}
+/* A failed load is not the same thing as an empty account, and the two used to be
+   told apart only by a red inline colour on the whole block — which also dimmed the
+   error text itself. Tint the mark, keep the message readable. */
+.empty-state.danger .icon {
+  color: var(--error);
+}
+.empty-state.danger .title {
+  color: var(--error);
+}
+/* A retry button inside an empty state needs air above it; it was being spaced by an
+   inline `marginTop` that no breakpoint could touch. */
+.empty-state > button {
+  margin-top: var(--sp-4);
+}
+/* Two choices instead of one — "Retry" beside "Reload app". They wrap rather than
+   overflow, because this block is also what a 320px phone sees when a panel dies. */
+.empty-actions {
+  margin-top: var(--sp-4);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sp-2);
+}
+/* An error message can contain one unbroken 200-character token; without this it
+   pushes the card sideways instead of wrapping. */
+.break-word {
+  overflow-wrap: anywhere;
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -1318,10 +2164,18 @@ button.icon {
   }
 }
 
-.app-main > * {
-  animation: slideUp var(--t-base);
+/* One transition per page. This used to be `.app-main > *`, which animated every card
+   on the page independently on every tab switch — a five-card view visibly cascaded. */
+@keyframes page-in {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
-
 /* Reduce motion for accessibility */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -1333,22 +2187,137 @@ button.icon {
   }
 }
 
-/* Connect popup dropdowns */
+/* ════════════════════════════════════════════════════════════════════
+   Connect popup (/connect)
+   ────────────────────────────────────────────────────────────────────
+   The popup is its own window, so it has no app shell to sit in: these few
+   classes are the shell. They were a `pageStyle` / `overlayStyle` pair of
+   inline objects, which meant the popup could not respond to viewport at all —
+   and a connect window is opened at whatever size the dApp asked for.
+   ════════════════════════════════════════════════════════════════════ */
+.connect-shell {
+  min-height: 100vh;
+  /* iOS Safari's 100vh includes the dynamic toolbar, so the popup could overflow.
+     Matches UnlockWallet / CreateWallet. */
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  /* The top bar is absolutely positioned against this. */
+  position: relative;
+}
+/* One column, capped: a connect window can be 800px wide, and a full-bleed
+   status card in one would read as a broken page rather than a dialog. */
+.connect-panel {
+  width: 100%;
+  max-width: 420px;
+}
+.connect-topbar {
+  position: absolute;
+  top: var(--sp-3);
+  inset-inline-end: var(--sp-3);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+/* A short popup (some dApps open 480×640) must not have the account and network
+   pickers overlap the card underneath them. */
+@media (max-width: 420px) {
+  .connect-shell {
+    align-items: flex-start;
+    padding-top: 56px;
+  }
+  .connect-select-account {
+    max-width: 44vw;
+  }
+}
+.connect-overlay {
+  position: fixed;
+  inset: 0;
+  /* Same scrim as `.modal-overlay` — an approval prompt *is* a modal, it just
+     happens to be the popup's whole reason for existing. */
+  background: rgba(4, 6, 12, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-overlay);
+  padding: var(--sp-4);
+  overflow-y: auto;
+}
+/* The wallet window has its own approval surface (`ConnectApprovalHost`), which reuses
+   the popup's scrim with two differences. It can hold more than one pending prompt, so
+   it stacks them in a column; and it sits at `--z-modal`, not `--z-overlay`, because the
+   phone "More" bottom sheet lives at `--z-sheet` in between and must never paint on top
+   of a dApp's signing prompt. */
+.connect-overlay.approval-host {
+  flex-direction: column;
+  gap: var(--sp-4);
+  z-index: var(--z-modal);
+}
+.connect-head {
+  text-align: center;
+}
+.connect-origin {
+  margin-top: var(--sp-1);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.connect-disconnect {
+  margin-top: var(--sp-4);
+  width: 100%;
+}
+.connect-wallet-head {
+  margin-bottom: var(--sp-2);
+}
+.connect-wallet-label {
+  font-size: var(--fs-sm);
+}
+.connect-addr {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  word-break: break-all;
+}
+.connect-note {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+.connect-balance {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-sm);
+}
+.connect-nonce {
+  margin-left: var(--sp-4);
+}
+
+/* Popup dropdowns. A native <select> is kept here on purpose — it is the one
+   control in this window a phone renders as a full-screen system picker — but an
+   <option> can hold text and nothing else, so the network's icon is drawn beside
+   the closed control by `.select-with-icon`. */
 .connect-select {
   background: var(--bg-elevated-1);
   color: var(--text-primary);
   border: 1px solid var(--border-subtle);
-  border-radius: 6px;
-  padding: 4px 8px;
-  font-size: 12px;
-  font-family: ui-monospace, monospace;
+  border-radius: var(--r-sm);
+  padding: var(--sp-1) var(--sp-2);
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
   cursor: pointer;
-  outline: none;
+  min-height: 32px;
   transition: border-color var(--t-fast);
 }
-.connect-select:focus {
-  border-color: var(--border-focus);
-  box-shadow: var(--shadow-glow);
+.connect-select:hover {
+  border-color: var(--border-default);
+}
+/* `:focus-visible`, not `:focus`: clicking a select should not leave a ring
+   behind, but tabbing to it must. The global ring rule already covers the
+   box-shadow; only the border colour is specific to this control. */
+.connect-select:focus-visible {
+  border-color: var(--accent-fg);
 }
 .connect-select option {
   background: var(--bg-elevated-2);
@@ -1356,6 +2325,163 @@ button.icon {
 }
 .connect-select-account {
   min-width: 200px;
+}
+/* An icon in front of a native select — the closed control's only chance to say
+   *which* network or theme is selected in a shape rather than in words, since an
+   <option> can hold nothing but text. The icon is decorative and must never
+   swallow the click that opens the picker.
+
+   Logical properties, not `left`/`padding-left`: two of the twenty languages set
+   `dir="rtl"`, and there the icon belongs on the other side. */
+.select-with-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.select-with-icon > .icon-svg {
+  position: absolute;
+  inset-inline-start: var(--sp-3);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.select-with-icon > select {
+  padding-inline-start: 36px;
+}
+/* The popup's dropdowns are a size down from a form field. */
+.select-with-icon.compact > .icon-svg {
+  inset-inline-start: var(--sp-2);
+}
+.select-with-icon.compact > select {
+  padding-inline-start: 26px;
+}
+/* Inside a form row the wrapper has to stand in for the full-width control it
+   replaced, or the select collapses to its intrinsic width. */
+.form-row > .select-with-icon {
+  display: flex;
+  width: 100%;
+}
+
+/* ─── Approval prompt ─────────────────────────────────────────────────
+   The one dialog in the wallet a dApp can make appear, so it has to read as the
+   wallet's own voice at a glance. Every shape below was an inline style object —
+   including a `<style>` element the summary component injected on each render. */
+.approval-card {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  box-shadow: var(--shadow-xl);
+  /* A long typed-data summary must scroll inside the prompt, not push the
+     Reject/Approve row off the bottom of a short popup window. */
+  max-height: calc(100dvh - var(--sp-8));
+  overflow-y: auto;
+}
+.approval-origin {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.approval-origin > .icon-svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.approval-lead {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.approval-field {
+  margin-top: var(--sp-3);
+}
+.approval-select {
+  min-height: 40px;
+  font-size: var(--fs-sm);
+}
+.approval-trust {
+  margin-top: var(--sp-3);
+  margin-bottom: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  align-items: center;
+}
+.approval-summary {
+  margin-bottom: var(--sp-2);
+}
+.approval-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--fs-sm);
+}
+/* No dangling rule under the last field. */
+.approval-row:last-child {
+  border-bottom: none;
+}
+.approval-row-label {
+  flex: 0 0 34%;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.approval-row-value {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+/* The fields that decide whether to approve: who, what, how much. */
+.approval-row-value.emphasis {
+  color: var(--text-primary);
+  font-weight: var(--fw-semibold);
+}
+/* The amount, when there is one — the only thing on the prompt set larger than
+   body text, because it is the number the decision turns on. */
+.approval-amount {
+  padding: var(--sp-3) 0 var(--sp-2);
+  text-align: center;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+}
+.approval-caption {
+  margin-bottom: var(--sp-1);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+/* The verbatim payload: a message, a typed-data blob, a call's arguments. Capped
+   in height so an enormous one cannot bury the buttons. */
+.approval-payload {
+  max-height: 220px;
+  padding: var(--sp-3);
+  overflow-y: auto;
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.approval-raw {
+  margin-top: var(--sp-2);
+}
+/* A disclosure link, not a button: it reveals detail inside the prompt, and given
+   button chrome it would compete with Reject/Approve. */
+.approval-raw-toggle.ghost {
+  padding: var(--sp-1) 0;
+  min-height: auto;
+  border: none;
+  background: none;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.approval-raw-toggle.ghost:hover:not(:disabled) {
+  background: none;
+  color: var(--text-primary);
 }
 
 /* ===== OCS01 token list ===== */
@@ -1496,4 +2622,1834 @@ button.icon {
   text-align: right;
   overflow-wrap: anywhere;
   color: var(--text-primary);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Page scaffold
+   ────────────────────────────────────────────────────────────────────
+   Every view wraps its content in `.page` and opens with a `.page-head`. Before this,
+   the whole app contained six heading elements, all of them inside modals: each view
+   was an undifferentiated stack of cards whose `.card-title` was one pixel larger than
+   body text. That left no visual "where am I" and no document outline for a screen
+   reader to navigate by.
+   ════════════════════════════════════════════════════════════════════ */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  /* One animation for the whole page. This replaced `.app-main > * { slideUp }`,
+     which re-staggered every card on every tab switch — pleasant once, seasick by
+     the fourth navigation. */
+  animation: page-in var(--t-base);
+}
+
+/* Inside a page the flex `gap` above owns the vertical rhythm, so a child's own
+   bottom margin would double it. `.card` keeps its margin for the panels that are
+   still rendered outside a `.page`. */
+.page > .card,
+.page > .tab-bar {
+  margin-bottom: 0;
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-1);
+}
+
+.page-title {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.page-title .icon {
+  display: flex;
+  color: var(--accent-fg);
+}
+
+.page-sub {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  margin-top: var(--sp-1);
+  max-width: 62ch;
+}
+
+.page-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Balance hero
+   ────────────────────────────────────────────────────────────────────
+   The one place in the app that gets colour. Everything else is neutral surfaces, so
+   the gradient makes the balance the unambiguous focal point of the wallet without
+   any other view having to compete.
+   ════════════════════════════════════════════════════════════════════ */
+.hero-balance {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--r-2xl);
+  padding: var(--sp-6);
+  background: var(--grad-accent);
+  color: #fff;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+/* A flat gradient fill reads as a printed swatch. The radial highlight gives it a
+   light source, which is what makes it look like a surface. `pointer-events: none`
+   so it never intercepts a tap meant for the refresh button underneath. */
+.hero-balance::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--grad-hero-sheen);
+  pointer-events: none;
+}
+.hero-balance > * {
+  position: relative;
+}
+
+.hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.hero-label {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: var(--fw-semibold);
+  /* Alpha, not a flat colour, so the label reads as part of the gradient rather than a
+     sticker on it — but 0.92, not the 0.78 this started at. Measured against the ramp's
+     three stops, 0.78 lands at 3.37 / 3.21 / 3.01:1: the hero's own caption was failing AA
+     while claiming in this very comment to pass it. 0.92 gives 5.69 / 5.07 / 4.81. */
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.hero-amount {
+  font-family: var(--font-mono);
+  font-size: var(--fs-4xl);
+  font-weight: var(--fw-bold);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  /* Long balances (u128 raw values) must wrap rather than widen the hero. */
+  overflow-wrap: anywhere;
+}
+.hero-unit {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  color: rgba(255, 255, 255, 0.92);
+  margin-left: var(--sp-2);
+}
+
+.hero-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  font-size: var(--fs-sm);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* Buttons on the hero are glass rather than the usual grey — a neutral surface
+   button sitting on the gradient looks like a hole punched in it. */
+.hero-balance button {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #fff;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.hero-balance button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.26);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* ─── oct:// browser ──────────────────────────────────────────────── */
+/* The circle browser is chrome around a frame, so the card supplies the border and
+   the rounding and nothing else: its own padding would push a browser toolbar away
+   from the edge it belongs to. `overflow: hidden` keeps the frame's square corners
+   inside the card's rounded ones. */
+.browser-shell {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+.browser-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+/* The URL field takes the row's slack. `flex: 1 1 180px` and not `width: 100%`:
+   on a phone the toolbar wraps, and the field must still be usable on its own line. */
+.browser-url {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+/* A bookmarked page. The icon set is stroke-only, so the state is carried by colour
+   plus `aria-pressed` rather than by a filled star nobody can hear. */
+.icon-btn.on {
+  color: var(--warning);
+}
+.browser-status {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.browser-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Anything that drops down from the toolbar — bookmarks, the sealed passphrase
+   prompt — shares one shelf style so they cannot drift apart. */
+.browser-drawer {
+  padding: var(--sp-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.browser-drawer-head {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-bottom: var(--sp-2);
+}
+.browser-drawer-empty {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.browser-pass-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+  font-size: var(--fs-sm);
+}
+.bookmark-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 2px 0;
+}
+/* Two lines of text in one button, so the whole entry is the click target. */
+.bookmark-open {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  white-space: normal;
+}
+.bookmark-title,
+.bookmark-uri {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bookmark-uri {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.browser-error {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--error);
+  border-bottom: 1px solid var(--border-subtle);
+}
+/* The rendered circle. `--bg-base` and not the old hardcoded `#0a0a0f`: a circle
+   that ships no background of its own used to stay black in the light theme. */
+.browser-frame {
+  width: 100%;
+  height: 68vh;
+  min-height: 280px;
+  border: none;
+  background: var(--bg-base);
+}
+.browser-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-8) var(--sp-4);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+/* ─── JSON tree ───────────────────────────────────────────────────── */
+.json-tree {
+  font-size: var(--fs-sm);
+  padding: var(--sp-3);
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  max-height: 460px;
+  overflow: auto;
+}
+.json-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-1);
+  padding: 2px 0;
+  min-width: 0;
+}
+/* A branch row *is* the toggle. The global `button` rule would give it chrome, a
+   40px floor and centred children, none of which belong inside a tree. */
+button.json-row {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 2px 0;
+  min-height: 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-normal);
+  color: var(--text-primary);
+  justify-content: flex-start;
+  white-space: normal;
+  text-align: left;
+}
+button.json-row:hover:not(:disabled) {
+  background: var(--bg-elevated-3);
+  border-color: transparent;
+}
+/* Fixed 12px gutter, occupied by a caret on a branch and empty on a leaf, so keys
+   at the same depth line up whether or not they can be opened. The 18px height is
+   the text line box: without it the caret rides above the key it belongs to. */
+.json-caret {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  user-select: none;
+}
+.json-key {
+  color: var(--text-secondary);
+  font-weight: var(--fw-semibold);
+}
+.json-punct {
+  color: var(--text-muted);
+}
+.json-type {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+/* The hairline that ties a branch's children to it, and the indent they hang at.
+   Indenting from the parent rather than from a `depth` prop means no inline style
+   and no per-level arithmetic in the component. */
+.json-children {
+  border-left: 1px solid var(--border-subtle);
+  margin-left: 5px;
+}
+.json-children > .json-node {
+  padding-left: var(--sp-4);
+}
+.json-empty {
+  padding-left: var(--sp-4);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+/* Values are coloured by JSON type. This is the one place in the app where colour
+   describes what a string *is* rather than how it is doing. */
+.json-val {
+  color: var(--text-primary);
+  word-break: break-all;
+}
+.json-val.str {
+  color: var(--success);
+}
+.json-val.num {
+  color: var(--accent-fg);
+}
+.json-val.bool {
+  color: var(--warning);
+}
+.json-val.null {
+  color: var(--text-muted);
+}
+
+/* ─── Docs viewer ─────────────────────────────────────────────────── */
+/* The docs are their own documents, so the frame only supplies the app's chrome.
+   A viewport height rather than a fixed one: the page head and the nav stay visible
+   on a phone, and the frame grows with the screen on a desktop. The old inline style
+   here also painted `#0a0a0f` behind it, which stayed black in the light theme. */
+.docs-frame {
+  width: 100%;
+  height: 72vh;
+  min-height: 320px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-lg);
+  background: var(--bg-elevated-1);
+}
+
+/* ─── Metric tiles ────────────────────────────────────────────────── */
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--sp-3);
+}
+.metric {
+  background: var(--bg-elevated-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+.metric-label {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+}
+.metric-label .icon {
+  display: flex;
+  color: var(--text-muted);
+}
+.metric-value {
+  font-family: var(--font-mono);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.metric-value.accent {
+  color: var(--accent-fg);
+}
+/* The `OCT` after a figure. Smaller and muted, so the number is what the eye lands
+   on — at the same weight the unit reads as another digit group. */
+.metric-unit {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+}
+.metric-note {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.metric-note.warn {
+  color: var(--warning);
+}
+
+/* The `ⓘ` beside a label. It is focusable because the explanation it opens is the
+   only place some of these words are defined — a keyboard user needs to reach it,
+   and a hover-only tooltip is invisible on a touch screen. */
+.info-hint {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-muted);
+  cursor: help;
+  vertical-align: middle;
+}
+.info-hint:hover,
+.info-hint:focus-visible {
+  color: var(--accent-fg);
+}
+
+/* ─── Tooltip ─────────────────────────────────────────────────────────
+   The wrapper is the focusable element (it carries `tabIndex` and the
+   focus/blur handlers), so whatever glyph sits inside it must not be focusable
+   too — that would make one hint cost two tab stops. */
+.tooltip-wrap {
+  position: relative;
+  display: inline-flex;
+  cursor: help;
+}
+.tooltip-pop {
+  position: absolute;
+  width: max-content;
+  /* Was an inline `style={{ maxWidth }}` on a prop nothing ever passed. Here it
+     is one value, and a narrow viewport can override it. */
+  max-width: 280px;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--surface-3);
+  color: var(--text-primary);
+  border: 1px solid var(--line-3);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  white-space: normal;
+  text-align: left;
+  /* Above the modal layer: a tooltip can be opened from inside a dialog, and it
+     is always the most recently requested thing on screen. */
+  z-index: 10000;
+  /* Never intercept the pointer — the tooltip can overlap its own trigger, and
+     swallowing the mouse there would make the hint flicker. */
+  pointer-events: none;
+  animation: fadeIn var(--t-fast);
+}
+.tooltip-pop.top {
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: var(--sp-2);
+}
+.tooltip-pop.bottom {
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: var(--sp-2);
+}
+.tooltip-pop.left {
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-right: var(--sp-2);
+}
+.tooltip-pop.right {
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: var(--sp-2);
+}
+
+/* The `?` variant of the same hint, for places where a label reads better with a
+   question than with an `ⓘ`. */
+.help-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--r-full);
+  background: var(--surface-3);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  margin-left: var(--sp-1);
+  vertical-align: middle;
+}
+
+/* A skeleton sitting on the gradient hero. The neutral one is invisible there. */
+.skeleton.on-hero {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(255, 255, 255, 0.14) 100%
+  );
+  background-size: 200% 100%;
+}
+/* Placeholder for `.hero-amount`, sized to what it stands in for so the hero does not
+   change height when the real balance arrives. It was an inline `height: 44, width: 220`
+   in two places, which no media query could reach — on a 320px phone the 220px bar
+   overhung the hero's padding. */
+.skeleton.hero-amount-ph {
+  height: 44px;
+  width: 220px;
+  max-width: 100%;
+}
+
+/* A quiet inset block at the foot of a card, for a secondary reading of the card's
+   own data (network congestion under the fee table, for instance). */
+.panel-note {
+  margin-top: var(--sp-3);
+  padding: var(--sp-3);
+  background: var(--bg-elevated-2);
+  border-radius: var(--r-md);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+/* ─── Progress bar ────────────────────────────────────────────────── */
+.progress {
+  height: 6px;
+  background: var(--bg-elevated-3);
+  border-radius: var(--r-full);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width var(--t-base);
+}
+/* Congestion buckets. The percentage is always printed next to the bar, so the
+   colour is reinforcement rather than the only signal. */
+.progress-fill.ok {
+  background: var(--success);
+}
+.progress-fill.warn {
+  background: var(--warning);
+}
+.progress-fill.err {
+  background: var(--error);
+}
+.usage-pct {
+  font-weight: var(--fw-semibold);
+}
+.usage-pct.ok {
+  color: var(--success);
+}
+.usage-pct.warn {
+  color: var(--warning);
+}
+.usage-pct.err {
+  color: var(--error);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   List rows
+   ────────────────────────────────────────────────────────────────────
+   Generalised from the OCS01 `.token-card` pattern below, which already solved
+   "identity on the left, value on the right, stack them when narrow". History reuses
+   it on phones instead of a second list style.
+   ════════════════════════════════════════════════════════════════════ */
+.list-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  text-align: left;
+  width: 100%;
+  min-height: 0;
+  transition:
+    border-color var(--t-fast),
+    background var(--t-fast);
+}
+.list-row.interactive {
+  cursor: pointer;
+}
+/* A row that is itself the control — tap anywhere to open it. The global `button`
+   rule centres its children, forces `nowrap` and sets a 40px floor, none of which
+   suit a two-line row, so they are restated here (the same fix the tab bar needs). */
+button.list-row {
+  justify-content: flex-start;
+  white-space: normal;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-normal);
+  color: var(--text-primary);
+  min-height: 0;
+}
+.list-row.interactive:hover {
+  background: var(--bg-elevated-3);
+  border-color: var(--border-default);
+}
+/* Direction badge — an outgoing row and an incoming row must be distinguishable
+   before you read either the amount or the address. */
+.list-mark {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-full);
+  background: var(--bg-elevated-3);
+  color: var(--text-secondary);
+}
+.list-mark.out {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.list-mark.in {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.list-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.list-line {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.list-title {
+  font-weight: var(--fw-medium);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.list-sub {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.list-side {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--sp-1);
+}
+.list-amount {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+.list-amount.out {
+  color: var(--warning);
+}
+.list-amount.in {
+  color: var(--success);
+}
+/* Trailing controls on a list row — copy, rename, remove. Kept as a row of icon
+   buttons so the row's own height does not grow to fit labelled buttons. */
+.list-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+/* Footer under a list or table: the "Load more" control centred over the count it
+   is about. */
+.list-footer {
+  margin-top: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.list-footer > button {
+  min-width: 140px;
+}
+.list-count {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+/* Under ~380px the right column and the left column stop fitting on one line. */
+@media (max-width: 380px) {
+  .list-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .list-side {
+    align-items: flex-start;
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Header chips & overflow menu
+   ════════════════════════════════════════════════════════════════════ */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 36px;
+  padding: var(--sp-1) var(--sp-3);
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-full);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  max-width: 100%;
+  min-width: 0;
+}
+.chip:hover:not(:disabled) {
+  background: var(--bg-elevated-3);
+  color: var(--text-primary);
+}
+.chip .chip-text {
+  /* `min-width: 0` is what makes the ellipsis possible: without it the span's
+     automatic minimum is its own min-content width, so the chip refuses to shrink
+     and the header row overflows instead of the name truncating. */
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A live status pip. Colour alone never carries the meaning — every use also has
+   a text label or a `title`, because ~8% of men cannot separate the red from
+   the green here. */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-full);
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+.status-dot.ok {
+  background: var(--success);
+}
+.status-dot.warn {
+  background: var(--warning);
+}
+.status-dot.err {
+  background: var(--error);
+}
+.status-dot.idle {
+  background: var(--text-disabled);
+}
+
+/* The header's overflow menu. Anchored in a `position: fixed` layer rather than
+   inside the header, because the header is a flex row with `overflow: hidden` on
+   phones — a menu positioned inside it gets clipped to the header's 56px height. */
+.menu-panel {
+  position: fixed;
+  z-index: var(--z-dropdown);
+  min-width: 236px;
+  max-width: calc(100vw - 2 * var(--sp-3));
+  background: var(--bg-elevated-1);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-xl);
+  padding: var(--sp-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.menu-section {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+  padding: var(--sp-2) var(--sp-3) var(--sp-1);
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  min-height: 40px;
+  padding: var(--sp-2) var(--sp-3);
+  border: none;
+  background: transparent;
+  border-radius: var(--r-sm);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  justify-content: flex-start;
+  text-align: left;
+}
+.menu-item:hover:not(:disabled) {
+  background: var(--bg-elevated-2);
+  color: var(--text-primary);
+  border-color: transparent;
+}
+.menu-item.active {
+  color: var(--accent-fg);
+}
+.menu-item .icon {
+  display: flex;
+  flex-shrink: 0;
+}
+.menu-item .menu-item-note {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.menu-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: var(--sp-2) 0;
+}
+/* A standalone footnote at the foot of a menu ("applies instantly"). Not the same
+   thing as `.menu-item-note`, which is the trailing mark *inside* a row. */
+.menu-note {
+  padding: var(--sp-2) var(--sp-3) var(--sp-1);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* A menu row carrying a name over a monospace address. Used by the account and
+   network menus, which pick between things whose labels are not unique. */
+.menu-item.two-line {
+  align-items: center;
+  min-height: 48px;
+}
+.menu-item-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: left;
+}
+.menu-item-main > span:first-child {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.menu-item-sub {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-normal);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The active row's tint has to survive `.menu-item.active`'s hover rule, so the
+   background is set here rather than inline in three components. */
+.menu-item.active {
+  background: var(--accent-soft);
+}
+.menu-item.active:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+/* The one place emoji survive (national flags, see `icons/Icon.tsx`). They need an
+   explicit size because they are text, not an `<Icon>`, and at the inherited 14px
+   they read as smudges next to a 16px stroke icon. */
+.flag {
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.menu-error {
+  padding: var(--sp-3);
+  font-size: var(--fs-xs);
+  color: var(--error);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-2);
+}
+.menu-empty {
+  padding: var(--sp-3);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+/* The two header chips are the only controls that must stay legible while the row
+   around them shrinks, so they cap their width and truncate. 200px inline was doing
+   this before and could not be overridden by a media query. */
+.account-picker-trigger {
+  max-width: 220px;
+}
+/* The network pill is a `.chip` plus a name — `.network-pill` carries no box of its
+   own any more, only the uppercase treatment that tells a network apart from an
+   account name at a glance. The class name stays because it is the selector the
+   network-switch specs address the control by. */
+.network-pill .chip-text {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: var(--fs-xs);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Layout utilities
+   ────────────────────────────────────────────────────────────────────
+   These absorb the shapes that ~500 inline `style={{}}` objects were re-typing by
+   hand. An inline style cannot contain a media query, so anything expressed that way
+   is invisible to every breakpoint above — which is why the app had so little real
+   responsiveness despite having a full token system.
+   ════════════════════════════════════════════════════════════════════ */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.stack.tight {
+  gap: var(--sp-2);
+}
+.stack.loose {
+  gap: var(--sp-5);
+}
+/* The public key sits under the address in the same card, one step further away than
+   the `.stack` gap, so the two addresses do not read as one block. */
+.pubkey-block {
+  margin-top: var(--sp-3);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.row.tight {
+  gap: var(--sp-2);
+}
+.row.nowrap {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+.between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.muted {
+  color: var(--text-muted);
+}
+.hint {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+/* Genuinely removed from the page, not just made invisible: used for the file input
+   a styled button clicks on the user's behalf. The button carries the label, so there
+   is nothing here for a screen reader to lose. */
+.hidden {
+  display: none;
+}
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+/* Label/value pair — the single most repeated inline shape in the app
+   (confirmation rows, receipts, contract details, settings summaries). */
+.kv {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-2) 0;
+  font-size: var(--fs-sm);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.kv:last-child {
+  border-bottom: none;
+}
+.kv > :first-child {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.kv > :last-child {
+  color: var(--text-primary);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Settings furniture
+   ════════════════════════════════════════════════════════════════════ */
+/* Read-only label/value pairs on an inset surface — module status, session facts.
+   `auto-fit` puts two pairs side by side on a desktop and stacks them on a phone
+   with no media query, which the previous fixed `1fr 1fr` grid could not do: at
+   320px it gave each value about 120px and broke "Ready (FHE keygen done)" across
+   four lines. */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-4);
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+}
+.stat-label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+.stat-value {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* A checkbox with a label and a sub-line. The global `input` rule gives every field
+   `width: 100%` and `min-height: 44px`, which turned a checkbox into a full-width
+   44px-tall band — so the box has to be exempted explicitly. The 44px target moves
+   to the label, which is what a finger actually aims at. */
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  min-height: 44px;
+}
+.check-row input[type='checkbox'] {
+  flex: 0 0 auto;
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin: 3px 0 0;
+  accent-color: var(--accent-fg);
+  cursor: pointer;
+}
+.check-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+/* A revealed secret — recovery phrase, private key. Tinted so it cannot be mistaken
+   for ordinary content, and blurred until deliberately shown: the value is on screen
+   for as long as the panel is open, and screens get photographed. */
+.secret-box {
+  margin-top: var(--sp-4);
+  padding: var(--sp-4);
+  background: var(--warning-soft);
+  border: 1px solid var(--warning);
+  border-radius: var(--r-md);
+}
+.secret-box.danger {
+  background: var(--error-soft);
+  border-color: var(--error);
+}
+.secret-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--warning);
+}
+.secret-box.danger .secret-head {
+  color: var(--error);
+}
+.secret-value {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  padding: var(--sp-1) 0;
+  transition: filter var(--t-base);
+}
+/* A class, not an inline `filter`, so `prefers-reduced-motion` below can drop the
+   transition and a future "reveal on hold" can hook the same state. */
+.secret-value.blurred {
+  filter: blur(6px);
+  user-select: none;
+}
+/* The first-run reveal, where the phrase is the only thing on the screen that
+   matters and has to be readable enough to copy onto paper by eye. */
+.secret-value.lg {
+  font-size: var(--fs-sm);
+  line-height: 1.9;
+}
+/* The same box used for a step that is a task rather than a warning ("retype three
+   words"), so the yellow is spent only on the one-time reveal. */
+.secret-box.neutral {
+  background: var(--bg-elevated-2);
+  border-color: var(--border-default);
+}
+.secret-box.neutral .secret-head {
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+}
+/* Two equal choices at the foot of the box ("copy" / "I wrote it down"). They split
+   the width so neither reads as the obvious one to press. */
+.secret-actions {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+.secret-actions > button {
+  flex: 1 1 0;
+  min-width: 0;
+}
+@media (max-width: 380px) {
+  .secret-actions {
+    flex-direction: column-reverse;
+  }
+}
+.secret-note {
+  margin-top: var(--sp-3);
+  font-size: var(--fs-xs);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+/* Retyped words from a recovery phrase. `auto-fit` rather than one column per word:
+   three fixed columns leave ~85px each on a 320px phone, which is narrower than the
+   longest BIP39 word. */
+.quiz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(116px, 1fr));
+  gap: var(--sp-3);
+}
+.quiz-grid > .form-row {
+  margin-bottom: 0;
+}
+
+/* PIN strength meter. The level lives in one `data-level` attribute on the wrapper,
+   so the colour ramp stays in the stylesheet instead of being rebuilt as a nested
+   ternary in the JSX. */
+.strength {
+  margin-bottom: var(--sp-4);
+}
+.strength-track {
+  display: flex;
+  gap: 4px;
+  margin-bottom: var(--sp-2);
+}
+.strength-seg {
+  flex: 1 1 0;
+  height: 4px;
+  border-radius: var(--r-full);
+  background: var(--bg-elevated-3);
+  transition: background var(--t-fast);
+}
+.strength-label {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.strength[data-level='1'] .strength-seg.on {
+  background: var(--error);
+}
+.strength[data-level='2'] .strength-seg.on {
+  background: var(--warning);
+}
+.strength[data-level='3'] .strength-seg.on {
+  background: var(--info);
+}
+.strength[data-level='4'] .strength-seg.on {
+  background: var(--success);
+}
+/* The label echoes the meter at the two ends of the scale only. Colouring all four
+   turns a hint into an alarm at "fair", which is a perfectly usable PIN. */
+.strength[data-level='1'] .strength-label {
+  color: var(--error);
+}
+.strength[data-level='4'] .strength-label {
+  color: var(--success);
+}
+
+/* A compact row inside a settings card: identity on the left, one action on the
+   right, hairline between. Lighter than `.list-row`, which is a card in its own
+   right and would nest a second surface inside this one. */
+.data-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.data-row:last-child {
+  border-bottom: none;
+}
+.data-rows {
+  margin-bottom: var(--sp-4);
+}
+.data-row-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* `overflow` has no effect on an inline box, so a `.truncate` span nested inside the
+   main cell has to be blockified before it can ellipsise. The cell itself is already
+   a flex item, so it needs no such help. */
+.data-row-main > .truncate {
+  display: block;
+}
+/* Size and colour only — the typeface is the caller's call, because a sub line is
+   sometimes an address (mono) and sometimes prose ("14m left · 2 permissions"). */
+.data-row-sub {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+/* A second heading inside one card, for a card holding two related lists
+   ("Connected sites", then "Trusted sites"). Deliberately smaller than
+   `.card-title` so the card still reads as having a single owner. */
+.card-subhead {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-5);
+  margin-bottom: var(--sp-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+/* No top margin when the subhead opens a block that is already spaced from what
+   precedes it — otherwise the two margins stack into a gap twice the size. */
+.card-subhead.flush {
+  margin-top: 0;
+}
+
+/* One labelled block among several in a card, each ending in its own commit button.
+   The gap has to be larger than the gap between fields, or the blocks read as one
+   long form with buttons scattered through it. */
+.stack-section {
+  margin-bottom: var(--sp-6);
+}
+
+/* "Nothing here yet" as a single muted line, where the full `.empty-state` block
+   would be more furniture than the fact deserves. */
+.empty-note {
+  padding: var(--sp-3) 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+/* An icon-only control. Square, so a row of them lines up regardless of glyph. */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: var(--r-md);
+  color: var(--text-secondary);
+}
+.icon-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+/* A destructive icon button. `.danger` is declared before `.ghost`/`.icon-btn` in
+   the button block, so it loses the cascade there and has to be restated here. */
+.icon-btn.danger {
+  color: var(--error);
+}
+.icon-btn.danger:hover:not(:disabled) {
+  color: var(--error);
+  background: var(--error-soft);
+  border-color: transparent;
+}
+.icon-btn.plain {
+  background: transparent;
+  border-color: transparent;
+}
+
+/* Continuous rotation for the `loader` icon. The `prefers-reduced-motion` block
+   above already reduces this to a near-static single iteration. */
+@keyframes icon-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.icon-spin {
+  animation: icon-spin 0.9s linear infinite;
+}
+
+/* Touch devices get 44px minimum targets, which is Apple's and Google's floor for
+   a reliably tappable control. Applies to iPad too, not just phones — the rule is
+   about the finger, not the viewport. */
+@media (hover: none) and (pointer: coarse) {
+  .icon-btn,
+  .chip,
+  .menu-item,
+  button.btn-sm,
+  .field-inline {
+    min-height: 44px;
+  }
+  .icon-btn {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Auth screens (unlock / create / restoring)
+   ────────────────────────────────────────────────────────────────────
+   These render before the shell exists, so they own their own full-height layout
+   rather than living inside `.app-main`. All three used to re-declare the same
+   centred flexbox and radial background inline in each file.
+   ════════════════════════════════════════════════════════════════════ */
+.auth-shell {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Safe-area padding, not plain padding: on a notched phone in landscape the card
+     would otherwise sit under the rounded corner. */
+  padding: max(var(--sp-5), env(safe-area-inset-top, 0px))
+    max(var(--sp-4), env(safe-area-inset-right, 0px))
+    max(var(--sp-5), env(safe-area-inset-bottom, 0px))
+    max(var(--sp-4), env(safe-area-inset-left, 0px));
+  background:
+    radial-gradient(120% 90% at 50% -10%, var(--accent-soft) 0%, transparent 55%),
+    radial-gradient(ellipse at top, var(--bg-elevated-1) 0%, var(--bg-base) 60%);
+}
+
+/* Controls that belong to the screen rather than the card — the theme toggle.
+   Pinned to the corner so it never pushes the card off centre. */
+.auth-corner {
+  position: absolute;
+  top: max(var(--sp-4), env(safe-area-inset-top, 0px));
+  right: max(var(--sp-4), env(safe-area-inset-right, 0px));
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  z-index: 1;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  padding: var(--sp-8) var(--sp-6);
+  box-shadow: var(--shadow-xl);
+  /* The card is the whole page here, so a bottom margin would just push it
+     off-centre. */
+  margin-bottom: 0;
+}
+/* The restoring screen has one line of text and no form, so it centres rather than
+   left-aligning like the unlock and create cards. */
+.auth-card-center {
+  text-align: center;
+  max-width: 420px;
+}
+.auth-restoring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.auth-card.wide {
+  max-width: 600px;
+}
+
+.auth-head {
+  text-align: center;
+  margin-bottom: var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.auth-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--r-lg);
+}
+.auth-title {
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.auth-sub {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  max-width: 42ch;
+}
+
+/* "or use your PIN" — a labelled rule between two alternatives. */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin: var(--sp-4) 0 var(--sp-3);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--border-subtle);
+}
+
+/* ─── Form pieces ─────────────────────────────────────────────────── */
+/* A control tucked inside the right edge of an input (show/hide PIN, paste,
+   scan). Repeated inline in six files with slightly different offsets each time. */
+/* An input with a committing button beside it ("Add token", "Import", "Go"). The
+   field takes `flex: 1 1 0` rather than `width: 100%`: a flex basis of 0 overrides
+   the `.form-row input { width: 100% }` rule, so the button keeps its intrinsic
+   width instead of being squeezed to its first letter. */
+.input-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--sp-2);
+}
+.input-row > input,
+.input-row > select,
+.input-row > .input-wrap {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.input-row > button {
+  flex: 0 0 auto;
+}
+/* Under ~420px the pair no longer fits on one line, and a 90px-wide input is worse
+   than a stacked button. */
+@media (max-width: 420px) {
+  .input-row {
+    flex-wrap: wrap;
+  }
+  .input-row > button {
+    width: 100%;
+  }
+}
+
+.input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.input-wrap > input,
+.input-wrap > textarea {
+  width: 100%;
+  padding-right: 44px;
+}
+.input-affix {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+}
+/* Two affixes side by side (scan + paste) stack rightwards from the edge. */
+.input-affix.second {
+  right: 42px;
+}
+/* An affix that is a word rather than a glyph — `MAX`, `Paste`. The 44px reserved
+   for an icon button is not enough: a long value would run underneath the label. */
+.input-wrap.affix-text > input {
+  padding-right: 68px;
+}
+
+.field-error {
+  margin-top: var(--sp-2);
+  color: var(--error);
+  font-size: var(--fs-xs);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+/* ─── Field furniture ─────────────────────────────────────────────────
+   The parts that surround an input: a label with controls beside it, small notes
+   underneath, and rows of preset values. Every form in the app had rebuilt these
+   inline, which is why the same "label + actions" row appeared at three different
+   gaps depending on the file. */
+
+/* A label with controls on its right — pick a saved contact, scan a QR. The
+   label's own bottom margin has to go, because the row owns the spacing now. */
+.field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-2);
+}
+.field-head > label {
+  margin-bottom: 0;
+}
+.field-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+/* A control that belongs to a label row rather than to the form body: small, and
+   allowed to shrink, so a 320px phone wraps it instead of overflowing. */
+.field-inline {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 180px;
+  font-size: var(--fs-xs);
+  min-height: 36px;
+  padding: var(--sp-2) var(--sp-3);
+}
+/* `.form-row input/select { width: 100% }` is a class *and* a type selector, so it
+   outranks a single class: the inline variant has to restate its width to stay
+   small inside a form row. */
+.form-row .field-inline {
+  width: auto;
+}
+/* A textarea the user may drag taller, but never wider — horizontal resize inside a
+   card would push the card's own layout sideways. */
+.resize-y {
+  resize: vertical;
+}
+
+/* A small line under an input: a character count, a raw-value echo, a validation
+   result. `.field-error` is the same shape in red. */
+.field-note {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  line-height: 1.5;
+}
+/* A note that is a caution rather than an aside. Only the colour changes: the
+   layout of a note is the same whether or not it is warning about something. */
+.field-note.warn {
+  color: var(--warning);
+  align-items: flex-start;
+}
+/* Inline status text. Kept separate from the containers above so a note can be
+   part-green without dragging every control inside it to the same colour. */
+.ok-text,
+.err-text,
+.warn-text {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.ok-text {
+  color: var(--success);
+}
+.err-text {
+  color: var(--error);
+}
+.warn-text {
+  color: var(--warning);
+}
+
+/* ─── QR scanner ──────────────────────────────────────────────────────
+   A square camera stage with a framing guide. Square rather than the camera's own
+   aspect ratio: a QR code is square, and a 16:9 preview on a phone in portrait
+   either letterboxes or crops the very edges the user is trying to line up. */
+.scan-stage {
+  position: relative;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: #000;
+  aspect-ratio: 1 / 1;
+}
+.scan-stage > video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+/* The guide is drawn with a 9999px spread shadow, which darkens everything outside
+   it without a second element or a mask. */
+.scan-reticle {
+  position: absolute;
+  inset: 15%;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: var(--r-md);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+.scan-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  color: #fff;
+  font-size: var(--fs-sm);
+}
+.scan-status .spinner {
+  width: 12px;
+  height: 12px;
+  /* On black, the neutral track is invisible. */
+  border-color: rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+}
+.scan-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: var(--sp-3) 0 0;
+}
+
+/* ─── Step list (processing modal) ────────────────────────────────────
+   A staged operation — encrypt, decrypt, sign-and-send — reports itself as a
+   numbered list that fills in as it goes. The list scrolls rather than growing the
+   dialog, because the decrypt flow has nine steps and a phone in landscape has
+   room for four. */
+.step-list {
+  max-height: 42vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-bottom: var(--sp-4);
+  padding-right: var(--sp-1);
+}
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+}
+/* Steps not yet reached are dimmed rather than hidden: seeing how much is left is
+   the whole point of showing the list. */
+.step.pending {
+  opacity: 0.5;
+}
+.step-mark {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  background: var(--surface-3);
+  color: var(--text-muted);
+}
+.step.done .step-mark {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.step.active .step-mark {
+  background: var(--accent-soft);
+  color: var(--accent-fg);
+}
+.step.error .step-mark {
+  background: var(--error-soft);
+  color: var(--error);
+}
+.step-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.step-label {
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.step.active .step-label {
+  font-weight: var(--fw-semibold);
+}
+.step.pending .step-label {
+  color: var(--text-muted);
+}
+/* The in-flight marker beside the active step's label — smaller than a standalone
+   spinner, because it annotates a line of text rather than replacing content. */
+.step-label .spinner {
+  width: 10px;
+  height: 10px;
+}
+.step-desc {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+
+/* The percentage under a determinate progress bar. */
+.progress-pct {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-top: var(--sp-1);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Preformatted body text — a transaction receipt whose line breaks are meaningful. */
+.pre-wrap {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Preset value buttons under a field. A grid rather than a flex row so `0.1` and
+   `100` get identical widths instead of sizing to their text. */
+.preset-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+
+/* A full-width action stack, as used by every auth and modal footer. */
+.form-actions.stacked {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: stretch;
+  /* A little more air than a right-aligned row needs: a stacked footer is the end
+     of a form, not a continuation of it. */
+  margin-top: var(--sp-5);
+}
+.form-actions.stacked > button {
+  width: 100%;
+}
+
+.self-start {
+  align-self: flex-start;
+}
+.self-end {
+  align-self: flex-end;
+}
+/* The small `ⓘ` beside a label that opens a Tooltip. */
+.help-hint {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-muted);
+  cursor: help;
+  vertical-align: middle;
+}
+.help-hint:hover {
+  color: var(--accent-fg);
 }

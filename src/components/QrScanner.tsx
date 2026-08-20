@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Icon } from './icons/Icon';
 
 /**
  * Camera QR scanner.
@@ -184,127 +185,43 @@ export function QrScanner({ open, title, hint, onResult, onClose }: QrScannerPro
   if (!open) return null;
 
   return (
-    <div
-      className="modal-overlay"
-      onClick={close}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0, 0, 0, 0.6)',
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 3000,
-        padding: 'var(--sp-4)',
-        animation: 'fadeIn var(--t-base)',
-      }}
-    >
+    <div className="modal-overlay" onClick={close}>
       <div
         className="modal-content"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={title ?? 'Scan QR code'}
-        style={{
-          background: 'var(--bg-elevated-1)',
-          border: '1px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          padding: 'var(--sp-6)',
-          maxWidth: 440,
-          width: '100%',
-          boxShadow: 'var(--shadow-xl)',
-          animation: 'slideUp var(--t-base)',
-        }}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 'var(--sp-3)',
-            marginBottom: 'var(--sp-4)',
-          }}
-        >
-          <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'var(--fw-semibold)', margin: 0 }}>
-            📷 {title ?? 'Scan QR code'}
-          </h3>
-          <button className="ghost icon" onClick={close} aria-label="Close scanner">
-            ✕
+        <div className="modal-head">
+          <span className="modal-icon accent">
+            <Icon name="camera" size={20} />
+          </span>
+          <h3 className="modal-title">{title ?? 'Scan QR code'}</h3>
+          <button className="icon-btn plain" onClick={close} aria-label="Close scanner">
+            <Icon name="x" size={18} />
           </button>
         </div>
 
         {error ? (
-          <div
-            style={{
-              padding: 'var(--sp-3)',
-              background: 'var(--warning-soft)',
-              border: '1px solid var(--warning)',
-              borderRadius: 'var(--r-md)',
-              fontSize: 'var(--fs-sm)',
-              color: 'var(--text-secondary)',
-              lineHeight: 1.5,
-            }}
-          >
-            ⚠️ {error}
+          <div className="info-box warn" role="alert">
+            <Icon name="alert-triangle" size={18} />
+            <span>{error}</span>
           </div>
         ) : (
           <>
-            <div
-              style={{
-                position: 'relative',
-                borderRadius: 'var(--r-md)',
-                overflow: 'hidden',
-                background: '#000',
-                aspectRatio: '1 / 1',
-              }}
-            >
-              <video
-                ref={videoRef}
-                muted
-                playsInline
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-              />
+            <div className="scan-stage">
+              <video ref={videoRef} muted playsInline />
               {/* Framing guide — purely visual, no layout impact on the video. */}
-              <div
-                aria-hidden="true"
-                style={{
-                  position: 'absolute',
-                  inset: '15%',
-                  border: '2px solid rgba(255, 255, 255, 0.85)',
-                  borderRadius: 'var(--r-md)',
-                  boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.25)',
-                  pointerEvents: 'none',
-                }}
-              />
+              <div className="scan-reticle" aria-hidden="true" />
               {starting && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#fff',
-                    fontSize: 'var(--fs-sm)',
-                    gap: 'var(--sp-2)',
-                  }}
-                >
-                  <span className="spinner" style={{ width: 12, height: 12 }} />
+                <div className="scan-status">
+                  <span className="spinner" />
                   Starting camera…
                 </div>
               )}
             </div>
-            <p
-              style={{
-                fontSize: 'var(--fs-xs)',
-                color: 'var(--text-secondary)',
-                marginTop: 'var(--sp-3)',
-                marginBottom: 0,
-                lineHeight: 1.5,
-              }}
-            >
+            <p className="scan-hint">
               {hint ??
                 'Point the camera at a QR code. Frames are decoded on-device; nothing is uploaded.'}
             </p>

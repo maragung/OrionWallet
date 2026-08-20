@@ -1,0 +1,87 @@
+/**
+ * Self-hosted webfonts — Inter (UI) and JetBrains Mono (addresses, hashes, amounts).
+ *
+ * These used to be *declared* in `--font-sans` / `--font-mono` and never loaded: no
+ * `@font-face`, no font files, no `<link>`. The app silently rendered in whatever the OS
+ * supplied, so the same screen looked different on Windows (Segoe UI), macOS (SF), and
+ * Linux (DejaVu). A CDN is not an option either — `index.html`'s CSP allows
+ * `font-src 'self' data:` only.
+ *
+ * So the files are vendored into `public/fonts/` and served from our own origin. They are
+ * the variable (`wght`) axis builds from @fontsource-variable, which is why one file covers
+ * 100–900 instead of shipping seven static weights.
+ *
+ * SUBSETS: each `@font-face` carries a `unicode-range`, so a browser downloads only the
+ * ranges the page actually paints — an English user fetches `latin` alone (48 KB). The app
+ * ships 20 UI languages (src/i18n/types.ts); the non-Latin ones (zh, ja, ko, ar, hi, bn, ta,
+ * th) deliberately have NO webfont and fall through to the system stack in `--font-sans`.
+ * Bundling CJK would cost megabytes, and every platform already has good coverage.
+ *
+ * Only the Latin files are preloaded in `index.html` — preloading a subset defeats the
+ * point of `unicode-range` by forcing the download regardless of content.
+ *
+ * Licences: both fonts are SIL OFL 1.1 — see `public/fonts/OFL-Inter.txt` and
+ * `public/fonts/OFL-JetBrainsMono.txt`. The OFL requires the licence to travel with the
+ * font files, so those two files must stay next to the woff2s.
+ */
+
+/* ─── Inter (UI) ──────────────────────────────────────────────────── */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Turkish, Polish, Czech, Romanian, … */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-latin-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+/* Russian */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-cyrillic-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+/* Vietnamese */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-vietnamese-wght-normal.woff2') format('woff2-variations');
+  unicode-range:
+    U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301,
+    U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+
+/* ─── JetBrains Mono (addresses, hashes, amounts) ─────────────────── */
+/* Latin only, on purpose: every monospaced string in the wallet is an address, a hex hash,
+   a base64 key, or a number. None of them contain non-ASCII. */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}

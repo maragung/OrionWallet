@@ -5,6 +5,8 @@ import { JsonTreeView } from './JsonTreeView';
 import { extractMethods } from '../tx/abi';
 import { ProcessingModal } from './ProcessingModal';
 import { usePanelLoading } from '../hooks/usePanelLoading';
+import { PageHead } from './PageHead';
+import { Icon } from './icons/Icon';
 
 export function ContractViewer() {
   const { rpc, pushToast } = useWalletStore();
@@ -62,101 +64,96 @@ export function ContractViewer() {
     );
   };
 
+  const addrInvalid = Boolean(addr.trim()) && !isValidAddress(addr.trim());
+
   return (
-    <div className="card">
-      <div className="card-header">
-        <div className="card-title">🔍 Contract Viewer</div>
-      </div>
+    <div className="page">
+      <PageHead
+        icon="search"
+        title="Contract Viewer"
+        sub="Read a deployed contract's program info, its callable methods, and any storage key by name."
+      />
 
-      <div className="form-row">
-        <label htmlFor="caddr">Contract Address</label>
-        <input
-          id="caddr"
-          className="mono"
-          value={addr}
-          onChange={(e) => setAddr(e.target.value)}
-          placeholder="oct..."
-          onKeyDown={(e) => e.key === 'Enter' && lookup()}
-          style={addr && !isValidAddress(addr) ? { borderColor: 'var(--error)' } : undefined}
-        />
-      </div>
+      <div className="card">
+        <div className="form-row">
+          <label htmlFor="caddr">Contract Address</label>
+          <input
+            id="caddr"
+            className="mono"
+            value={addr}
+            onChange={(e) => setAddr(e.target.value)}
+            placeholder="oct..."
+            onKeyDown={(e) => e.key === 'Enter' && lookup()}
+            aria-invalid={addrInvalid}
+            data-invalid={addrInvalid ? 'true' : undefined}
+          />
+        </div>
 
-      <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
-        <button className="primary" onClick={lookup} disabled={!addr || loading}>
-          {loading ? <span className="spinner" /> : 'Look Up'}
-        </button>
-      </div>
+        <div className="form-actions start">
+          <button className="primary" onClick={lookup} disabled={!addr || loading}>
+            {loading ? (
+              <>
+                <Icon name="loader" size={18} className="icon-spin" /> Look Up
+              </>
+            ) : (
+              <>
+                <Icon name="search" size={18} /> Look Up
+              </>
+            )}
+          </button>
+        </div>
 
-      {info !== null && (
-        <div style={{ marginTop: 'var(--sp-4)' }}>
-          <div
-            style={{
-              fontSize: 'var(--fs-sm)',
-              color: 'var(--text-secondary)',
-              fontWeight: 'var(--fw-semibold)',
-              marginBottom: 'var(--sp-2)',
-            }}
-          >
-            Program Info
+        {info !== null && (
+          <div className="stack-section">
+            <div className="card-subhead">
+              <Icon name="file-text" size={16} /> Program Info
+            </div>
+            <JsonTreeView data={info} />
+            {methods.length > 0 && (
+              <div className="info-box spaced-top">
+                <Icon name="info" size={18} />
+                <div className="info-box-body">
+                  <span>
+                    Detected {methods.length} callable method{methods.length === 1 ? '' : 's'}:{' '}
+                    <span className="mono">{methods.join(', ')}</span>
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
-          <JsonTreeView data={info} />
-          {methods.length > 0 && (
-            <div
-              style={{
-                marginTop: 'var(--sp-3)',
-                padding: 'var(--sp-3)',
-                background: 'var(--bg-elevated-2)',
-                borderRadius: 'var(--r-md)',
-                fontSize: 'var(--fs-xs)',
-                color: 'var(--text-muted)',
-              }}
+        )}
+
+        {/* Storage reader — the node requires a specific key. */}
+        <div>
+          <div className="card-subhead">
+            <Icon name="key" size={16} /> Read Storage
+          </div>
+          <div className="form-row">
+            <label htmlFor="skey">Storage Key</label>
+            <input
+              id="skey"
+              className="mono"
+              value={storageKey}
+              onChange={(e) => setStorageKey(e.target.value)}
+              placeholder="e.g. symbol, name, total_supply"
+              onKeyDown={(e) => e.key === 'Enter' && lookupStorage()}
+            />
+          </div>
+          <div className="form-actions start">
+            <button
+              className="ghost"
+              onClick={lookupStorage}
+              disabled={!addr || !storageKey.trim() || !isValidAddress(addr)}
             >
-              Detected {methods.length} callable method{methods.length === 1 ? '' : 's'}:{' '}
-              <span className="mono" style={{ color: 'var(--text-secondary)' }}>
-                {methods.join(', ')}
-              </span>
+              <Icon name="download" size={16} /> Read Key
+            </button>
+          </div>
+          {storage !== null && (
+            <div className="spaced-top">
+              <JsonTreeView data={storage} />
             </div>
           )}
         </div>
-      )}
-
-      {/* Storage reader — the node requires a specific key. */}
-      <div style={{ marginTop: 'var(--sp-5)' }}>
-        <div
-          style={{
-            fontSize: 'var(--fs-sm)',
-            color: 'var(--text-secondary)',
-            fontWeight: 'var(--fw-semibold)',
-            marginBottom: 'var(--sp-2)',
-          }}
-        >
-          Read Storage
-        </div>
-        <div className="form-row">
-          <label htmlFor="skey">Storage Key</label>
-          <input
-            id="skey"
-            className="mono"
-            value={storageKey}
-            onChange={(e) => setStorageKey(e.target.value)}
-            placeholder="e.g. symbol, name, total_supply"
-            onKeyDown={(e) => e.key === 'Enter' && lookupStorage()}
-          />
-        </div>
-        <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
-          <button
-            className="ghost"
-            onClick={lookupStorage}
-            disabled={!addr || !storageKey.trim() || !isValidAddress(addr)}
-          >
-            Read Key
-          </button>
-        </div>
-        {storage !== null && (
-          <div style={{ marginTop: 'var(--sp-2)' }}>
-            <JsonTreeView data={storage} />
-          </div>
-        )}
       </div>
 
       <ProcessingModal

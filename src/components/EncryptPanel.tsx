@@ -9,10 +9,13 @@ import {
   DECRYPT_STEPS,
 } from '../api/encrypt';
 import { formatAmount, parseAmountRaw, recommendedOu } from '../tx/builder';
+import { copyText } from '../utils/clipboard';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ProcessingModal, useProcessingModal } from './ProcessingModal';
-import { Tooltip } from './Tooltip';
+import { InfoHint } from './Tooltip';
 import { PanelSkeleton } from './PanelSkeleton';
+import { PageHead } from './PageHead';
+import { Icon } from './icons/Icon';
 
 type Mode = 'encrypt' | 'decrypt';
 
@@ -129,73 +132,65 @@ export function EncryptPanel() {
   };
 
   return (
-    <>
-      {/* Balance summary */}
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">
-            🔐 Private Balance{' '}
-            <Tooltip text="Move OCT between your public and encrypted balances. The encrypted balance is stored on-chain as an AES-256-GCM ciphertext that only your wallet key can read.">
-              <span
-                style={{ color: 'var(--text-muted)', cursor: 'help', fontSize: 'var(--fs-sm)' }}
-              >
-                ⓘ
-              </span>
-            </Tooltip>
-          </div>
+    <div className="page">
+      <PageHead
+        icon="shield-lock"
+        title="Private Balance"
+        sub="Move OCT between your public balance and your encrypted balance."
+        actions={
           <button
-            className="ghost icon"
+            className="icon-btn"
             onClick={refresh}
             disabled={loadingBal}
             title="Refresh balances"
             aria-label="Refresh"
           >
-            {loadingBal ? <span className="spinner" /> : '↻'}
+            <Icon
+              name={loadingBal ? 'loader' : 'refresh'}
+              size={18}
+              className={loadingBal ? 'icon-spin' : undefined}
+            />
           </button>
-        </div>
+        }
+      />
 
-        <div className="grid-2">
-          <div>
-            <div className="balance-label">Public Balance</div>
-            <div
-              style={{
-                fontSize: 'var(--fs-lg)',
-                fontFamily: 'var(--font-mono)',
-                fontWeight: 'var(--fw-semibold)',
-                marginTop: 'var(--sp-1)',
-              }}
-            >
-              {publicRaw !== null ? formatAmount(publicRaw) : '—'}{' '}
-              <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>OCT</span>
-            </div>
+      {/* The two balances as tiles rather than a two-column grid inside a card: the
+          same pair appears on Balance in this shape, and tiles reflow to one column
+          on a phone without a breakpoint of their own. */}
+      <div className="metric-grid">
+        <div className="metric">
+          <div className="metric-label">
+            <Icon name="wallet" size={14} />
+            Public Balance
+            <InfoHint text="Spendable balance visible to everyone on the Octra network. Encrypting moves OCT out of it." />
           </div>
-          <div>
-            <div className="balance-label">
-              Encrypted Balance{' '}
-              <span className="tag info" style={{ fontSize: 'var(--fs-xs)' }}>
-                🔒
-              </span>
-            </div>
-            <div
-              style={{
-                fontSize: 'var(--fs-lg)',
-                fontFamily: 'var(--font-mono)',
-                fontWeight: 'var(--fw-semibold)',
-                color: 'var(--text-secondary)',
-                marginTop: 'var(--sp-1)',
-              }}
-            >
-              {encryptedRaw !== null ? formatAmount(encryptedRaw) : '—'}{' '}
-              <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>OCT</span>
-            </div>
+          <div className="metric-value">
+            {publicRaw !== null ? formatAmount(publicRaw) : '—'}{' '}
+            <span className="metric-unit">OCT</span>
+          </div>
+        </div>
+        <div className="metric">
+          <div className="metric-label">
+            <Icon name="shield-lock" size={14} />
+            Encrypted Balance
+            <InfoHint text="Stored on-chain as an AES-256-GCM ciphertext that only your wallet key can read. Decrypting moves OCT back into your public balance." />
+          </div>
+          <div className="metric-value">
+            {encryptedRaw !== null ? formatAmount(encryptedRaw) : '—'}{' '}
+            <span className="metric-unit">OCT</span>
           </div>
         </div>
       </div>
 
       {/* Operation card */}
       <div className="card">
-        <div className="tab-bar">
-          <div
+        {/* Real buttons, not clickable divs: these switch which balance the form
+            spends from, and a keyboard user could not reach them before. */}
+        <div className="tab-bar" role="tablist" aria-label="Operation">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'encrypt'}
             className={`tab ${mode === 'encrypt' ? 'active' : ''}`}
             onClick={() => {
               setMode('encrypt');
@@ -203,9 +198,12 @@ export function EncryptPanel() {
               setResult(null);
             }}
           >
-            🔒 Encrypt
-          </div>
-          <div
+            <Icon name="lock" size={16} /> Encrypt
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'decrypt'}
             className={`tab ${mode === 'decrypt' ? 'active' : ''}`}
             onClick={() => {
               setMode('decrypt');
@@ -213,43 +211,32 @@ export function EncryptPanel() {
               setResult(null);
             }}
           >
-            🔓 Decrypt
-          </div>
+            <Icon name="unlock" size={16} /> Decrypt
+          </button>
         </div>
 
-        <p
-          style={{
-            fontSize: 'var(--fs-sm)',
-            color: 'var(--text-muted)',
-            marginBottom: 'var(--sp-4)',
-          }}
-        >
+        <p className="card-desc">
           {mode === 'encrypt'
             ? 'Move OCT from your public balance into your encrypted (private) balance.'
             : 'Move OCT from your encrypted balance back into your public balance.'}
         </p>
 
         {!pvacReady && (
-          <div
-            style={{
-              marginBottom: 'var(--sp-4)',
-              padding: 'var(--sp-3)',
-              background: 'var(--warning-soft)',
-              border: '1px solid var(--warning)',
-              borderRadius: 'var(--r-md)',
-              fontSize: 'var(--fs-xs)',
-              color: 'var(--text-secondary)',
-            }}
-          >
-            ⚠️ PVAC module is not ready ({pvacStatus}). Encrypted balance operations use FHE
-            ciphertexts and zero-knowledge proofs, so they require the PVAC WASM module. Try
-            reloading it from Settings.
+          <div className="info-box warn spaced">
+            <Icon name="alert-triangle" size={18} />
+            <div className="info-box-body">
+              PVAC module is not ready ({pvacStatus}). Encrypted balance operations use FHE
+              ciphertexts and zero-knowledge proofs, so they require the PVAC WASM module. Try
+              reloading it from Settings.
+            </div>
           </div>
         )}
 
         <div className="form-row">
           <label htmlFor="enc-amount">Amount (OCT)</label>
-          <div style={{ position: 'relative' }}>
+          {/* `affix-text` and not the icon-button default: `MAX` is a word, so the
+              input's text has to stop further from the edge than a 36px glyph needs. */}
+          <div className="input-wrap affix-text">
             <input
               id="enc-amount"
               className="mono"
@@ -258,34 +245,21 @@ export function EncryptPanel() {
               placeholder="1.5"
               inputMode="decimal"
               autoComplete="off"
-              style={amount && !validAmount ? { borderColor: 'var(--error)' } : undefined}
+              aria-invalid={amount !== '' && !validAmount}
+              data-invalid={amount && !validAmount ? 'true' : undefined}
             />
             <button
               type="button"
-              className="ghost"
+              className="ghost btn-sm input-affix"
               onClick={maxAmount}
               disabled={!sourceRaw}
-              style={{
-                position: 'absolute',
-                right: 4,
-                top: '50%',
-                transform: 'translateY(-50%)',
-                minHeight: 32,
-                fontSize: 'var(--fs-xs)',
-                padding: '0 var(--sp-2)',
-              }}
+              title={`Use the whole ${sourceLabel.toLowerCase()} balance`}
             >
               MAX
             </button>
           </div>
           {amountRaw && (
-            <div
-              style={{
-                color: 'var(--text-muted)',
-                fontSize: 'var(--fs-xs)',
-                marginTop: 'var(--sp-1)',
-              }}
-            >
+            <div className="field-note">
               {sourceLabel} → {targetLabel} · fee {formatAmount(fee)} OCT
             </div>
           )}
@@ -293,32 +267,26 @@ export function EncryptPanel() {
 
         <div className="form-actions">
           <button className="primary" onClick={requestSubmit} disabled={!validAmount || !pvacReady}>
-            {mode === 'encrypt' ? '🔒 Encrypt' : '🔓 Decrypt'}
+            <Icon name={mode === 'encrypt' ? 'lock' : 'unlock'} size={18} />{' '}
+            {mode === 'encrypt' ? 'Encrypt' : 'Decrypt'}
           </button>
         </div>
 
         {result && (
-          <div
-            style={{
-              marginTop: 'var(--sp-4)',
-              padding: 'var(--sp-3)',
-              background: 'var(--success-soft)',
-              border: '1px solid var(--success)',
-              borderRadius: 'var(--r-md)',
-            }}
-          >
-            <div
-              style={{
-                fontSize: 'var(--fs-xs)',
-                color: 'var(--success)',
-                marginBottom: 'var(--sp-1)',
-                fontWeight: 'var(--fw-semibold)',
-              }}
-            >
-              ✓ Transaction Submitted
-            </div>
-            <div className="mono" style={{ fontSize: 'var(--fs-xs)', wordBreak: 'break-all' }}>
-              {result}
+          <div className="info-box ok spaced-top">
+            <Icon name="check-circle" size={18} />
+            <div className="info-box-body">
+              <strong className="ok-text">Transaction Submitted</strong>
+              <div className="mono mono-line">{result}</div>
+              <button
+                className="ghost btn-sm self-start"
+                onClick={() => {
+                  copyText(result);
+                  pushToast('success', 'Hash copied');
+                }}
+              >
+                <Icon name="copy" size={14} /> Copy Hash
+              </button>
             </div>
           </div>
         )}
@@ -326,7 +294,7 @@ export function EncryptPanel() {
 
       <ConfirmDialog
         open={showConfirm}
-        icon={mode === 'encrypt' ? '🔒' : '🔓'}
+        icon={mode === 'encrypt' ? 'lock' : 'unlock'}
         title={mode === 'encrypt' ? 'Confirm Encrypt' : 'Confirm Decrypt'}
         message={
           mode === 'encrypt'
@@ -357,6 +325,6 @@ export function EncryptPanel() {
         onClose={modal.close}
         dismissible={!!modal.success || !!modal.error}
       />
-    </>
+    </div>
   );
 }

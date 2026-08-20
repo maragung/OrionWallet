@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { yieldToPaint, sleep, type ProgressReporter, type StepDescriptor } from '../utils/progress';
+import { Icon } from './icons/Icon';
 
 /**
  * Reusable processing modal — shows multi-stage progress with informative messages.
@@ -117,249 +118,94 @@ export function ProcessingModal({
   const totalStages = stages?.length ?? 0;
 
   return (
-    <div
-      className="modal-overlay"
-      onClick={() => dismissible && onClose?.()}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0, 0, 0, 0.6)',
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 3000,
-        padding: 'var(--sp-4)',
-        animation: 'fadeIn var(--t-base)',
-      }}
-    >
+    <div className="modal-overlay" onClick={() => dismissible && onClose?.()}>
       <div
-        className="modal-content"
+        className="modal-content lg"
         onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'var(--bg-elevated-1)',
-          border: '1px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          padding: 'var(--sp-6)',
-          maxWidth: 480,
-          width: '100%',
-          boxShadow: 'var(--shadow-xl)',
-          animation: 'slideUp var(--t-base)',
-        }}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
       >
         {/* Header */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--sp-3)',
-            marginBottom: 'var(--sp-4)',
-          }}
-        >
+        <div className="modal-head">
           {success ? (
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: '50%',
-                background: 'var(--success-soft)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 20,
-                flexShrink: 0,
-              }}
-            >
-              ✅
-            </div>
+            <span className="modal-icon ok">
+              <Icon name="check-circle" size={20} />
+            </span>
           ) : error ? (
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: '50%',
-                background: 'var(--error-soft)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 20,
-                flexShrink: 0,
-              }}
-            >
-              ⚠️
-            </div>
+            <span className="modal-icon danger">
+              <Icon name="alert-triangle" size={20} />
+            </span>
           ) : (
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: '50%',
-                background: 'var(--accent-soft)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
+            <span className="modal-icon accent">
               <span className="spinner lg" />
-            </div>
+            </span>
           )}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'var(--fw-semibold)', margin: 0 }}>
-              {success ? 'Success' : error ? 'Error' : title}
-            </h3>
+          <div className="modal-title-group">
+            <h3 className="modal-title">{success ? 'Success' : error ? 'Error' : title}</h3>
             {!success && !error && elapsed > 0 && (
-              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: 2 }}>
+              <div className="modal-sub">
                 Elapsed: {formatTime(elapsed)}
                 {totalStages > 0 && ` • Step ${completedCount + 1}/${totalStages}`}
               </div>
             )}
           </div>
           {dismissible && onClose && (
-            <button
-              className="ghost icon"
-              onClick={onClose}
-              style={{ minHeight: 32, minWidth: 32, fontSize: 16 }}
-              aria-label="Close"
-            >
-              ✕
+            <button className="icon-btn plain" onClick={onClose} aria-label="Close">
+              <Icon name="x" size={18} />
             </button>
           )}
         </div>
 
         {/* Success message */}
         {success && successMessage && (
-          <div
-            style={{
-              padding: 'var(--sp-4)',
-              background: 'var(--success-soft)',
-              borderRadius: 'var(--r-md)',
-              fontSize: 'var(--fs-sm)',
-              color: 'var(--text-primary)',
-              marginBottom: successAction ? 'var(--sp-4)' : 0,
-              whiteSpace: 'pre-wrap',
-            }}
-          >
-            {successMessage}
+          <div className="info-box ok spaced">
+            <Icon name="check-circle" size={18} />
+            <span className="pre-wrap">{successMessage}</span>
           </div>
         )}
 
         {/* Copy hash button */}
         {success && onCopySuccess && (
-          <div style={{ marginBottom: successAction ? 'var(--sp-4)' : 0 }}>
-            <button
-              className="ghost"
-              style={{ minHeight: 32, fontSize: 'var(--fs-xs)' }}
-              onClick={onCopySuccess}
-            >
-              📋 Copy Details
+          <div className="row tight modal-inline-action">
+            <button className="ghost btn-sm" onClick={onCopySuccess}>
+              <Icon name="copy" size={14} /> Copy Details
             </button>
           </div>
         )}
 
         {/* Error message */}
         {error && (
-          <div
-            style={{
-              padding: 'var(--sp-4)',
-              background: 'var(--error-soft)',
-              border: '1px solid var(--error)',
-              borderRadius: 'var(--r-md)',
-              fontSize: 'var(--fs-sm)',
-              color: 'var(--error)',
-              marginBottom: 'var(--sp-4)',
-              wordBreak: 'break-word',
-            }}
-          >
-            {error}
+          <div className="info-box err spaced" role="alert">
+            <Icon name="alert-triangle" size={18} />
+            <span>{error}</span>
           </div>
         )}
 
         {/* Stages */}
         {stages && stages.length > 0 && !success && (
-          <div
-            style={{
-              marginBottom: 'var(--sp-4)',
-              maxHeight: '42vh',
-              overflowY: 'auto',
-              paddingRight: 'var(--sp-1)',
-            }}
-          >
+          <div className="step-list">
             {stages.map((stage, i) => (
               <div
                 key={stage.id}
+                className={`step ${stage.status}`}
                 ref={stage.status === 'active' || stage.status === 'error' ? activeRef : undefined}
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 'var(--sp-3)',
-                  padding: 'var(--sp-2) 0',
-                  opacity: stage.status === 'pending' ? 0.5 : 1,
-                }}
               >
-                <div
-                  style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    marginTop: 2,
-                    background:
-                      stage.status === 'done'
-                        ? 'var(--success-soft)'
-                        : stage.status === 'active'
-                          ? 'var(--accent-soft)'
-                          : stage.status === 'error'
-                            ? 'var(--error-soft)'
-                            : 'var(--bg-elevated-3)',
-                    color:
-                      stage.status === 'done'
-                        ? 'var(--success)'
-                        : stage.status === 'active'
-                          ? 'var(--accent)'
-                          : stage.status === 'error'
-                            ? 'var(--error)'
-                            : 'var(--text-muted)',
-                    fontSize: 12,
-                    fontWeight: 'var(--fw-semibold)',
-                  }}
-                >
-                  {stage.status === 'done' ? '✓' : stage.status === 'error' ? '✗' : i + 1}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      fontSize: 'var(--fs-sm)',
-                      fontWeight:
-                        stage.status === 'active' ? 'var(--fw-semibold)' : 'var(--fw-normal)',
-                      color:
-                        stage.status === 'pending' ? 'var(--text-muted)' : 'var(--text-primary)',
-                    }}
-                  >
-                    {stage.label}
-                    {stage.status === 'active' && (
-                      <span
-                        className="spinner"
-                        style={{
-                          width: 10,
-                          height: 10,
-                          marginLeft: 'var(--sp-2)',
-                          verticalAlign: 'middle',
-                        }}
-                      />
-                    )}
-                  </div>
-                  {stage.description && (
-                    <div
-                      style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: 2 }}
-                    >
-                      {stage.description}
-                    </div>
+                <span className="step-mark">
+                  {stage.status === 'done' ? (
+                    <Icon name="check" size={14} strokeWidth={2.5} />
+                  ) : stage.status === 'error' ? (
+                    <Icon name="x" size={14} strokeWidth={2.5} />
+                  ) : (
+                    i + 1
                   )}
+                </span>
+                <div className="step-body">
+                  <div className="step-label">
+                    {stage.label}
+                    {stage.status === 'active' && <span className="spinner" />}
+                  </div>
+                  {stage.description && <div className="step-desc">{stage.description}</div>}
                 </div>
               </div>
             ))}
@@ -368,57 +214,29 @@ export function ProcessingModal({
 
         {/* Progress bar (determinate) */}
         {determinate && !success && !error && (
-          <div style={{ marginBottom: 'var(--sp-4)' }}>
-            <div
-              style={{
-                height: 6,
-                background: 'var(--bg-elevated-3)',
-                borderRadius: 'var(--r-full)',
-                overflow: 'hidden',
-              }}
-            >
+          <div className="modal-progress">
+            <div className="progress">
+              {/* The width is the datum, so it stays inline. */}
               <div
-                style={{
-                  height: '100%',
-                  width: `${Math.min(100, Math.max(0, progress))}%`,
-                  background: 'var(--accent)',
-                  borderRadius: 'var(--r-full)',
-                  transition: 'width 0.3s ease',
-                }}
+                className="progress-fill"
+                style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
               />
             </div>
-            <div
-              style={{
-                fontSize: 'var(--fs-xs)',
-                color: 'var(--text-muted)',
-                marginTop: 'var(--sp-1)',
-                textAlign: 'right',
-              }}
-            >
-              {Math.round(progress)}%
-            </div>
+            <div className="progress-pct">{Math.round(progress)}%</div>
           </div>
         )}
 
         {/* Message */}
         {message && !success && !error && (
-          <div
-            style={{
-              padding: 'var(--sp-3)',
-              background: 'var(--bg-elevated-2)',
-              borderRadius: 'var(--r-md)',
-              fontSize: 'var(--fs-sm)',
-              color: 'var(--text-secondary)',
-              marginBottom: 'var(--sp-4)',
-            }}
-          >
-            {activeStage?.description || message}
+          <div className="info-box spaced">
+            <Icon name="info" size={18} />
+            <span>{activeStage?.description || message}</span>
           </div>
         )}
 
         {/* Actions */}
         {(successAction || errorAction) && (
-          <div style={{ display: 'flex', gap: 'var(--sp-2)', justifyContent: 'flex-end' }}>
+          <div className="modal-actions">
             {errorAction && (
               <button className="primary" onClick={errorAction.onClick}>
                 {errorAction.label}

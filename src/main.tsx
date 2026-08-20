@@ -5,6 +5,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { ConnectApp } from './connect/ConnectApp';
 import { I18nProvider } from './i18n/useI18n';
 import { MAIN_WALLET_NAME } from './connect/handoff';
+import { applyThemeColorMeta } from './styles/theme-colors';
 import './styles/global.css';
 
 // Apply theme as early as possible to avoid FOUC (flash of unstyled content).
@@ -20,10 +21,7 @@ import './styles/global.css';
     const initial = prefersLight ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', initial);
     // Update theme-color meta for mobile browser chrome
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) {
-      meta.setAttribute('content', initial === 'light' ? '#fafafa' : '#0a0a0f');
-    }
+    applyThemeColorMeta(initial);
   } catch {
     // Ignore — defaults will apply
   }

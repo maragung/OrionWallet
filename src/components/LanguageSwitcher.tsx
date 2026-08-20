@@ -1,96 +1,89 @@
-import { useState, useRef, useEffect } from 'react';
+import { useCallback, useState } from 'react';
 import { useI18n } from '../i18n/useI18n';
+import { useAnchoredMenu } from '../hooks/useAnchoredMenu';
+import { Icon } from './icons';
 import type { LanguageCode } from '../i18n/types';
 
 /**
- * Language switcher dropdown — instantly switches UI language without refresh.
- * Shows flag + native name. Supports 20 world languages.
+ * Standalone language picker for screens that have no app header — currently the
+ * unlock/landing screen, where a user who cannot read English would otherwise have
+ * to guess their way past the lock before reaching the language list in the header
+ * menu.
+ *
+ * Inside the app the same choice lives in `HeaderMenu`; both render the identical
+ * `.menu-item` rows, so the two entry points look like one control.
  */
 export function LanguageSwitcher() {
   const { lang, setLang, languages, currentLanguage } = useI18n();
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => setOpen(false), []);
+  // Anchored in a top-level layer, like every other menu in the app: the corner it
+  // sits in is `position: absolute` inside the auth shell, and a menu nested there
+  // would be clipped and would also fall behind a toast.
+  const {
+    anchorRef,
+    menuRef,
+    style: menuStyle,
+    portal,
+  } = useAnchoredMenu<HTMLButtonElement>(open, {
+    align: 'right',
+    width: 232,
+    maxHeight: 360,
+    onDismiss: close,
+  });
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  const handleSelect = (code: LanguageCode) => {
+  const select = (code: LanguageCode) => {
     setLang(code);
     setOpen(false);
   };
 
   return (
-    <div ref={ref} className="lang-switcher" style={{ position: 'relative' }}>
+    <>
       <button
-        className="ghost icon"
+        ref={anchorRef}
+        className="chip lang-pill"
         onClick={() => setOpen(!open)}
         title={currentLanguage.englishName}
         aria-label={`Language: ${currentLanguage.englishName}`}
-        style={{
-          minHeight: 36,
-          minWidth: 36,
-          fontSize: 16,
-          gap: 'var(--sp-1)',
-          padding: 'var(--sp-1) var(--sp-2)',
-        }}
+        aria-haspopup="menu"
+        aria-expanded={open}
       >
-        <span style={{ fontSize: 18 }}>{currentLanguage.flag}</span>
-        <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-semibold)' }}>
-          {lang.toUpperCase()}
-        </span>
+        <Icon name="globe" size={14} />
+        <span className="chip-text">{lang.toUpperCase()}</span>
+        <Icon name="chevron-down" size={14} className="muted" />
       </button>
 
-      {open && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 4px)',
-            right: 0,
-            background: 'var(--bg-elevated-1)',
-            border: '1px solid var(--border-default)',
-            borderRadius: 'var(--r-md)',
-            boxShadow: 'var(--shadow-lg)',
-            zIndex: 10000,
-            minWidth: 200,
-            maxHeight: 400,
-            overflowY: 'auto',
-            animation: 'slideUp var(--t-fast)',
-          }}
-        >
-          {languages.map((l) => (
-            <button
-              key={l.code}
-              className="ghost"
-              onClick={() => handleSelect(l.code)}
-              style={{
-                width: '100%',
-                justifyContent: 'flex-start',
-                gap: 'var(--sp-2)',
-                padding: 'var(--sp-2) var(--sp-3)',
-                minHeight: 36,
-                background: l.code === lang ? 'var(--accent-soft)' : 'transparent',
-                color: l.code === lang ? 'var(--accent)' : 'var(--text-primary)',
-                fontWeight: l.code === lang ? 'var(--fw-semibold)' : 'var(--fw-normal)',
-                borderRadius: 0,
-                borderBottom: '1px solid var(--border-subtle)',
-              }}
-            >
-              <span style={{ fontSize: 18 }}>{l.flag}</span>
-              <span style={{ flex: 1, textAlign: 'left' }}>{l.name}</span>
-              {l.code === lang && <span style={{ color: 'var(--accent)' }}>✓</span>}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+      {open &&
+        portal(
+          <div
+            ref={menuRef}
+            className="menu-panel"
+            role="menu"
+            aria-label="Language"
+            data-testid="language-menu"
+            style={menuStyle}
+          >
+            <div className="menu-section">Language</div>
+            {languages.map((l) => (
+              <button
+                key={l.code}
+                className={`menu-item ${l.code === lang ? 'active' : ''}`}
+                role="menuitemradio"
+                aria-checked={l.code === lang}
+                onClick={() => select(l.code)}
+                lang={l.code}
+              >
+                {/* Flags stay as emoji here for the same reason as in `HeaderMenu`:
+                    a national flag has no honest monochrome stroke silhouette. */}
+                <span className="flag" aria-hidden="true">
+                  {l.flag}
+                </span>
+                <span className="truncate">{l.name}</span>
+                {l.code === lang && <Icon name="check" size={16} className="menu-item-note" />}
+              </button>
+            ))}
+          </div>,
+        )}
+    </>
   );
 }

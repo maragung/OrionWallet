@@ -1,16 +1,16 @@
 import { useState, type ReactNode } from 'react';
+import { Icon } from './icons/Icon';
 
 /**
  * Reusable tooltip — shows help text on hover/focus.
  *
  * Usage:
  *   <Tooltip text="The recipient's Octra address (starts with 'oct')">
- *     <span className="help-icon">?</span>
+ *     <span className="info-hint">…</span>
  *   </Tooltip>
  *
- *   <Tooltip text="Enter 8-64 chars. If under 15, must include letter + digit + symbol">
- *     <label>PIN <Tooltip text="...">ⓘ</Tooltip></label>
- *   </Tooltip>
+ * For the common case — a small info glyph next to a field label — use `InfoHint`
+ * below rather than assembling the wrapper by hand.
  */
 
 interface TooltipProps {
@@ -18,57 +18,27 @@ interface TooltipProps {
   children: ReactNode;
   /** Position of the tooltip relative to trigger */
   position?: 'top' | 'bottom' | 'left' | 'right';
-  /** Max width of the tooltip content */
-  maxWidth?: number;
 }
 
-export function Tooltip({ text, children, position = 'top', maxWidth = 280 }: TooltipProps) {
+export function Tooltip({ text, children, position = 'top' }: TooltipProps) {
   const [visible, setVisible] = useState(false);
-
-  const positionStyles: Record<string, React.CSSProperties> = {
-    top: {
-      bottom: '100%',
-      left: '50%',
-      transform: 'translateX(-50%)',
-      marginBottom: 'var(--sp-2)',
-    },
-    bottom: { top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 'var(--sp-2)' },
-    left: { right: '100%', top: '50%', transform: 'translateY(-50%)', marginRight: 'var(--sp-2)' },
-    right: { left: '100%', top: '50%', transform: 'translateY(-50%)', marginLeft: 'var(--sp-2)' },
-  };
 
   return (
     <span
-      style={{ position: 'relative', display: 'inline-flex', cursor: 'help' }}
+      className="tooltip-wrap"
+      /* The wrapper is what receives focus, so it is what a screen reader
+         announces — without a name it would be an unlabelled stop that reads as
+         nothing at all. */
+      aria-label={text}
+      tabIndex={0}
       onMouseEnter={() => setVisible(true)}
       onMouseLeave={() => setVisible(false)}
       onFocus={() => setVisible(true)}
       onBlur={() => setVisible(false)}
-      tabIndex={0}
     >
       {children}
       {visible && (
-        <span
-          role="tooltip"
-          style={{
-            position: 'absolute',
-            ...positionStyles[position],
-            background: 'var(--bg-elevated-3)',
-            color: 'var(--text-primary)',
-            padding: 'var(--sp-2) var(--sp-3)',
-            borderRadius: 'var(--r-md)',
-            fontSize: 'var(--fs-xs)',
-            lineHeight: 1.4,
-            whiteSpace: 'normal',
-            maxWidth,
-            width: 'max-content',
-            boxShadow: 'var(--shadow-lg)',
-            border: '1px solid var(--border-default)',
-            zIndex: 10000,
-            pointerEvents: 'none',
-            animation: 'fadeIn var(--t-fast)',
-          }}
-        >
+        <span role="tooltip" className={`tooltip-pop ${position}`}>
           {text}
         </span>
       )}
@@ -77,27 +47,36 @@ export function Tooltip({ text, children, position = 'top', maxWidth = 280 }: To
 }
 
 /**
- * Inline help badge — shows a small "?" icon with tooltip.
+ * The info glyph that sits beside a field label and explains the field.
+ *
+ * It exists as a component because the same three-element assembly was repeated
+ * beside almost every input in the app, and because the glyph inside must stay
+ * unfocusable and hidden from assistive tech: `Tooltip` is already the focus stop
+ * and already carries the text as its accessible name.
+ */
+export function InfoHint({
+  text,
+  position,
+}: {
+  text: string;
+  position?: TooltipProps['position'];
+}) {
+  return (
+    <Tooltip text={text} position={position}>
+      <span className="info-hint" aria-hidden="true">
+        <Icon name="info" size={14} />
+      </span>
+    </Tooltip>
+  );
+}
+
+/**
+ * Inline help badge — the same hint drawn as a small `?`.
  */
 export function HelpBadge({ text }: { text: string }) {
   return (
     <Tooltip text={text}>
-      <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 16,
-          height: 16,
-          borderRadius: '50%',
-          background: 'var(--bg-elevated-3)',
-          color: 'var(--text-muted)',
-          fontSize: 10,
-          fontWeight: 'var(--fw-semibold)',
-          marginLeft: 'var(--sp-1)',
-          verticalAlign: 'middle',
-        }}
-      >
+      <span className="help-badge" aria-hidden="true">
         ?
       </span>
     </Tooltip>

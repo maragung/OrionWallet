@@ -30,6 +30,8 @@ import { hexEncode } from '../crypto/hex';
 import { listAccounts, unlockAccount } from '../api/wallet-api';
 import { fetchNextNonce } from '../api/nonce';
 import { PinModal } from '../components/PinModal';
+import { Icon } from '../components/icons/Icon';
+import { networkIcon } from '../components/icons/network-icon';
 import { patchSettings } from '../wallet/storage';
 import {
   activeNetworkInfo,
@@ -616,12 +618,13 @@ export function ConnectApp() {
 
   if (!params) {
     return (
-      <div style={pageStyle}>
-        <div className="card" style={{ maxWidth: 420 }}>
-          <div className="card-title">Invalid connection request</div>
-          <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-            This page must be opened by a dApp through the Octra Wallet SDK.
-          </p>
+      <div className="connect-shell">
+        <div className="card connect-panel">
+          <div className="card-title">
+            <Icon name="alert-triangle" size={18} />
+            Invalid connection request
+          </div>
+          <p className="hint">This page must be opened by a dApp through the Octra Wallet SDK.</p>
         </div>
       </div>
     );
@@ -639,7 +642,7 @@ export function ConnectApp() {
       );
     }
     return (
-      <div style={pageStyle}>
+      <div className="connect-shell">
         {showCreate ? (
           <CreateWallet onBack={() => setShowCreate(false)} />
         ) : (
@@ -673,23 +676,13 @@ export function ConnectApp() {
   const networkOptions = allNetworks(settings?.customNetworks);
   // An id with no definition left (custom network deleted while connected)
   // would otherwise render as a blank <select>.
-  const activeIsKnown = networkOptions.some((n) => n.id === activeNetwork);
-
-  const selectStyle: React.CSSProperties = {};
+  const activeDef = networkOptions.find((n) => n.id === activeNetwork);
+  const activeIsKnown = activeDef !== undefined;
 
   return (
-    <div style={pageStyle}>
+    <div className="connect-shell">
       {/* Top bar: dropdowns + theme toggle */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 12,
-          right: 12,
-          display: 'flex',
-          gap: 6,
-          alignItems: 'center',
-        }}
-      >
+      <div className="connect-topbar">
         {accounts.length > 1 && !accountPickerVisible && (
           <select
             value={displayAddr}
@@ -704,25 +697,29 @@ export function ConnectApp() {
             ))}
           </select>
         )}
-        <select
-          value={activeNetwork}
-          onChange={(e) => void handleSwitchNetwork(e.target.value)}
-          className="connect-select"
-          style={selectStyle}
-          title={settings?.rpcUrl ?? 'Network'}
-        >
-          {!activeIsKnown && <option value={activeNetwork}>{`${activeNetwork} (unknown)`}</option>}
-          {networkOptions.map((opt) => (
-            <option key={opt.id} value={opt.id}>
-              {`${opt.icon ?? '🌐'} ${opt.name}${opt.custom ? ' (custom)' : ''}`}
-            </option>
-          ))}
-        </select>
+        <span className="select-with-icon compact">
+          <Icon name={networkIcon(activeDef ?? { id: activeNetwork })} size={14} />
+          <select
+            value={activeNetwork}
+            onChange={(e) => void handleSwitchNetwork(e.target.value)}
+            className="connect-select"
+            title={settings?.rpcUrl ?? 'Network'}
+          >
+            {!activeIsKnown && (
+              <option value={activeNetwork}>{`${activeNetwork} (unknown)`}</option>
+            )}
+            {networkOptions.map((opt) => (
+              <option key={opt.id} value={opt.id}>
+                {`${opt.name}${opt.custom ? ' (custom)' : ''}`}
+              </option>
+            ))}
+          </select>
+        </span>
         <ThemeToggle />
       </div>
 
       {pending ? (
-        <div style={overlayStyle}>
+        <div className="connect-overlay">
           <ApprovalPrompt
             request={pending.request}
             onDecision={pending.resolve}
@@ -736,70 +733,49 @@ export function ConnectApp() {
           />
         </div>
       ) : (
-        <div style={{ maxWidth: 420, width: '100%' }}>
+        <div className="connect-panel">
           {/* Connected header */}
-          <div className="card" style={{ textAlign: 'center' }}>
-            <div className="card-title" style={{ justifyContent: 'center', gap: 8 }}>
-              <span style={{ fontSize: 18 }}>&#128279;</span>
+          <div className="card connect-head">
+            <div className="card-title centered">
+              <Icon name={handshakeDone ? 'link' : 'loader'} size={18} />
               {handshakeDone ? 'Connected' : 'Establishing secure channel\u2026'}
             </div>
-            <p
-              className="mono"
-              style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: '4px 0 0' }}
-            >
-              {params.origin}
-            </p>
+            <p className="mono connect-origin">{params.origin}</p>
             <button
+              type="button"
               onClick={() => setShowDisconnectConfirm(true)}
-              className="ghost"
-              style={{ marginTop: 12, width: '100%' }}
+              className="ghost connect-disconnect"
               disabled={!sessionId}
             >
+              <Icon name="x-circle" size={16} />
               {t('connect.disconnect')}
             </button>
           </div>
 
           {/* Active wallet info */}
           <div className="card">
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: 8,
-              }}
-            >
-              <strong style={{ fontSize: 'var(--fs-sm)' }}>
+            <div className="between connect-wallet-head">
+              <strong className="connect-wallet-label">
                 {sessionAccount && sessionAccount !== wallet?.addr
                   ? 'Session Account'
                   : 'Active Wallet'}
               </strong>
-              <span className="pill ok" style={{ fontSize: 11 }}>
+              <span className="tag ok">
+                <Icon name="unlock" size={12} />
                 unlocked
               </span>
             </div>
-            <div
-              className="mono"
-              style={{
-                fontSize: 'var(--fs-xs)',
-                color: 'var(--text-muted)',
-                wordBreak: 'break-all',
-              }}
-            >
-              {displayAddr}
-            </div>
+            <div className="mono connect-addr">{displayAddr}</div>
             {sessionAccount && sessionAccount !== wallet?.addr && (
-              <div style={{ marginTop: 8, fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
+              <div className="connect-note">
                 Connected with a different account than your active wallet (
                 {wallet?.addr.slice(0, 8)}…). Your wallet account is unchanged.
               </div>
             )}
             {balance && (
-              <div style={{ marginTop: 8, fontSize: 'var(--fs-sm)' }}>
+              <div className="connect-balance">
                 Balance: <strong>{balance.balance}</strong> OCT
-                <span style={{ marginLeft: 12, color: 'var(--text-muted)' }}>
-                  nonce: {balance.nonce}
-                </span>
+                <span className="muted connect-nonce">nonce: {balance.nonce}</span>
               </div>
             )}
           </div>
@@ -833,26 +809,3 @@ export function ConnectApp() {
     </div>
   );
 }
-
-const pageStyle: React.CSSProperties = {
-  minHeight: '100vh',
-  // dvh fallback: iOS Safari's 100vh includes the dynamic toolbar, so the
-  // connect popup could overflow. Matches UnlockWallet / CreateWallet.
-  ...({ minHeight: '100dvh' } as React.CSSProperties),
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: 'var(--sp-4)',
-  position: 'relative',
-};
-
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  background: 'rgba(0, 0, 0, 0.5)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 2000,
-  padding: 'var(--sp-4)',
-};

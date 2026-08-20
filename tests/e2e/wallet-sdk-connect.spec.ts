@@ -150,35 +150,39 @@ async function unlockPopup(popup: Page, pin: string): Promise<void> {
 /** The popup may hand its session port to the main wallet window after a
  * successful connect (see ConnectApp maybeHandoff), so a later approval prompt
  * can show in EITHER the popup (still hosting) or the main window (adopted).
- * This approves the prompt wherever it appears first. */
+ * This resolves to whichever window shows it first; `approveInAnyWindow` below
+ * is the common case, and a test that needs to interact with the prompt itself
+ * (focus, Escape) uses this directly. */
+async function promptWindow(page: Page, popup: Page, promptTitle: string): Promise<Page> {
+  /* The card's own title, not any text on the card. `getByText` is a case-insensitive
+     substring match, so `getByText('Sign Transfer')` also matched that prompt's
+     "Sign transfer" button — two hits, a strict-mode violation, and because the wait is
+     wrapped in `.catch(() => null)` it read as "the prompt never appeared". */
+  const title = (p: Page) =>
+    p.locator('.approval-card .card-title').filter({ hasText: promptTitle });
+  const popupWait = popup.isClosed()
+    ? Promise.resolve(null)
+    : title(popup)
+        .waitFor({ timeout: 12_000 })
+        .then(() => popup)
+        .catch(() => null);
+  const mainWait = title(page)
+    .waitFor({ timeout: 12_000 })
+    .then(() => page)
+    .catch(() => null);
+  const which = await Promise.race([popupWait, mainWait]);
+  if (!which) throw new Error(`Approval prompt "${promptTitle}" did not appear in any window`);
+  return which;
+}
+
 async function approveInAnyWindow(
   page: Page,
   popup: Page,
   promptTitle: string,
   confirmButton: string,
 ): Promise<void> {
-  const mainPrompt = page.getByText(promptTitle);
-  const popupWait = popup.isClosed()
-    ? Promise.resolve(null)
-    : popup
-        .getByText(promptTitle)
-        .waitFor({ timeout: 12_000 })
-        .then(() => 'popup' as const)
-        .catch(() => null);
-  const mainWait = mainPrompt
-    .waitFor({ timeout: 12_000 })
-    .then(() => 'main' as const)
-    .catch(() => null);
-  const which = await Promise.race([popupWait, mainWait]);
-  if (which === 'popup') {
-    await popup.getByRole('button', { name: confirmButton }).click();
-    return;
-  }
-  if (which === 'main') {
-    await page.getByRole('button', { name: confirmButton }).click();
-    return;
-  }
-  throw new Error(`Approval prompt "${promptTitle}" did not appear in any window`);
+  const host = await promptWindow(page, popup, promptTitle);
+  await host.getByRole('button', { name: confirmButton }).click();
 }
 
 function forwardConsole(page: Page, tag: string) {
@@ -302,6 +306,106 @@ test.describe('Wallet SDK connect flow', () => {
     expect(await connectPromise).toMatchObject({ ok: false, code: 'USER_REJECTED' });
   });
 
+  /**
+   * `signTransfer` is the one approval that moves value, and it was the only prompt the
+   * suite never opened. It is asserted here end to end: what the prompt says, that Escape
+   * alone rejects it, and that approval returns a *signed* transaction rather than a
+   * broadcast one.
+   */
+  test('signTransfer prompts with the exact transfer, rejects on Escape, signs on approval', async ({
+    page,
+    context,
+  }) => {
+    /* The nonce is resolved before the prompt opens, so the prompt can name the exact
+       transaction that will be signed — one real RPC round trip, and this suite otherwise
+       never touches the network. Stubbing it keeps the test hermetic and makes the
+       displayed nonce an exact expectation instead of whatever devnet happens to hold.
+
+       Only `octra_balance` is answered. Answering every method with the same payload
+       instead handed the fee-schedule call a balance object, and `fees.recommended`
+       being undefined took Balance's panel down inside its error boundary — a stub that
+       lies about the shape of an unrelated method breaks the window under test. Every
+       other call is aborted, which is exactly what the rest of this suite sees offline. */
+    await context.route('https://devnet.octrascan.io/**', async (route) => {
+      const method = (route.request().postDataJSON() as { method?: string } | null)?.method;
+      if (method !== 'octra_balance') return route.abort();
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          result: { addr: 'stub', balance: '10.0', nonce: 41, has_public_key: true },
+        }),
+      });
+    });
+
+    await setupWalletAndDriver(page);
+
+    const [popup] = await Promise.all([
+      context.waitForEvent('page'),
+      page.evaluate(() => (window as unknown as { __wallet: { open(): boolean } }).__wallet.open()),
+    ]);
+    forwardConsole(popup, 'popup');
+    await unlockPopup(popup, 'Pass1word!abc');
+    await page.evaluate(() =>
+      (window as unknown as { __wallet: { whenReady(): Promise<boolean> } }).__wallet.whenReady(),
+    );
+
+    const connectPromise = page.evaluate(() =>
+      (
+        window as unknown as { __wallet: { req(m: string, p: unknown): Promise<unknown> } }
+      ).__wallet.req('wallet_connect', { origin: location.origin }),
+    );
+    await approveInAnyWindow(page, popup, 'Connection Request', 'Connect');
+    await connectPromise;
+
+    /** A valid Octra address that is not the wallet's own — a self-send is refused earlier. */
+    const RECIPIENT = 'oct39TH6PmokBGXVRibeAThZiomaweFqR5amvKpByTBqbhQ';
+
+    const askToSign = () =>
+      page.evaluate(async (to) => {
+        try {
+          const r = await (
+            window as unknown as { __wallet: { req(m: string, p: unknown): Promise<unknown> } }
+          ).__wallet.req('wallet_signTransfer', { to, amount: '1.5', message: 'e2e memo' });
+          return { ok: true, result: r as Record<string, unknown> };
+        } catch (e) {
+          return { ok: false, code: (e as { code?: string }).code };
+        }
+      }, RECIPIENT);
+
+    // ── First attempt: read the prompt, then reject it from the keyboard alone.
+    const rejectedPromise = askToSign();
+    const host = await promptWindow(page, popup, 'Sign Transfer');
+    // What the user is being asked to sign, in the numbers they were shown.
+    await expect(host.locator('.approval-amount')).toContainText('1.5');
+    // `.first()` is the To row: the raw-payload block below repeats these values.
+    await expect(host.getByText(RECIPIENT).first()).toBeVisible();
+    // Stubbed confirmed nonce 41, so the transaction takes 42.
+    await expect(host.locator('.approval-card')).toContainText('42');
+    await expect(host.getByText('e2e memo').first()).toBeVisible();
+
+    /* Reject holds focus on mount, so a keystroke arriving mid-prompt cannot sign: the
+       accidental outcome has to be the safe one. */
+    expect(await host.evaluate(() => document.activeElement?.textContent)).toBe('Reject');
+
+    await host.keyboard.press('Escape');
+    expect(await rejectedPromise).toMatchObject({ ok: false, code: 'USER_REJECTED' });
+
+    // ── Second attempt: approve, and the site gets a signature back — not a broadcast.
+    const signedPromise = askToSign();
+    await approveInAnyWindow(page, popup, 'Sign Transfer', 'Sign transfer');
+    const signed = (await signedPromise) as {
+      ok: boolean;
+      result: { signedTransaction?: unknown; to?: string; nonce?: number; note?: string };
+    };
+    expect(signed.ok).toBe(true);
+    expect(signed.result.signedTransaction).toBeTruthy();
+    expect(signed.result.to).toBe(RECIPIENT);
+    expect(signed.result.nonce).toBe(42);
+  });
+
   test('multi-account connect lets the user pick which account to connect', async ({
     page,
     context,
@@ -315,8 +419,10 @@ test.describe('Wallet SDK connect flow', () => {
       .getByRole('button', { name: /Settings/i })
       .first()
       .click();
-    await page.getByRole('button', { name: /Accounts/i }).click();
-    await page.click('button:has-text("+ Derive New")');
+    // Settings' sections are a tablist now, so this is a tab and not a button.
+    await page.getByRole('tab', { name: /Accounts/i }).click();
+    // The leading "+" is a plus icon now, so match on the words only.
+    await page.click('button:has-text("Derive New")');
     await page.fill('input[id="dname"]', 'Account B');
     await page.fill('input[id="didx"]', '1');
     await page.fill('input[id="dpin"]', 'Pass1word!abc');

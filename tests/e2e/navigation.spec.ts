@@ -39,7 +39,10 @@ test.describe('Navigation', () => {
 
   test('contracts tab shows deploy/call UI', async ({ page }) => {
     await page.click('.nav-item:has-text("Deploy")');
-    await expect(page.locator('.card-title').filter({ hasText: 'Smart Contracts' })).toBeVisible();
+    /* Every view now opens with a `PageHead` — one `<h1 class="page-title">` — instead of
+       putting its name in the first card's `.card-title`. `.card-title` still exists, but
+       it names a card inside the page, never the page itself. */
+    await expect(page.locator('.page-title')).toContainText('Smart Contracts');
     // Tab bar has Deploy and Call tabs
     await expect(page.locator('.tab-bar .tab').filter({ hasText: 'Deploy' })).toBeVisible();
     await expect(page.locator('.tab-bar .tab').filter({ hasText: 'Call' })).toBeVisible();
@@ -47,17 +50,25 @@ test.describe('Navigation', () => {
 
   test('stealth tab shows stealth send', async ({ page }) => {
     await page.click('.nav-item:has-text("Stealth")');
-    await expect(page.locator('.card-title').filter({ hasText: 'Stealth Send' })).toBeVisible();
+    await expect(page.locator('.page-title')).toContainText('Stealth Send');
   });
 
-  test('settings tab shows settings', async ({ page }) => {
+  test('settings tab shows settings, split into sections', async ({ page }) => {
     await page.click('.nav-item:has-text("Settings")');
+    await expect(page.locator('.page-title')).toContainText('Settings');
+
+    // Settings opens on General; these three cards are what that section holds.
     await expect(page.locator('.card-title').filter({ hasText: 'Appearance' })).toBeVisible();
     await expect(page.locator('.card-title').filter({ hasText: 'Network Settings' })).toBeVisible();
+    await expect(page.locator('.card-title').filter({ hasText: 'PVAC' })).toBeVisible();
+
+    /* The panel used to be one 1100-line scroll holding all of these at once. The most
+       destructive control in the wallet — exporting the raw secret key — is now a
+       deliberate two-step: pick Security, then act. */
+    await page.getByRole('tab', { name: 'Security' }).click();
     await expect(
       page.locator('.card-title').filter({ hasText: 'Export Private Key' }),
     ).toBeVisible();
-    await expect(page.locator('.card-title').filter({ hasText: 'PVAC' })).toBeVisible();
   });
 
   test('copy address button works', async ({ page }, testInfo) => {
@@ -68,8 +79,10 @@ test.describe('Navigation', () => {
     // Grant clipboard permissions
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
 
-    // The copy button has aria-label="Copy" (from i18n common.copy)
-    await page.click('button[aria-label="Copy"]');
+    /* The address copy button says what it copies. It used to be a bare "Copy", which is
+       what a screen reader read out — one of several unlabelled "Copy" buttons on the
+       page, with nothing to tell them apart. */
+    await page.click('button[aria-label="Copy address"]');
     await page.waitForTimeout(500);
     const clipboard = await page.evaluate(() => navigator.clipboard.readText());
     expect(clipboard).toMatch(/^oct[1-9A-HJ-NP-Za-km-z]{44}$/);

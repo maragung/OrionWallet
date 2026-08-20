@@ -3,6 +3,8 @@ import { useWalletStore } from '../store/wallet-store';
 import { useI18n } from '../i18n/useI18n';
 import { allNetworks, getNetworkDef, type NetworkDef, type NetworkId } from '../wallet/networks';
 import { useAnchoredMenu } from '../hooks/useAnchoredMenu';
+import { Icon } from './icons/Icon';
+import { networkIcon } from './icons/network-icon';
 
 /**
  * Clickable network pill in the top bar.
@@ -55,105 +57,64 @@ export function NetworkSwitcher() {
   };
 
   return (
-    <div>
+    <>
       <button
         ref={anchorRef}
-        className="network-pill"
+        className="chip network-pill"
         onClick={() => setOpen(!open)}
         title={settings?.rpcUrl ?? ''}
         aria-label={`${t('network.label')}: ${currentDef.name}`}
+        aria-haspopup="menu"
         aria-busy={switching}
         aria-expanded={open}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--sp-1)',
-          cursor: 'pointer',
-          border: '1px solid var(--border-subtle)',
-          opacity: switching ? 0.6 : 1,
-        }}
       >
-        <span>{currentDef.icon ?? '🌐'}</span>
-        <span>{currentDef.name.toUpperCase()}</span>
-        <span style={{ fontSize: 10, opacity: 0.7 }}>▾</span>
+        <Icon
+          name={switching ? 'loader' : networkIcon(currentDef)}
+          size={14}
+          className={switching ? 'icon-spin' : undefined}
+        />
+        <span className="chip-text">{currentDef.name.toUpperCase()}</span>
+        <Icon name="chevron-down" size={14} className="muted" />
       </button>
 
       {open &&
         portal(
           <div
             ref={menuRef}
+            className="menu-panel"
+            role="menu"
+            aria-label={t('network.label')}
             data-testid="network-menu"
-            style={{
-              background: 'var(--bg-elevated-1)',
-              border: '1px solid var(--border-default)',
-              borderRadius: 'var(--r-md)',
-              boxShadow: 'var(--shadow-lg)',
-              overflow: 'hidden',
-              animation: 'slideUp var(--t-fast)',
-              ...menuStyle,
-            }}
+            style={menuStyle}
           >
-            <div
-              style={{
-                padding: 'var(--sp-2) var(--sp-3)',
-                fontSize: 'var(--fs-xs)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                color: 'var(--text-muted)',
-                fontWeight: 'var(--fw-semibold)',
-                borderBottom: '1px solid var(--border-subtle)',
-              }}
-            >
-              {t('network.label')}
-            </div>
+            <div className="menu-section">{t('network.label')}</div>
 
             {networks.map((net) => {
               const isActive = net.id === currentId;
               return (
                 <button
                   key={net.id}
-                  className="ghost"
+                  className={`menu-item two-line ${isActive ? 'active' : ''}`}
+                  role="menuitemradio"
+                  aria-checked={isActive}
                   onClick={() => void select(net)}
-                  style={{
-                    width: '100%',
-                    justifyContent: 'flex-start',
-                    gap: 'var(--sp-2)',
-                    padding: 'var(--sp-2) var(--sp-3)',
-                    minHeight: 44,
-                    background: isActive ? 'var(--accent-soft)' : 'transparent',
-                    color: isActive ? 'var(--accent)' : 'var(--text-primary)',
-                    fontWeight: isActive ? 'var(--fw-semibold)' : 'var(--fw-normal)',
-                    borderRadius: 0,
-                    borderBottom: '1px solid var(--border-subtle)',
-                    textAlign: 'left',
-                  }}
+                  title={net.rpcUrl}
                 >
-                  <span style={{ fontSize: 16 }}>{net.icon ?? '🌐'}</span>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block' }}>{net.name.toUpperCase()}</span>
-                    <span
-                      className="mono"
-                      style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}
-                    >
+                  <Icon name={networkIcon(net)} size={18} />
+                  <span className="menu-item-main">
+                    <span>{net.name.toUpperCase()}</span>
+                    <span className="menu-item-sub mono">
                       {net.rpcUrl.replace(/^https?:\/\//, '')}
                     </span>
                   </span>
-                  {isActive && <span style={{ color: 'var(--accent)' }}>✓</span>}
+                  {isActive && <Icon name="check" size={16} />}
                 </button>
               );
             })}
 
-            <div
-              style={{
-                padding: 'var(--sp-2) var(--sp-3)',
-                fontSize: 'var(--fs-xs)',
-                color: 'var(--text-muted)',
-              }}
-            >
-              {t('network.appliedInstantly')}
-            </div>
+            <div className="menu-note">{t('network.appliedInstantly')}</div>
           </div>,
         )}
-    </div>
+    </>
   );
 }

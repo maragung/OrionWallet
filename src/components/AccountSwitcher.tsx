@@ -13,6 +13,8 @@ import {
 import type { ManifestEntry } from '../wallet/storage';
 import { isValidAddress } from '../crypto/address';
 import { PinModal } from './PinModal';
+import { ConfirmDialog } from './ConfirmDialog';
+import { Icon } from './icons';
 
 export function AccountSwitcher() {
   const { wallet, setWallet, lock, pushToast } = useWalletStore();
@@ -27,6 +29,8 @@ export function AccountSwitcher() {
   const [pin, setPin] = useState('');
   /** Account awaiting a PIN before it can become active. */
   const [pendingSwitch, setPendingSwitch] = useState<ManifestEntry | null>(null);
+  /** Account awaiting confirmation before it is deleted from the manifest. */
+  const [pendingRemove, setPendingRemove] = useState<ManifestEntry | null>(null);
 
   const refresh = async () => {
     try {
@@ -121,12 +125,7 @@ export function AccountSwitcher() {
   };
 
   const handleRemove = async (addr: string) => {
-    if (
-      !confirm(
-        `Remove account ${addr.slice(0, 16)}… from manifest and delete its encrypted wallet data?`,
-      )
-    )
-      return;
+    setPendingRemove(null);
     panelLoading.show('Removing account', 'Deleting the account from local storage…');
     try {
       await removeAccount(addr);
@@ -147,43 +146,53 @@ export function AccountSwitcher() {
     }
   };
 
+  const shortAddr = (a: string) => `${a.slice(0, 12)}…${a.slice(-8)}`;
+  const watchInvalid = Boolean(watchAddr.trim()) && !isValidAddress(watchAddr.trim());
+
   return (
     <>
       <div className="card">
         <div className="card-header">
-          <div className="card-title">HD Accounts</div>
-          <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+          <div className="card-title">
+            <Icon name="users" size={18} /> HD Accounts
+          </div>
+          <div className="row tight">
             <button
-              className="ghost"
+              className="ghost btn-sm"
               onClick={() => {
                 setShowWatch(!showWatch);
                 setShowDerive(false);
               }}
             >
-              {showWatch ? 'Cancel' : '👁 Watch Address'}
+              {showWatch ? (
+                'Cancel'
+              ) : (
+                <>
+                  <Icon name="eye" size={14} /> Watch Address
+                </>
+              )}
             </button>
             <button
-              className="ghost"
+              className="ghost btn-sm"
               onClick={() => {
                 setShowDerive(!showDerive);
                 setShowWatch(false);
               }}
             >
-              {showDerive ? 'Cancel' : '+ Derive New'}
+              {showDerive ? (
+                'Cancel'
+              ) : (
+                <>
+                  <Icon name="plus" size={14} /> Derive New
+                </>
+              )}
             </button>
           </div>
         </div>
 
         {showWatch && (
-          <div
-            style={{
-              marginBottom: 16,
-              padding: 16,
-              background: 'var(--bg-tertiary)',
-              borderRadius: 8,
-            }}
-          >
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+          <div className="inset-panel">
+            <div className="card-desc">
               Track any Octra address without its keys. Balance, tokens and history work; sending
               and signing are refused.
             </div>
@@ -197,11 +206,8 @@ export function AccountSwitcher() {
                 placeholder="oct..."
                 autoComplete="off"
                 spellCheck={false}
-                style={
-                  watchAddr && !isValidAddress(watchAddr.trim())
-                    ? { borderColor: 'var(--error)' }
-                    : undefined
-                }
+                aria-invalid={watchInvalid}
+                data-invalid={watchInvalid ? 'true' : undefined}
               />
             </div>
             <div className="form-row">
@@ -227,14 +233,7 @@ export function AccountSwitcher() {
         )}
 
         {showDerive && (
-          <div
-            style={{
-              marginBottom: 16,
-              padding: 16,
-              background: 'var(--bg-tertiary)',
-              borderRadius: 8,
-            }}
-          >
+          <div className="inset-panel">
             <div className="form-row">
               <label htmlFor="dname">Account Name</label>
               <input
@@ -274,81 +273,141 @@ export function AccountSwitcher() {
         )}
 
         {accounts.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>
-            No accounts in manifest.
+          <div className="empty-state compact">
+            <div className="icon">
+              <Icon name="users" size={28} />
+            </div>
+            <div className="title">No accounts in manifest</div>
           </div>
         ) : (
-          <div className="table-scroll">
-            <table className="history-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Address</th>
-                  <th>Index</th>
-                  <th>Active</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {accounts.map((a) => (
-                  <tr key={a.addr}>
-                    <td>
-                      {a.name}
-                      {a.watchOnly && (
-                        <span
-                          className="tag warn"
-                          style={{ marginLeft: 6 }}
-                          title="No keys — cannot sign"
-                        >
-                          👁 watch-only
-                        </span>
-                      )}
-                    </td>
-                    <td className="mono" title={a.addr}>
-                      {a.addr.slice(0, 12)}…{a.addr.slice(-8)}
-                    </td>
-                    <td className="mono">{a.watchOnly ? '—' : a.index}</td>
-                    <td>
-                      {a.addr === wallet.addr ? (
-                        <span className="tag ok">active</span>
-                      ) : (
-                        <button className="ghost" onClick={() => void handleSwitch(a)}>
+          <>
+            {/* Phones get cards, wider screens get the table. Both are rendered and CSS
+                picks one, so there is no JS breakpoint to keep in step with the queries. */}
+            <div className="list-rows list-only-phone">
+              {accounts.map((a) => {
+                const isActive = a.addr === wallet.addr;
+                return (
+                  <div key={a.addr} className="list-row">
+                    <span className={`list-mark ${isActive ? 'in' : ''}`}>
+                      <Icon name={a.watchOnly ? 'eye' : 'user'} size={16} />
+                    </span>
+                    <div className="list-main">
+                      <div className="list-line">
+                        <span className="list-title">{a.name}</span>
+                        {isActive && <span className="tag ok">active</span>}
+                        {a.watchOnly && (
+                          <span className="tag warn" title="No keys — cannot sign">
+                            watch-only
+                          </span>
+                        )}
+                      </div>
+                      <div className="list-sub mono" title={a.addr}>
+                        {shortAddr(a.addr)}
+                      </div>
+                      <div className="list-sub">
+                        {a.watchOnly ? 'Address only' : `HD index ${a.index}`}
+                      </div>
+                    </div>
+                    <div className="list-actions">
+                      {!isActive && (
+                        <button className="ghost btn-sm" onClick={() => void handleSwitch(a)}>
                           Switch
                         </button>
                       )}
-                    </td>
-                    <td>
                       <button
-                        className="ghost"
-                        onClick={() => handleRemove(a.addr)}
+                        className="icon-btn plain danger"
+                        onClick={() => setPendingRemove(a)}
+                        aria-label={`Remove ${a.name} from manifest`}
                         title="Remove from manifest"
                       >
-                        ✕
+                        <Icon name="trash" size={16} />
                       </button>
-                    </td>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="table-scroll table-only-wide">
+              <table className="history-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Address</th>
+                    <th>Index</th>
+                    <th>Active</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {accounts.map((a) => (
+                    <tr key={a.addr}>
+                      <td>
+                        <span className="row tight">
+                          {a.name}
+                          {a.watchOnly && (
+                            <span className="tag warn" title="No keys — cannot sign">
+                              <Icon name="eye" size={12} /> watch-only
+                            </span>
+                          )}
+                        </span>
+                      </td>
+                      <td className="mono" title={a.addr}>
+                        {shortAddr(a.addr)}
+                      </td>
+                      <td className="mono">{a.watchOnly ? '—' : a.index}</td>
+                      <td>
+                        {a.addr === wallet.addr ? (
+                          <span className="tag ok">active</span>
+                        ) : (
+                          <button className="ghost btn-sm" onClick={() => void handleSwitch(a)}>
+                            Switch
+                          </button>
+                        )}
+                      </td>
+                      <td>
+                        <button
+                          className="icon-btn plain danger"
+                          onClick={() => setPendingRemove(a)}
+                          aria-label={`Remove ${a.name} from manifest`}
+                          title="Remove from manifest"
+                        >
+                          <Icon name="trash" size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
 
-        <div
-          style={{
-            marginTop: 12,
-            padding: 12,
-            background: 'var(--bg-tertiary)',
-            borderRadius: 8,
-            fontSize: 12,
-            color: 'var(--text-muted)',
-          }}
-        >
-          Accounts are derived deterministically from your wallet's BIP39 master seed. The same
-          mnemonic always produces the same set of accounts in the same order. Watch-only entries
-          are just addresses — removing one never deletes key material, because it holds none.
+        <div className="info-box spaced-top">
+          <Icon name="info" size={16} />
+          <div className="info-box-body">
+            Accounts are derived deterministically from your wallet's BIP39 master seed. The same
+            mnemonic always produces the same set of accounts in the same order. Watch-only entries
+            are just addresses — removing one never deletes key material, because it holds none.
+          </div>
         </div>
       </div>
 
+      <ConfirmDialog
+        open={pendingRemove !== null}
+        title="Remove account"
+        message={
+          pendingRemove?.watchOnly
+            ? `Remove "${pendingRemove.name}" from your manifest? It holds no keys, so nothing is destroyed — you can add the address back at any time.`
+            : `Remove "${pendingRemove?.name}" from your manifest and delete its encrypted wallet data from this device? You can restore it from your recovery phrase.`
+        }
+        details={pendingRemove?.addr}
+        confirmLabel="Remove"
+        icon="trash"
+        danger
+        onConfirm={() => void handleRemove(pendingRemove!.addr)}
+        onCancel={() => setPendingRemove(null)}
+      />
       <PinModal
         open={pendingSwitch !== null}
         title="Switch account"

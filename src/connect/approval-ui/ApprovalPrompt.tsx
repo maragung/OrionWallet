@@ -24,8 +24,25 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ApprovalRequest, ApprovalDecision } from '../rpc-handler';
 import { formatAmount } from '../../tx/builder';
+import { Icon, type IconName } from '../../components/icons/Icon';
 
 export type { ApprovalDecision };
+
+/**
+ * The icon beside each prompt's title.
+ *
+ * Deliberately not one generic "signature" glyph for all six: the popup opens
+ * over whatever the user was doing, and the shape at the top is the fastest way
+ * to tell "this site wants to connect" from "this site wants to move funds".
+ */
+const ICONS: Record<ApprovalRequest['kind'], IconName> = {
+  connect: 'link',
+  signMessage: 'signature',
+  signTypedData: 'file-text',
+  approveContract: 'shield-check',
+  signContract: 'file-text',
+  signTransfer: 'send',
+};
 
 export interface SelectableAccount {
   address: string;
@@ -45,33 +62,11 @@ interface Props {
   onSelectAccount?: (address: string) => void;
 }
 
-const card: React.CSSProperties = {
-  background: 'var(--bg-elevated-2)',
-  border: '1px solid var(--border-subtle)',
-  borderRadius: 'var(--r-md)',
-  padding: 'var(--sp-3)',
-  fontSize: 'var(--fs-xs)',
-  fontFamily: 'var(--font-mono)',
-  wordBreak: 'break-word',
-  whiteSpace: 'pre-wrap',
-  maxHeight: 220,
-  overflowY: 'auto',
-};
-
 function OriginBadge({ origin }: { origin: string }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'var(--sp-2)',
-        marginBottom: 'var(--sp-3)',
-      }}
-    >
-      <span style={{ fontSize: 18 }}>🌐</span>
-      <span className="mono" style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
-        {origin}
-      </span>
+    <div className="approval-origin">
+      <Icon name="globe" size={18} />
+      <span className="mono">{origin}</span>
     </div>
   );
 }
@@ -89,43 +84,24 @@ function Row({
   emphasis?: boolean;
 }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        gap: 'var(--sp-3)',
-        padding: 'var(--sp-2) 0',
-        borderBottom: '1px solid var(--border-subtle)',
-        fontSize: 'var(--fs-sm)',
-        alignItems: 'baseline',
-      }}
-    >
-      <span style={{ flex: '0 0 34%', color: 'var(--text-muted)', fontSize: 'var(--fs-xs)' }}>
-        {label}
-      </span>
-      <span
-        className={mono ? 'mono' : undefined}
-        style={{
-          flex: 1,
-          minWidth: 0,
-          wordBreak: 'break-word',
-          color: emphasis ? 'var(--text-primary)' : 'var(--text-secondary)',
-          fontWeight: emphasis ? 'var(--fw-semibold)' : 'var(--fw-normal)',
-        }}
-      >
+    <div className="approval-row">
+      <span className="approval-row-label">{label}</span>
+      <span className={`approval-row-value${emphasis ? ' emphasis' : ''}${mono ? ' mono' : ''}`}>
         {value}
       </span>
     </div>
   );
 }
 
-/** Wrapper for the label/value rows, so the last row has no dangling border. */
+/**
+ * Wrapper for the label/value rows.
+ *
+ * The "last row has no dangling border" rule used to be a `<style>` element
+ * rendered inside this component — one copy per summary, injected at render time.
+ * It is `.approval-row:last-child` in the stylesheet now.
+ */
 function Summary({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 'var(--sp-2)' }}>
-      <style>{`.approval-summary > div:last-child { border-bottom: none; }`}</style>
-      <div className="approval-summary">{children}</div>
-    </div>
-  );
+  return <div className="approval-summary">{children}</div>;
 }
 
 /**
@@ -138,22 +114,17 @@ function Summary({ children }: { children: React.ReactNode }) {
 function RawPayload({ value, label = 'Show raw payload' }: { value: unknown; label?: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div style={{ marginTop: 'var(--sp-2)' }}>
+    <div className="approval-raw">
       <button
         type="button"
-        className="ghost"
+        className="ghost approval-raw-toggle"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        style={{
-          fontSize: 'var(--fs-xs)',
-          padding: 'var(--sp-1) 0',
-          color: 'var(--text-muted)',
-          minHeight: 'auto',
-        }}
       >
-        {open ? '▾' : '▸'} {label}
+        <Icon name={open ? 'chevron-down' : 'chevron-right'} size={14} />
+        {label}
       </button>
-      {open && <div style={card}>{safeJson(value)}</div>}
+      {open && <div className="approval-payload">{safeJson(value)}</div>}
     </div>
   );
 }
@@ -221,15 +192,9 @@ function Actions({
   rejectRef?: React.Ref<HTMLButtonElement>;
 }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        gap: 'var(--sp-2)',
-        justifyContent: 'flex-end',
-        marginTop: 'var(--sp-4)',
-      }}
-    >
+    <div className="form-actions">
       <button
+        type="button"
         ref={rejectRef}
         className="ghost"
         disabled={busy}
@@ -238,6 +203,7 @@ function Actions({
         Reject
       </button>
       <button
+        type="button"
         className={danger ? 'danger' : 'primary'}
         disabled={busy}
         onClick={() => onDecision({ approved: true })}
@@ -303,43 +269,32 @@ export function ApprovalPrompt({
   const showAccountPicker = kind === 'connect' && !!accounts && accounts.length > 1;
 
   return (
-    <div
-      className="card"
-      style={{ maxWidth: 420, width: '100%', margin: '0 auto', boxShadow: 'var(--shadow-xl)' }}
-    >
+    <div className="card approval-card">
       <div className="card-header">
-        <div className="card-title">{title}</div>
+        <div className="card-title">
+          <Icon name={ICONS[kind]} size={18} />
+          {title}
+        </div>
       </div>
 
       <OriginBadge origin={origin} />
 
       {kind === 'connect' && (
         <>
-          <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
+          <p className="approval-lead">
             This site wants to connect to your wallet. It will be able to view your address,
             balance, and network, and to <strong>request</strong> signatures. It can never move
             funds or broadcast transactions — every signature needs your explicit approval.
           </p>
 
           {showAccountPicker && (
-            <div style={{ marginTop: 'var(--sp-3)', marginBottom: 'var(--sp-3)' }}>
-              <label
-                htmlFor="connect-account"
-                style={{
-                  display: 'block',
-                  fontSize: 'var(--fs-xs)',
-                  color: 'var(--text-muted)',
-                  marginBottom: 'var(--sp-2)',
-                }}
-              >
-                Connect with account
-              </label>
+            <div className="form-row approval-field">
+              <label htmlFor="connect-account">Connect with account</label>
               <select
                 id="connect-account"
-                className="connect-select"
+                className="connect-select approval-select"
                 value={selectedAccount ?? ''}
                 onChange={(e) => onSelectAccount?.(e.target.value)}
-                style={{ width: '100%' }}
               >
                 {accounts!.map((a) => (
                   <option key={a.address} value={a.address}>
@@ -351,19 +306,9 @@ export function ApprovalPrompt({
             </div>
           )}
 
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--sp-2)',
-              marginTop: 'var(--sp-3)',
-              fontSize: 'var(--fs-xs)',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-            }}
-          >
+          <label className="check-row approval-trust">
             <input type="checkbox" checked={trust} onChange={(e) => setTrust(e.target.checked)} />
-            Trust this site (skip only this connection prompt next time)
+            <span>Trust this site (skip only this connection prompt next time)</span>
           </label>
           <Actions
             confirmLabel="Connect"
@@ -376,14 +321,15 @@ export function ApprovalPrompt({
 
       {kind === 'signMessage' && (
         <>
-          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginBottom: 6 }}>
-            Message
-          </div>
-          <div style={card}>{String(detail.message ?? '')}</div>
+          <div className="approval-caption">Message</div>
+          <div className="approval-payload">{String(detail.message ?? '')}</div>
           {detail.scheme === 'raw' && (
-            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--warning)', marginTop: 6 }}>
-              ⚠ Untagged signature (<span className="mono">raw</span> scheme). Only sign this if you
-              recognise the site and know why it needs an untagged signature.
+            <p className="field-note warn">
+              <Icon name="alert-triangle" size={14} />
+              <span>
+                Untagged signature (<span className="mono">raw</span> scheme). Only sign this if you
+                recognise the site and know why it needs an untagged signature.
+              </span>
             </p>
           )}
           <Actions confirmLabel="Sign" busy={busy} rejectRef={rejectRef} onDecision={onDecision} />
@@ -416,7 +362,7 @@ export function ApprovalPrompt({
             )}
             <ArgRows args={detail.args} />
           </Summary>
-          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: 6 }}>
+          <p className="field-note">
             You are signing an approval object. It is not submitted here — the site must submit it
             through the wallet.
           </p>
@@ -442,7 +388,7 @@ export function ApprovalPrompt({
             <Row label="Operation" value={String(detail.opType ?? 'program_call')} />
             <ArgRows args={detail.args} />
           </Summary>
-          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: 6 }}>
+          <p className="field-note">
             The wallet signs this program call and returns it to the site. Broadcasting only happens
             inside the wallet UI.
           </p>
@@ -459,17 +405,7 @@ export function ApprovalPrompt({
 
       {kind === 'signTransfer' && (
         <>
-          <div
-            style={{
-              textAlign: 'center',
-              padding: 'var(--sp-3) 0 var(--sp-2)',
-              fontSize: 'var(--fs-xl)',
-              fontWeight: 'var(--fw-bold)',
-            }}
-            className="mono"
-          >
-            {octAmount(detail.amountRaw ?? detail.amount)}
-          </div>
+          <div className="mono approval-amount">{octAmount(detail.amountRaw ?? detail.amount)}</div>
           <Summary>
             <Row label="To" value={String(detail.to ?? '')} emphasis />
             <Row label="Fee" value={octAmount(detail.ou)} />
@@ -478,7 +414,7 @@ export function ApprovalPrompt({
               <Row label="Memo" value={String(detail.message)} mono={false} />
             ) : null}
           </Summary>
-          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: 6 }}>
+          <p className="field-note">
             The wallet signs this transfer and hands it back to the site — it does not send it. Only
             approve if you expect {origin} to move this amount.
           </p>
