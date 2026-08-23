@@ -10,6 +10,7 @@
  * message is rendered inline and the modal stays open so the user can retry.
  */
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { recordPinAttempt, resetPinAttempts } from '../wallet/pin';
 import { Icon } from './icons/Icon';
 
@@ -87,7 +88,7 @@ export function PinModal({
     }
   };
 
-  return (
+  const dialog = (
     <div className="modal-overlay top" onClick={() => !busy && onCancel()}>
       <div
         className="modal-content sm"
@@ -157,4 +158,6 @@ export function PinModal({
       </div>
     </div>
   );
+
+  return typeof document === 'undefined' ? dialog : createPortal(dialog, document.body);
 }

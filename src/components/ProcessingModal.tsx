@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { yieldToPaint, sleep, type ProgressReporter, type StepDescriptor } from '../utils/progress';
 import { Icon } from './icons/Icon';
 
@@ -117,7 +118,7 @@ export function ProcessingModal({
   const completedCount = stages?.filter((s) => s.status === 'done').length ?? 0;
   const totalStages = stages?.length ?? 0;
 
-  return (
+  const dialog = (
     <div className="modal-overlay" onClick={() => dismissible && onClose?.()}>
       <div
         className="modal-content lg"
@@ -256,6 +257,12 @@ export function ProcessingModal({
       </div>
     </div>
   );
+
+  /* Render through a portal: when mounted inside `.app-header` (AccountPicker),
+     that header's backdrop-filter makes it the containing block for
+     `position: fixed`, and its stacking context paints this modal behind the
+     page. document.body is a clean top-level layer. */
+  return typeof document === 'undefined' ? dialog : createPortal(dialog, document.body);
 }
 
 /**

@@ -1,11 +1,37 @@
 import { describe, it, expect } from 'vitest';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
 import { ProcessingModal, type ProcessingStage } from '../../src/components/ProcessingModal';
 import { ENCRYPT_STEPS, DECRYPT_STEPS } from '../../src/api/encrypt';
 import { STEALTH_PREPARE_STEPS } from '../../src/stealth';
 import type { StepDescriptor } from '../../src/utils/progress';
 
-/** Decode the HTML entities that `renderToStaticMarkup` escapes (e.g. `&` → `&amp;`). */
+/** React 18 wants this flag before `act` is used. */
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+/** jsdom has no layout engine, so elements have no scrolling methods to call. */
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}
+
+/**
+ * The modal renders through a portal into document.body (so it escapes
+ * `.app-header`'s stacking context in the app), so the markup is read back from
+ * the whole body rather than the mount node.
+ */
+function render(stages: ProcessingStage[], props: Record<string, unknown> = {}): string {
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  const root = createRoot(host);
+  act(() => {
+    root.render(<ProcessingModal open title="Processing" stages={stages} {...props} />);
+  });
+  const html = document.body.innerHTML;
+  act(() => root.unmount());
+  host.remove();
+  return decodeEntities(html);
+}
+
+/** Decode the HTML entities that serialization escapes (e.g. `&` → `&amp;`). */
 function decodeEntities(html: string): string {
   return html
     .replace(/&amp;/g, '&')
@@ -13,12 +39,6 @@ function decodeEntities(html: string): string {
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#x27;/g, "'");
-}
-
-function render(stages: ProcessingStage[], props: Record<string, unknown> = {}): string {
-  return decodeEntities(
-    renderToStaticMarkup(<ProcessingModal open title="Processing" stages={stages} {...props} />),
-  );
 }
 
 const asPending = (steps: StepDescriptor[]): ProcessingStage[] =>
@@ -83,17 +103,11 @@ describe('ProcessingModal step rendering', () => {
   });
 
   it('hides the step list and shows the summary once successful', () => {
-    const html = decodeEntities(
-      renderToStaticMarkup(
-        <ProcessingModal
-          open
-          title="Encrypting Balance"
-          stages={asPending(ENCRYPT_STEPS)}
-          success
-          successMessage="Encrypted 1.5 OCT"
-        />,
-      ),
-    );
+    const html = render(asPending(ENCRYPT_STEPS), {
+      title: 'Encrypting Balance',
+      success: true,
+      successMessage: 'Encrypted 1.5 OCT',
+    });
     expect(html).toContain('Encrypted 1.5 OCT');
     expect(html).toContain('Success');
     expect(html).not.toContain('Initializing PVAC module');
@@ -109,9 +123,8 @@ describe('ProcessingModal step rendering', () => {
   });
 
   it('renders nothing when closed', () => {
-    const html = renderToStaticMarkup(
-      <ProcessingModal open={false} title="T" stages={asPending(ENCRYPT_STEPS)} />,
-    );
-    expect(html).toBe('');
+    const html = render(asPending(ENCRYPT_STEPS), { open: false, title: 'T' });
+    expect(html).not.toContain('class="modal-overlay"');
+    expect(html).not.toContain('>T<');
   });
 });
