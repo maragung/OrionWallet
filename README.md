@@ -13,7 +13,7 @@
 <p align="center">
   <a href="https://orionwallet.vercel.app">Live App</a> &middot;
   <a href="https://orionwallet.vercel.app/docs">Documentation</a> &middot;
-  <a href="https://orionwallet.vercel.app/demo">Demo dApp</a> &middot;
+  <a href="https://orionwallet.vercel.app/demo/dapp.html">Demo dApp</a> &middot;
   <a href="CHANGELOG.md">Changelog</a> &middot;
   <a href="docs/SECURITY.md">Security</a>
 </p>
@@ -87,7 +87,7 @@ public/
 
 tests/
   e2e/            # Playwright end-to-end specs
-  unit/           # Vitest unit tests (350+)
+  unit/           # Vitest unit tests (780+)
 
 docs/
   USER_GUIDE.md   # End-user documentation
@@ -101,18 +101,24 @@ Orion Wallet exposes a JavaScript SDK for dApps to connect and interact with the
 
 ### Installation
 
-```bash
-npm install @orion-wallet/sdk
+The SDK is not on npm yet. It is served straight from the wallet origin as a self-contained ES module — no build step needed:
+
+```html
+<script type="module">
+  const { WalletProvider } =
+    await import('https://orionwallet.vercel.app/sdk/orion-wallet-sdk.mjs');
+</script>
 ```
 
 ### Basic usage
 
 ```html
 <script type="module">
-  import { WalletProvider } from '@orion-wallet/sdk';
+  const { WalletProvider } =
+    await import('https://orionwallet.vercel.app/sdk/orion-wallet-sdk.mjs');
 
   const provider = new WalletProvider({
-    walletUrl: 'https://orionwallet.example/connect',
+    walletUrl: 'https://orionwallet.vercel.app/connect',
     capabilities: [
       'signMessage',
       'signTypedData',
@@ -166,27 +172,27 @@ provider.on('sessionExpired', () => {
 
 ### Event API
 
-| Event | Payload | Description |
-|---|---|---|
-| `connect` | `ConnectResult` | Fired after successful connection |
-| `disconnect` | `{ reason }` | Fired when the connection closes |
-| `accountChanged` | `{ address }` | Fired when the active account changes |
-| `networkChanged` | `{ network, chainId }` | Fired when the network changes |
-| `sessionExpired` | `{ origin }` | Fired when the session expires on the wallet side |
+| Event            | Payload                | Description                                       |
+| ---------------- | ---------------------- | ------------------------------------------------- |
+| `connect`        | `ConnectResult`        | Fired after successful connection                 |
+| `disconnect`     | `{ reason }`           | Fired when the connection closes                  |
+| `accountChanged` | `{ address }`          | Fired when the active account changes             |
+| `networkChanged` | `{ network, chainId }` | Fired when the network changes                    |
+| `sessionExpired` | `{ origin }`           | Fired when the session expires on the wallet side |
 
 ### Method namespaces
 
 The wallet answers to two equivalent namespaces:
 
-| Generic | Orion-branded | Operation |
-|---|---|---|
-| `wallet_connect` | `orion_wallet_connect` | Initiate connection |
-| `wallet_signMessage` | `orion_wallet_signMessage` | Sign a plain message |
-| `wallet_signTypedData` | `orion_wallet_signTypedData` | Sign structured data |
+| Generic                  | Orion-branded                  | Operation                   |
+| ------------------------ | ------------------------------ | --------------------------- |
+| `wallet_connect`         | `orion_wallet_connect`         | Initiate connection         |
+| `wallet_signMessage`     | `orion_wallet_signMessage`     | Sign a plain message        |
+| `wallet_signTypedData`   | `orion_wallet_signTypedData`   | Sign structured data        |
 | `wallet_approveContract` | `orion_wallet_approveContract` | Pre-approve a contract call |
-| `wallet_signContract` | `orion_wallet_signContract` | Sign a contract transaction |
-| `wallet_getAccounts` | `orion_wallet_getAccounts` | List accounts |
-| `wallet_getBalance` | `orion_wallet_getBalance` | Read balance |
+| `wallet_signContract`    | `orion_wallet_signContract`    | Sign a contract transaction |
+| `wallet_getAccounts`     | `orion_wallet_getAccounts`     | List accounts               |
+| `wallet_getBalance`      | `orion_wallet_getBalance`      | Read balance                |
 
 Both namespaces are accepted and execute identically. The `orion_wallet_*` names exist for dApps that want to explicitly target Orion Wallet.
 
@@ -231,11 +237,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, code standards, and PR workflo
 
 [CC BY-NC-SA 4.0](LICENSE) — Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International.
 
-| What you can do | What you cannot do |
-|---|---|
-| Use, study, and audit the source code | Fork or publish a competing commercial product |
-| Use for personal (non-commercial) purposes | Sell or sublicense this software |
-| Modify and redistribute for non-commercial purposes | Use the Orion Wallet name or trademarks |
-| Run your own node or instance | Remove attribution or license notices |
+| What you can do                                     | What you cannot do                             |
+| --------------------------------------------------- | ---------------------------------------------- |
+| Use, study, and audit the source code               | Fork or publish a competing commercial product |
+| Use for personal (non-commercial) purposes          | Sell or sublicense this software               |
+| Modify and redistribute for non-commercial purposes | Use the Orion Wallet name or trademarks        |
+| Run your own node or instance                       | Remove attribution or license notices          |
 
 The source code is open for transparency and security auditing. Any derivative work must use the same CC BY-NC-SA 4.0 license (ShareAlike).
