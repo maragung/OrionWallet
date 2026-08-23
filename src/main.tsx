@@ -6,14 +6,23 @@ import { ConnectApp } from './connect/ConnectApp';
 import { I18nProvider } from './i18n/useI18n';
 import { MAIN_WALLET_NAME } from './connect/handoff';
 import { applyThemeColorMeta } from './styles/theme-colors';
+import { readThemeCookie } from './utils/theme-cookie';
 import './styles/global.css';
 
 // Apply theme as early as possible to avoid FOUC (flash of unstyled content).
-// The persisted theme is in IndexedDB, but we can apply a sensible default
-// (system theme) immediately. The useTheme hook will refine it after
-// settings load.
+// Resolution order: the theme cookie (written by useTheme on every apply —
+// synchronous, shared with the /connect popup and static pages), then the
+// system preference. The full mode (incl. 'system') lives in IndexedDB and is
+// applied by the useTheme hook once settings load; this only needs to paint
+// the right colors on the very first frame.
 (function applyInitialTheme() {
   try {
+    const saved = readThemeCookie();
+    if (saved) {
+      document.documentElement.setAttribute('data-theme', saved);
+      applyThemeColorMeta(saved);
+      return;
+    }
     const prefersLight =
       typeof window !== 'undefined' &&
       window.matchMedia &&

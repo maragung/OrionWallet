@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Orion Wallet — dApp Integration Demo</title>
+    <script>
+      // Match the wallet's theme before first paint: useTheme() mirrors the
+      // effective theme into the orion_theme cookie on every change.
+      (function () {
+        try {
+          var m = document.cookie.match(/(?:^|;\s*)orion_theme=(dark|light)(?:;|$)/);
+          if (m) document.documentElement.setAttribute('data-theme', m[1]);
+        } catch (e) {}
+      })();
+    </script>
     <style>
       :root {
         color-scheme: dark;
@@ -17,19 +27,62 @@
         --err: #ff5c6c;
         --warn: #ffb84d;
       }
-      * { box-sizing: border-box; }
+      /* Follow the wallet's theme via the orion_theme cookie — base surfaces
+         only; the demo keeps its own accents and layout. */
+      :root[data-theme='light'] {
+        color-scheme: light;
+        --bg: #f4f5f9;
+        --fg: #17171f;
+        --muted: #5c5c70;
+        --card: #ffffff;
+        --border: #dcdde5;
+      }
+      :root[data-theme='light'] input,
+      :root[data-theme='light'] pre,
+      :root[data-theme='light'] select {
+        background: #ffffff;
+      }
+      :root[data-theme='light'] code,
+      :root[data-theme='light'] .pill,
+      :root[data-theme='light'] button.secondary {
+        background: #eceef4;
+      }
+      * {
+        box-sizing: border-box;
+      }
       body {
         margin: 0;
         background: var(--bg);
         color: var(--fg);
-        font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font:
+          14px/1.5 -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
         padding: 24px;
       }
-      main { max-width: 780px; margin: 0 auto; }
-      h1 { font-size: 22px; margin-bottom: 4px; }
-      h2 { font-size: 17px; margin: 28px 0 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
-      h3 { font-size: 14px; margin: 16px 0 8px; color: var(--muted); }
-      p { margin: 6px 0; }
+      main {
+        max-width: 780px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 22px;
+        margin-bottom: 4px;
+      }
+      h2 {
+        font-size: 17px;
+        margin: 28px 0 12px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 6px;
+      }
+      h3 {
+        font-size: 14px;
+        margin: 16px 0 8px;
+        color: var(--muted);
+      }
+      p {
+        margin: 6px 0;
+      }
       .card {
         background: var(--card);
         border: 1px solid var(--border);
@@ -47,10 +100,19 @@
         cursor: pointer;
         margin: 4px 4px 4px 0;
       }
-      button.secondary { background: #2a2a3d; }
-      button.danger { background: #cc3344; }
-      button:disabled { opacity: 0.5; cursor: not-allowed; }
-      button.success { background: #2a7a4a; }
+      button.secondary {
+        background: #2a2a3d;
+      }
+      button.danger {
+        background: #cc3344;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      button.success {
+        background: #2a7a4a;
+      }
       input {
         background: #0e0e16;
         color: var(--fg);
@@ -69,8 +131,16 @@
         max-height: 300px;
         font-size: 12px;
       }
-      .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-      .muted { color: var(--muted); font-size: 12px; }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+      }
       .pill {
         display: inline-block;
         padding: 2px 8px;
@@ -78,12 +148,35 @@
         font-size: 12px;
         background: #2a2a3d;
       }
-      .pill.ok { background: rgba(53, 198, 122, 0.15); color: var(--ok); }
-      .pill.err { background: rgba(255, 92, 108, 0.15); color: var(--err); }
-      .pill.warn { background: rgba(255, 184, 77, 0.15); color: var(--warn); }
-      code { font-family: ui-monospace, monospace; background: #1a1a2e; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
-      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-      @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+      .pill.ok {
+        background: rgba(53, 198, 122, 0.15);
+        color: var(--ok);
+      }
+      .pill.err {
+        background: rgba(255, 92, 108, 0.15);
+        color: var(--err);
+      }
+      .pill.warn {
+        background: rgba(255, 184, 77, 0.15);
+        color: var(--warn);
+      }
+      code {
+        font-family: ui-monospace, monospace;
+        background: #1a1a2e;
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      @media (max-width: 600px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
       /* Hero header */
       .hero {
         display: flex;
@@ -101,25 +194,62 @@
         display: grid;
         place-items: center;
         font-size: 26px;
-        background: linear-gradient(135deg, rgba(109,109,255,0.25), rgba(109,109,255,0.05));
-        border: 1px solid rgba(109,109,255,0.35);
-        box-shadow: 0 6px 20px rgba(109,109,255,0.15);
+        background: linear-gradient(135deg, rgba(109, 109, 255, 0.25), rgba(109, 109, 255, 0.05));
+        border: 1px solid rgba(109, 109, 255, 0.35);
+        box-shadow: 0 6px 20px rgba(109, 109, 255, 0.15);
       }
       /* Touch-friendly controls on phones (>=44px tap targets) */
       @media (max-width: 600px) {
-        button { padding: 11px 16px; font-size: 14px; }
-        .hero-badge { width: 44px; height: 44px; font-size: 22px; }
-        h1 { font-size: 19px; }
+        button {
+          padding: 11px 16px;
+          font-size: 14px;
+        }
+        .hero-badge {
+          width: 44px;
+          height: 44px;
+          font-size: 22px;
+        }
+        h1 {
+          font-size: 19px;
+        }
       }
-      label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
-      .hint { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
-      .integration-step { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
-      .integration-step:last-child { border-bottom: none; }
-      .integration-step code { font-size: 11px; }
-      .trade-card { border-left: 3px solid var(--accent); padding-left: 12px; margin: 8px 0; }
-      .trade-card.buy { border-left-color: var(--ok); }
-      .trade-card.sell { border-left-color: var(--err); }
-      .trade-card.swap { border-left-color: var(--warn); }
+      label {
+        font-size: 12px;
+        color: var(--muted);
+        display: block;
+        margin-bottom: 4px;
+      }
+      .hint {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 8px;
+        line-height: 1.6;
+      }
+      .integration-step {
+        padding: 6px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+      }
+      .integration-step:last-child {
+        border-bottom: none;
+      }
+      .integration-step code {
+        font-size: 11px;
+      }
+      .trade-card {
+        border-left: 3px solid var(--accent);
+        padding-left: 12px;
+        margin: 8px 0;
+      }
+      .trade-card.buy {
+        border-left-color: var(--ok);
+      }
+      .trade-card.sell {
+        border-left-color: var(--err);
+      }
+      .trade-card.swap {
+        border-left-color: var(--warn);
+      }
       select {
         background: #0e0e16;
         color: var(--fg);
@@ -137,8 +267,8 @@
         <div>
           <h1>Orion Wallet — dApp Integration Demo</h1>
           <p class="muted" style="margin-top: 2px">
-            A live, self-contained reference for integrating Orion Wallet via the SDK —
-            connection, session health checks, refresh-on-expiry, and simulated buy/sell/swap.
+            A live, self-contained reference for integrating Orion Wallet via the SDK — connection,
+            session health checks, refresh-on-expiry, and simulated buy/sell/swap.
           </p>
         </div>
       </header>
@@ -150,7 +280,7 @@
           <span class="muted">Status:</span>
           <span id="status" class="pill idle">disconnected</span>
           <span id="addr" class="muted"></span>
-          <span id="sessionBadge" class="pill" style="display:none"></span>
+          <span id="sessionBadge" class="pill" style="display: none"></span>
         </div>
         <div style="margin-top: 12px" class="row">
           <button id="connect">Connect Wallet</button>
@@ -159,9 +289,12 @@
           <button id="refreshSession" class="secondary" disabled>Refresh Session</button>
         </div>
         <div class="hint">
-          <strong>Integration pattern:</strong> dApps call <code>provider.connect()</code> to open the wallet popup.
-          After connect, use <code>provider.isSessionAlive()</code> before every signing operation.
-          If the session has expired, call <code>provider.refreshSession()</code> to reopen the popup and re-establish the channel.
+          <strong>Integration pattern:</strong> dApps call <code>provider.connect()</code> to open
+          the wallet popup. After connect, use <code>await provider.isAlive()</code> (or
+          <code>provider.ping()</code> for full detail) before every signing operation. If the
+          session has expired, call <code>provider.connect()</code> again to reopen the popup and
+          re-establish the channel — and note that every request already reconnects transparently
+          when the transport is gone.
         </div>
       </div>
 
@@ -179,22 +312,24 @@
       <div class="card">
         <h2>Session Expiry Handling</h2>
         <p class="muted" style="margin-bottom: 8px">
-          Orion sessions expire after 30 min idle or 8 hours absolute. When expired, the wallet emits a
+          Orion sessions expire after 30 min idle or 8 hours absolute. When expired, the wallet
+          emits a
           <code>sessionExpired</code> event and the dApp should prompt the user to reconnect.
         </p>
         <div class="row">
           <button id="simulateExpiry" class="secondary" disabled>Simulate Session Expiry</button>
           <button id="recoverFromExpiry" class="secondary" disabled>Recover from Expiry</button>
         </div>
-        <pre id="sessionLog" style="margin-top: 8px; max-height: 120px; display: none;">—</pre>
+        <pre id="sessionLog" style="margin-top: 8px; max-height: 120px; display: none">—</pre>
       </div>
 
       <!-- ── Trading demo ── -->
       <div class="card">
         <h2>Trading Operations (Demo)</h2>
         <p class="muted" style="margin-bottom: 8px">
-          Simulated buy/sell/swap operations that demonstrate the full signing flow with session checks.
-          These do not execute real transactions — they show how a dApp like Octora would integrate.
+          Simulated buy/sell/swap operations that demonstrate the full signing flow with session
+          checks. These do not execute real transactions — they show how a dApp like Octora would
+          integrate.
         </p>
         <div class="grid">
           <div>
@@ -213,7 +348,9 @@
         </div>
         <div class="row" style="margin-top: 8px">
           <button id="executeTrade" disabled>Execute Trade</button>
-          <button id="executeTradeFail" class="secondary" disabled>Execute (Simulated Failure)</button>
+          <button id="executeTradeFail" class="secondary" disabled>
+            Execute (Simulated Failure)
+          </button>
         </div>
         <div id="tradeResults" style="margin-top: 8px"></div>
       </div>
@@ -231,14 +368,16 @@
         <h2>Integration Guide</h2>
         <div class="integration-step">
           <strong>1. Import the SDK</strong>
-          <pre><code>import { WalletProvider } from '@orion-wallet/sdk';
-// or, with no build step:
-// const { WalletProvider } = await import('https://orionwallet.vercel.app/sdk/orion-wallet-sdk.mjs');</code></pre>
+          <pre><code>// No build step needed — served straight from the wallet origin
+// (the npm package is not published yet):
+const { WalletProvider } = await import(
+  'https://orionwallet.vercel.app/sdk/orion-wallet-sdk.mjs'
+);</code></pre>
         </div>
         <div class="integration-step">
           <strong>2. Create the provider</strong>
           <pre><code>const provider = new WalletProvider({
-  walletUrl: 'https://orionwallet.example/connect',
+  walletUrl: 'https://orionwallet.vercel.app/connect',
   capabilities: [
     'signMessage',
     'signTypedData',
@@ -257,8 +396,10 @@ console.log(result.address); // Connected address</code></pre>
         </div>
         <div class="integration-step">
           <strong>4. Check session before signing</strong>
-          <pre><code>if (!provider.isSessionAlive()) {
-  await provider.refreshSession();
+          <pre><code>// isAlive() pings the wallet and never throws;
+// every request() also auto-reconnects on its own.
+if (!(await provider.isAlive())) {
+  await provider.connect(); // reopens popup, re-establishes the session
 }
 const sig = await provider.signContract({...});</code></pre>
         </div>
@@ -298,13 +439,30 @@ const sig = await provider.signContract({...});</code></pre>
         out.textContent = label + '\n\n' + JSON.stringify(data, null, 2);
       }
       function logErr(label, e) {
-        out.textContent = label + ' — ERROR\n\ncode: ' + (e && e.code || '?') + '\nmessage: ' + (e && e.message || e);
+        out.textContent =
+          label +
+          ' — ERROR\n\ncode: ' +
+          ((e && e.code) || '?') +
+          '\nmessage: ' +
+          ((e && e.message) || e);
       }
       function setConnected(state, address) {
         statusEl.textContent = state ? 'connected' : 'disconnected';
         statusEl.className = 'pill' + (state ? ' ok' : ' idle');
         addrEl.textContent = address || '';
-        const ids = ['disconnect','getAccounts','getBalance','getNetwork','checkSession','refreshSession','executeTrade','executeTradeFail','forbidden','simulateExpiry','recoverFromExpiry'];
+        const ids = [
+          'disconnect',
+          'getAccounts',
+          'getBalance',
+          'getNetwork',
+          'checkSession',
+          'refreshSession',
+          'executeTrade',
+          'executeTradeFail',
+          'forbidden',
+          'simulateExpiry',
+          'recoverFromExpiry',
+        ];
         for (const id of ids) {
           const el = document.getElementById(id);
           if (el) el.disabled = !state;
@@ -369,10 +527,11 @@ const sig = await provider.signContract({...});</code></pre>
           log('connect', result);
         });
 
-        provider.on('disconnect', (reason) => {
+        provider.on('disconnect', (payload) => {
           setConnected(false);
           updateSessionBadge(false);
-          log('disconnect', { reason });
+          // The payload is an object: { reason } — not a bare string.
+          log('disconnect', payload || {});
         });
 
         provider.on('sessionExpired', (payload) => {
@@ -413,23 +572,34 @@ const sig = await provider.signContract({...});</code></pre>
       };
 
       // ── Check session ───────────────────────────────────
-      document.getElementById('checkSession').onclick = () => {
+      document.getElementById('checkSession').onclick = async () => {
         if (!provider) return;
-        const alive = provider.isSessionAlive();
-        updateSessionBadge(alive);
-        log('isSessionAlive', { alive });
+        try {
+          // ping() round-trips to the wallet and reports real session state
+          // ({ pong, connected, locked, capabilities, ... }). isConnected()
+          // alone is only the local flag.
+          const info = await provider.ping();
+          updateSessionBadge(Boolean(info.pong && info.connected));
+          log('ping', info);
+        } catch (e) {
+          updateSessionBadge(false);
+          logErr('ping', e);
+        }
       };
 
       // ── Refresh session ─────────────────────────────────
       document.getElementById('refreshSession').onclick = async () => {
         if (!provider) return;
         try {
-          const result = await provider.refreshSession();
+          // There is no refreshSession() in the SDK — reconnecting IS the
+          // refresh: connect() re-opens the popup channel and restores or
+          // re-establishes the session.
+          const result = await provider.connect();
           setConnected(true, result.address);
           updateSessionBadge(true);
-          log('refreshSession', result);
+          log('reconnect', result);
         } catch (e) {
-          logErr('refreshSession', e);
+          logErr('reconnect', e);
         }
       };
 
@@ -439,7 +609,9 @@ const sig = await provider.signContract({...});</code></pre>
         try {
           const r = await provider.getAccounts();
           log('getAccounts', r);
-        } catch (e) { logErr('getAccounts', e); }
+        } catch (e) {
+          logErr('getAccounts', e);
+        }
       };
 
       document.getElementById('getBalance').onclick = async () => {
@@ -447,7 +619,9 @@ const sig = await provider.signContract({...});</code></pre>
         try {
           const r = await provider.getBalance();
           log('getBalance', r);
-        } catch (e) { logErr('getBalance', e); }
+        } catch (e) {
+          logErr('getBalance', e);
+        }
       };
 
       document.getElementById('getNetwork').onclick = async () => {
@@ -456,28 +630,30 @@ const sig = await provider.signContract({...});</code></pre>
           const net = await provider.getNetwork();
           const cid = await provider.getChainId();
           log('getNetwork', { network: net, chainId: cid });
-        } catch (e) { logErr('getNetwork', e); }
+        } catch (e) {
+          logErr('getNetwork', e);
+        }
       };
 
       // ── Simulate session expiry ─────────────────────────
-      document.getElementById('simulateExpiry').onclick = () => {
+      document.getElementById('simulateExpiry').onclick = async () => {
         if (!provider) return;
-        provider.clearSession?.('simulated expiry') || (() => {
-          provider.connected = false;
-          provider.emit?.('sessionExpired', { reason: 'simulated' });
-        })();
+        // Stand-in for a real expiry: drop the session through the public API,
+        // so the next request has nothing left to ride on.
+        await provider.disconnect();
         setConnected(false);
         updateSessionBadge(false);
         sessionLog.style.display = 'block';
-        sessionLog.textContent = 'Simulated session expiry. Click "Recover from Expiry" to reconnect.';
-        log('sessionExpired (simulated)', { reason: 'simulated' });
+        sessionLog.textContent =
+          'Simulated session expiry. Click "Recover from Expiry" to reconnect.';
+        log('sessionExpired (simulated)', { reason: 'disconnected locally' });
       };
 
       // ── Recover from expiry ─────────────────────────────
       document.getElementById('recoverFromExpiry').onclick = async () => {
         if (!provider) return;
         try {
-          const result = await provider.refreshSession();
+          const result = await provider.connect();
           setConnected(true, result.address);
           updateSessionBadge(true);
           sessionLog.style.display = 'none';
@@ -525,14 +701,27 @@ const sig = await provider.signContract({...});</code></pre>
         const amount = document.getElementById('tradeAmount').value;
         const config = tradeConfigs[op];
         if (!config) return logErr('trade', new Error('Unknown operation'));
-
-        // Check session before signing
-        if (!provider.isSessionAlive()) {
-          log('trade', { status: 'session_expired', action: 'refreshSession required' });
-          return;
-        }
+        const resultsDiv = document.getElementById('tradeResults');
 
         try {
+          // Session check before signing, the SDK way: isAlive() pings the
+          // wallet and never throws. request() itself also auto-reconnects
+          // when the transport is gone — this check just makes the flow
+          // explicit for integrators.
+          if (!(await provider.isAlive())) {
+            log('trade (' + op + ')', {
+              status: 'session_expired',
+              action: 'call provider.connect() to re-establish the session',
+            });
+            resultsDiv.innerHTML =
+              '<div class="trade-card ' +
+              op.split('_')[0] +
+              '"><span class="pill err">SESSION EXPIRED</span> ' +
+              config.description +
+              ' — reconnect and retry</div>';
+            return;
+          }
+
           const result = await provider.signContract({
             program: config.program,
             method: config.method,
@@ -541,8 +730,14 @@ const sig = await provider.signContract({...});</code></pre>
             ou: config.ou,
           });
           log('trade (' + op + ')', { status: 'signed', result });
-          const resultsDiv = document.getElementById('tradeResults');
-          resultsDiv.innerHTML = '<div class="trade-card ' + op.split('_')[0] + '"><span class="pill ok">SIGNED</span> ' + config.description + ' — ' + amount + ' OU</div>';
+          resultsDiv.innerHTML =
+            '<div class="trade-card ' +
+            op.split('_')[0] +
+            '"><span class="pill ok">SIGNED</span> ' +
+            config.description +
+            ' — ' +
+            amount +
+            ' OU</div>';
         } catch (e) {
           logErr('trade (' + op + ')', e);
         }
@@ -557,10 +752,18 @@ const sig = await provider.signContract({...});</code></pre>
         // Simulate a session-expired error
         log('trade (' + op + ') — simulated failure', {
           status: 'session_expired',
-          error: { code: 'SESSION_EXPIRED', message: 'Session expired — please reconnect your wallet and try again' },
+          error: {
+            code: 'SESSION_EXPIRED',
+            message: 'Session expired — please reconnect your wallet and try again',
+          },
         });
         const resultsDiv = document.getElementById('tradeResults');
-        resultsDiv.innerHTML = '<div class="trade-card ' + op.split('_')[0] + '"><span class="pill err">SESSION EXPIRED</span> ' + config.description + ' — reconnect and retry</div>';
+        resultsDiv.innerHTML =
+          '<div class="trade-card ' +
+          op.split('_')[0] +
+          '"><span class="pill err">SESSION EXPIRED</span> ' +
+          config.description +
+          ' — reconnect and retry</div>';
       };
 
       // ── Prohibited method ───────────────────────────────
@@ -568,7 +771,7 @@ const sig = await provider.signContract({...});</code></pre>
         if (!provider) return;
         try {
           await provider.request('sendTransaction', { to: 'x', amount: '1' });
-          logErr('sendTransaction', { message: 'UNEXPECTLY ALLOWED' });
+          logErr('sendTransaction', { message: 'UNEXPECTEDLY ALLOWED' });
         } catch (e) {
           log('sendTransaction correctly rejected', { code: e.code, message: e.message });
         }

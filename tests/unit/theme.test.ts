@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { wipeEverything, closeDb, loadSettings, saveSettings } from '../../src/wallet/storage';
 import type { Settings } from '../../src/wallet/storage';
+import { readThemeCookie, writeThemeCookie } from '../../src/utils/theme-cookie';
 
 describe('theme persistence', () => {
   beforeAll(async () => {
@@ -57,5 +58,28 @@ describe('theme persistence', () => {
       const loaded = await loadSettings();
       expect(loaded.theme).toBe(theme);
     }
+  });
+});
+
+describe('theme cookie', () => {
+  beforeEach(() => {
+    // Reset the cookie this suite owns, whatever a previous test left there.
+    document.cookie = 'orion_theme=; path=/; max-age=0';
+  });
+
+  it('reads null when no theme cookie exists', () => {
+    expect(readThemeCookie()).toBeNull();
+  });
+
+  it('round-trips the effective theme (dark/light)', () => {
+    writeThemeCookie('light');
+    expect(readThemeCookie()).toBe('light');
+    writeThemeCookie('dark');
+    expect(readThemeCookie()).toBe('dark');
+  });
+
+  it('ignores malformed cookie values instead of trusting them', () => {
+    document.cookie = 'orion_theme=purple; path=/';
+    expect(readThemeCookie()).toBeNull();
   });
 });

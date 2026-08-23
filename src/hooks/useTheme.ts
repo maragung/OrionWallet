@@ -13,6 +13,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useWalletStore } from '../store/wallet-store';
 import { applyThemeColorMeta } from '../styles/theme-colors';
+import { writeThemeCookie } from '../utils/theme-cookie';
 
 export type ThemeMode = 'dark' | 'light' | 'system';
 export type EffectiveTheme = 'dark' | 'light';
@@ -35,6 +36,9 @@ function applyTheme(theme: EffectiveTheme): void {
   document.documentElement.setAttribute('data-theme', theme);
   // Update theme-color meta for mobile browser chrome
   applyThemeColorMeta(theme);
+  // Mirror into a cookie: the /connect popup and the static pages read this
+  // synchronously at boot, before the (async) IndexedDB settings are available.
+  writeThemeCookie(theme);
 }
 
 /**
