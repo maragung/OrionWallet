@@ -1191,6 +1191,10 @@ button.nav-item.active:hover:not(:disabled) {
   overscroll-behavior: contain;
   animation: fadeIn var(--t-fast);
 }
+.modal-overlay.top {
+  align-items: flex-start;
+  padding-top: max(var(--sp-8), 10vh);
+}
 .modal-content {
   width: 100%;
   max-width: 440px;

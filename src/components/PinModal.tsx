@@ -88,7 +88,7 @@ export function PinModal({
   };
 
   return (
-    <div className="modal-overlay" onClick={() => !busy && onCancel()}>
+    <div className="modal-overlay top" onClick={() => !busy && onCancel()}>
       <div
         className="modal-content sm"
         onClick={(e) => e.stopPropagation()}
