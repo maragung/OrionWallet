@@ -1,7 +1,7 @@
 import { copyText } from '../utils/clipboard';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useWalletStore } from '../store/wallet-store';
-import { createNewWallet, importMnemonic } from '../api/wallet-api';
+import { createNewWallet, importMnemonic, listStoredWallets } from '../api/wallet-api';
 import { checkQuizAnswers, pickQuizIndexes } from '../wallet/mnemonic-quiz';
 import { ThemeToggle } from './ThemeToggle';
 import { ProcessingModal, type ProcessingStage } from './ProcessingModal';
@@ -21,6 +21,8 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
   const [generatedMnemonic, setGeneratedMnemonic] = useState<string | null>(null);
   const [showPin, setShowPin] = useState(false);
   const [showMnemonic, setShowMnemonic] = useState(false);
+  /** A wallet already exists on this device — the PIN fields ask for ITS PIN. */
+  const [hasExistingWallet, setHasExistingWallet] = useState(false);
 
   // Backup confirmation: a freshly created wallet is not opened until the user
   // has proved they wrote the phrase down. `pendingWallet` holds it meanwhile —
@@ -243,6 +245,14 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
   const pinMismatch = Boolean(pinConfirm) && pin !== pinConfirm;
   const strength = getPinStrength(pin);
 
+  // All accounts on this device share one PIN, so when a wallet already exists
+  // the PIN fields below mean "your existing PIN", not "pick a new one".
+  useEffect(() => {
+    listStoredWallets()
+      .then((entries) => setHasExistingWallet(entries.length > 0))
+      .catch(() => undefined);
+  }, []);
+
   return (
     <>
       <div className="auth-shell">
@@ -286,6 +296,17 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
               <Icon name="upload" size={16} /> Import from Mnemonic
             </button>
           </div>
+
+          {hasExistingWallet && (
+            <div className="info-box warn spaced">
+              <Icon name="info" size={16} />
+              <span>
+                A wallet already exists on this device. Enter the PIN you use to unlock it — every
+                account shares that one PIN, and the new account is added alongside the existing
+                ones (nothing is replaced).
+              </span>
+            </div>
+          )}
 
           {mode === 'import' && (
             <div className="form-row">

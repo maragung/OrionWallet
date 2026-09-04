@@ -386,9 +386,11 @@ export function AccountSwitcher() {
         <div className="info-box spaced-top">
           <Icon name="info" size={16} />
           <div className="info-box-body">
-            Accounts are derived deterministically from your wallet's BIP39 master seed. The same
-            mnemonic always produces the same set of accounts in the same order. Watch-only entries
-            are just addresses — removing one never deletes key material, because it holds none.
+            Accounts can come from different recovery phrases — importing another phrase adds its
+            first account here without touching the ones already stored. Switching asks for your PIN
+            (shared by every account on this device) because the signing keys must be decrypted
+            before an account can become active. Watch-only entries are just addresses — removing
+            one never deletes key material, because it holds none.
           </div>
         </div>
       </div>

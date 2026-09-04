@@ -258,8 +258,12 @@ export function ConnectApp() {
             setBusy(true);
             try {
               if (request.kind === 'connect' && d.approved) {
-                // The account chosen in the prompt becomes the session account.
+                // The account chosen in the prompt becomes the session account,
+                // and travels on the decision itself so the handler binds the
+                // connection to exactly the account the user saw selected —
+                // never to one left over from an earlier prompt or session.
                 sessionAddrRef.current = selectedAddrRef.current;
+                d = { ...d, account: selectedAddrRef.current ?? undefined };
               }
             } finally {
               setBusy(false);

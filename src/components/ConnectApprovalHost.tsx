@@ -13,8 +13,6 @@ import {
   subscribeUnlockAccount,
   getPendingUnlockAccount,
   resolveUnlockAccount,
-  setChosenAccount,
-  getChosenAccount,
 } from '../connect/host';
 import { ApprovalPrompt, type ApprovalDecision } from '../connect/approval-ui/ApprovalPrompt';
 import { PinModal } from './PinModal';
@@ -23,6 +21,7 @@ import { useWalletStore } from '../store/wallet-store';
 
 export function ConnectApprovalHost() {
   const [tick, setTick] = useState(0);
+  /** Account picked in the prompt currently on screen, or null for "default". */
   const [selected, setSelected] = useState<string | null>(null);
   const [unlockAddr, setUnlockAddr] = useState<string | null>(null);
   const [accountNames, setAccountNames] = useState<Record<string, string>>({});
@@ -30,6 +29,11 @@ export function ConnectApprovalHost() {
   const force = () => setTick((t) => t + 1);
 
   useEffect(() => subscribeApprovals(force), []);
+  // A new prompt starts from a clean slate: whatever account a previous prompt
+  // or session selected must not pre-select itself here.
+  useEffect(() => {
+    if (getPendingApprovals().some((p) => p.request.kind === 'connect')) setSelected(null);
+  }, [tick]);
   useEffect(
     () =>
       subscribeUnlockAccount(() => {
@@ -53,15 +57,16 @@ export function ConnectApprovalHost() {
   const approvals = getPendingApprovals();
   const pendingUnlock = getPendingUnlockAccount();
 
+  /** Default the picker to the wallet's ACTIVE account — the one the user selected in the wallet. */
+  const defaultAccount = useWalletStore.getState().wallet?.addr ?? null;
+
   const onDecision = (id: number, d: ApprovalDecision) => {
     setSelected(null);
     resolveApproval(id, d);
   };
 
-  const onSelectAccount = (addr: string) => {
-    setSelected(addr);
-    setChosenAccount(addr);
-  };
+  /** Track the picker selection for the prompt on screen (local state only). */
+  const onSelectAccount = (addr: string) => setSelected(addr);
 
   const handlePinSubmit = async (pin: string) => {
     if (!unlockAddr) return;
@@ -97,19 +102,30 @@ export function ConnectApprovalHost() {
         />
       )}
 
-      {approvals.map((p) => (
-        <ApprovalPrompt
-          key={p.id}
-          request={p.request}
-          busy={false}
-          accounts={p.request.accounts}
-          selectedAccount={
-            selected ?? getChosenAccount() ?? p.request.accounts?.[0]?.address ?? null
-          }
-          onSelectAccount={onSelectAccount}
-          onDecision={(d) => onDecision(p.id, d)}
-        />
-      ))}
+      {approvals.map((p) => {
+        const pickerDefault =
+          selected ?? defaultAccount ?? p.request.accounts?.[0]?.address ?? null;
+        return (
+          <ApprovalPrompt
+            key={p.id}
+            request={p.request}
+            busy={false}
+            accounts={p.request.accounts}
+            selectedAccount={pickerDefault}
+            onSelectAccount={onSelectAccount}
+            // A connect approval resolves with the account picked in THIS
+            // prompt, so the dApp binds to exactly what the user saw.
+            onDecision={(d) =>
+              onDecision(
+                p.id,
+                p.request.kind === 'connect' && pickerDefault
+                  ? { ...d, account: pickerDefault }
+                  : d,
+              )
+            }
+          />
+        );
+      })}
     </div>
   );
 }

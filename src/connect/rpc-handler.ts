@@ -95,6 +95,12 @@ export interface ApprovalDecision {
   approved: boolean;
   /** Persist the origin as trusted (skips only the connect prompt next time). */
   trust?: boolean;
+  /**
+   * Account picked in THIS connect prompt, when the prompt offered a picker.
+   * The connection binds to exactly this account — never to a selection left
+   * over from an earlier prompt or session.
+   */
+  account?: string;
 }
 
 /** Environment the handler needs from the wallet app. */
@@ -488,11 +494,16 @@ export class ConnectHandler {
       }
       if (decision?.trust) await trustSite(this.origin).catch(() => undefined);
 
-      // The account the user chose via the picker in the approval UI (synced
-      // through the host), falling back to the wallet's active account.
-      const address =
-        this.host.getSessionAccount() ?? this.host.getAddress() ?? accounts[0]?.address ?? '';
+      // The account the user picked in THIS prompt's picker, falling back to
+      // the wallet's active account. The session account is deliberately NOT
+      // consulted here: it can still hold the account bound to an earlier,
+      // unrelated session, and silently reusing it would connect the dApp to
+      // an account the user never chose in this prompt.
+      const address = decision?.account ?? this.host.getAddress() ?? accounts[0]?.address ?? '';
       this.sessionAddress = address;
+      // Keep the host's notion of the session account coherent so reads
+      // (getBalance, getNextNonce) resolve for the connected account.
+      this.host.setSessionAccount(address);
 
       // Load signing keys for the session account. For the wallet's active
       // account this resolves immediately (already unlocked); any other account

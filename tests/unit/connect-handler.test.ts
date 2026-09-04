@@ -362,8 +362,16 @@ describe('ConnectHandler: multi-account connect', () => {
     index: 1,
   };
 
-  function multiHost(overrides: Partial<WalletHost> = {}) {
+  /**
+   * Build a multi-account host.
+   *
+   * `pick` is the account the (simulated) connect prompt resolves its approval
+   * with — the picker selection travels ON the approval decision, never through
+   * the host's session-account state.
+   */
+  function multiHost({ pick }: { pick?: string } = {}, overrides: Partial<WalletHost> = {}) {
     let sessionAddr: string | null = wallet.addr;
+    const approvals: ApprovalRequest[] = [];
     const requestUnlockAccount = vi.fn(async (addr: string) => {
       // Only account A (the active wallet) is unlockable; B needs the PIN and
       // is simulated as already unlocked here.
@@ -378,6 +386,10 @@ describe('ConnectHandler: multi-account connect', () => {
         { address: wallet.addr, publicKey: wallet.pubB64, name: 'A', index: 0 },
         ACC_B,
       ],
+      requestApproval: async (req) => {
+        approvals.push(req);
+        return { approved: true, account: pick };
+      },
       requestUnlockAccount,
       getSessionAccount: () => sessionAddr,
       setSessionAccount: (addr: string) => {
@@ -385,15 +397,13 @@ describe('ConnectHandler: multi-account connect', () => {
       },
       ...overrides,
     });
-    return { host, requestUnlockAccount, getSessionAddr: () => sessionAddr };
+    return { host, requestUnlockAccount, approvals, getSessionAddr: () => sessionAddr };
   }
 
-  it('binds the session to the account chosen via getSessionAccount', async () => {
-    const { host, requestUnlockAccount } = multiHost();
+  it('binds the session to the account picked in the connect prompt', async () => {
+    const { host, requestUnlockAccount } = multiHost({ pick: ACC_B.address });
     const { driver } = wire(host);
     driver.ack();
-    // User picks account B in the prompt before approving.
-    host.setSessionAccount(ACC_B.address);
     const res = await driver.request(METHODS.CONNECT, { origin: ORIGIN });
     expect(res.error).toBeUndefined();
     expect((res.result as { address?: string }).address).toBe(ACC_B.address);
@@ -414,29 +424,30 @@ describe('ConnectHandler: multi-account connect', () => {
     const { host, requestUnlockAccount } = multiHost();
     const { driver } = wire(host);
     driver.ack();
-    // getSessionAccount returns null → handler falls back to getAddress().
-    host.setSessionAccount(wallet.addr);
+    // The prompt approved without an account (single-account wallet, or the
+    // user never touched the picker) → the wallet's active account is used.
     const res = await driver.request(METHODS.CONNECT, { origin: ORIGIN });
     expect((res.result as { address?: string }).address).toBe(wallet.addr);
     expect(requestUnlockAccount).toHaveBeenCalledWith(wallet.addr);
   });
 
   it('rejects the connection when the chosen account cannot be unlocked', async () => {
-    const { host } = multiHost({
-      requestUnlockAccount: async () => null, // wrong PIN / cancelled
-    });
+    const { host } = multiHost(
+      { pick: ACC_B.address },
+      {
+        requestUnlockAccount: async () => null, // wrong PIN / cancelled
+      },
+    );
     const { driver } = wire(host);
     driver.ack();
-    host.setSessionAccount(ACC_B.address);
     const res = await driver.request(METHODS.CONNECT, { origin: ORIGIN });
     expect(res.error?.code).toBe(ERROR_CODES.USER_REJECTED);
   });
 
   it('signs with the session account keys, not the active wallet', async () => {
-    const { host } = multiHost();
+    const { host } = multiHost({ pick: ACC_B.address });
     const { driver } = wire(host);
     driver.ack();
-    host.setSessionAccount(ACC_B.address);
     await driver.request(METHODS.CONNECT, { origin: ORIGIN });
     const res = await driver.request(METHODS.SIGN_MESSAGE, { message: 'gm' });
     expect(res.error).toBeUndefined();
@@ -445,15 +456,16 @@ describe('ConnectHandler: multi-account connect', () => {
   });
 
   it('restores the previous session account on silent reconnect', async () => {
-    const { host } = multiHost();
+    const { host } = multiHost({ pick: ACC_B.address });
     const { driver } = wire(host);
     driver.ack();
-    host.setSessionAccount(ACC_B.address);
     await driver.request(METHODS.CONNECT, { origin: ORIGIN });
     // A second connect restores the live session without a prompt.
+    const approvalsBefore = host.approvals.length;
     const res2 = await driver.request(METHODS.CONNECT, { origin: ORIGIN });
     expect(res2.error).toBeUndefined();
     expect((res2.result as { address?: string }).address).toBe(ACC_B.address);
+    expect(host.approvals.length).toBe(approvalsBefore); // no new prompt
   });
 });
 

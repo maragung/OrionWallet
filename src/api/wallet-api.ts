@@ -54,78 +54,102 @@ export interface WalletState {
   activeAddr: string | null;
 }
 
+/**
+ * Storage id of the encrypted keystore entry that holds `addr`'s keys.
+ *
+ * Every key-holding account gets its own entry under this id, so accounts from
+ * different recovery phrases coexist instead of overwriting each other. The
+ * `default` entry is kept only as the first wallet's home (and for accounts
+ * persisted before this scheme existed).
+ */
+export function walletIdForAddr(addr: string): string {
+  return `acct-${addr.slice(0, 12)}`;
+}
+
+/** The stored keystore entry for an account: its own blob, else `default`. */
+export async function findWalletEntryFor(addr: string): Promise<StoredWalletEntry | null> {
+  const own = await loadWalletEntry(walletIdForAddr(addr));
+  if (own) return own;
+  return loadWalletEntry('default');
+}
+
+/**
+ * Reject a PIN that does not open the wallets already on this device.
+ *
+ * All accounts in one installation share a single PIN: switching accounts asks
+ * for "your PIN" with no hint of which account it belongs to, so a second
+ * wallet sealed under a different PIN would look exactly like a broken switch.
+ */
+export async function assertPinMatchesExistingWallets(pin: string): Promise<void> {
+  const entries = await listWalletEntries();
+  if (entries.length === 0) return;
+  const probe = entries.find((e) => e.id === 'default') ?? entries[0];
+  try {
+    await loadWalletEncrypted(probe.blob, pin);
+  } catch {
+    throw new Error(
+      'That PIN does not match this wallet. All accounts on this device share one PIN — ' +
+        'enter the PIN you use to unlock your existing wallet.',
+    );
+  }
+}
+
+/**
+ * Persist a key-holding wallet: its own per-account entry, plus `default` when
+ * it is the first wallet on the device (the unlock screen and passkey unlock
+ * prefer that entry, and pre-multi-seed accounts derive from it). Also records
+ * the account in the manifest.
+ */
+export async function persistImportedWallet(w: Wallet, pin: string): Promise<void> {
+  const blob = await saveWalletEncrypted(w, pin);
+  const entry: StoredWalletEntry = {
+    id: walletIdForAddr(w.addr),
+    blob,
+    addrHint: w.addr.slice(0, 8) + '...',
+    name: w.name,
+    createdAt: w.createdAt,
+  };
+  await saveWalletEntry(entry);
+  if (!(await loadWalletEntry('default'))) {
+    await saveWalletEntry({ ...entry, id: 'default' });
+  }
+  await addAccountToManifest({
+    addr: w.addr,
+    name: w.name,
+    index: w.index,
+    pubB64: w.pubB64,
+    createdAt: w.createdAt,
+  });
+}
+
 /** Create a brand new wallet, encrypt, and persist to IndexedDB. */
 export async function createNewWallet(
   name: string,
   pin: string,
 ): Promise<{ wallet: Wallet; mnemonic: string }> {
   assertValidPin(pin);
+  await assertPinMatchesExistingWallets(pin);
   const wallet = await _createWallet(name);
-  const blob = await saveWalletEncrypted(wallet, pin);
-  const entry: StoredWalletEntry = {
-    id: 'default',
-    blob,
-    addrHint: wallet.addr.slice(0, 8) + '...',
-    name: wallet.name,
-    createdAt: wallet.createdAt,
-  };
-  await saveWalletEntry(entry);
-  const manifestEntry: ManifestEntry = {
-    addr: wallet.addr,
-    name: wallet.name,
-    index: wallet.index,
-    pubB64: wallet.pubB64,
-    createdAt: wallet.createdAt,
-  };
-  await addAccountToManifest(manifestEntry);
+  await persistImportedWallet(wallet, pin);
   return { wallet, mnemonic: wallet.mnemonic };
 }
 
 /** Import a wallet from a mnemonic phrase. */
 export async function importMnemonic(mnemonic: string, name: string, pin: string): Promise<Wallet> {
   assertValidPin(pin);
+  await assertPinMatchesExistingWallets(pin);
   const wallet = await _importMnemonic(mnemonic, name, 0, { strictChecksum: false });
-  const blob = await saveWalletEncrypted(wallet, pin);
-  const entry: StoredWalletEntry = {
-    id: 'default',
-    blob,
-    addrHint: wallet.addr.slice(0, 8) + '...',
-    name: wallet.name,
-    createdAt: wallet.createdAt,
-  };
-  await saveWalletEntry(entry);
-  const manifestEntry: ManifestEntry = {
-    addr: wallet.addr,
-    name: wallet.name,
-    index: wallet.index,
-    pubB64: wallet.pubB64,
-    createdAt: wallet.createdAt,
-  };
-  await addAccountToManifest(manifestEntry);
+  await persistImportedWallet(wallet, pin);
   return wallet;
 }
 
 /** Import a wallet from a 32-byte seed (hex or base64). */
 export async function importSeed(seed: Uint8Array, name: string, pin: string): Promise<Wallet> {
   assertValidPin(pin);
+  await assertPinMatchesExistingWallets(pin);
   const wallet = _importSeed(seed);
   wallet.name = name;
-  const blob = await saveWalletEncrypted(wallet, pin);
-  const entry: StoredWalletEntry = {
-    id: 'default',
-    blob,
-    addrHint: wallet.addr.slice(0, 8) + '...',
-    name: wallet.name,
-    createdAt: wallet.createdAt,
-  };
-  await saveWalletEntry(entry);
-  await addAccountToManifest({
-    addr: wallet.addr,
-    name: wallet.name,
-    index: wallet.index,
-    pubB64: wallet.pubB64,
-    createdAt: wallet.createdAt,
-  });
+  await persistImportedWallet(wallet, pin);
   return wallet;
 }
 
@@ -166,21 +190,36 @@ export async function removeStoredWallet(id: string): Promise<void> {
   // (best-effort — manifest is keyed by addr, not wallet id)
 }
 
-/** Change PIN: re-encrypt the wallet blob with a new PIN. */
+/**
+ * Change PIN: re-encrypt every stored wallet blob with a new PIN.
+ *
+ * All accounts share one PIN (see `assertPinMatchesExistingWallets`), so a PIN
+ * change has to reach every keystore entry or the untouched accounts would stop
+ * unlocking. Entries the old PIN cannot open (pre-dating the shared-PIN rule)
+ * are skipped with a warning rather than blocking the change.
+ */
 export async function changePin(wallet: Wallet, oldPin: string, newPin: string): Promise<void> {
   assertCanSign(wallet, 'change its PIN — it has no keystore');
   assertValidPin(newPin);
-  // Verify old PIN by attempting decryption
-  const entry = await loadWalletEntry('default');
-  if (!entry) throw new Error('No stored wallet to re-encrypt');
-  await loadWalletEncrypted(entry.blob, oldPin); // throws on wrong PIN
-  // Re-encrypt with new PIN
-  const newBlob = await saveWalletEncrypted(wallet, newPin);
-  const newEntry: StoredWalletEntry = {
-    ...entry,
-    blob: newBlob,
-  };
-  await saveWalletEntry(newEntry);
+  const entries = await listWalletEntries();
+  let reencrypted = 0;
+  let lastError: unknown = null;
+  for (const entry of entries) {
+    try {
+      const w = await loadWalletEncrypted(entry.blob, oldPin); // throws on wrong PIN
+      const newBlob = await saveWalletEncrypted(w, newPin);
+      await saveWalletEntry({ ...entry, blob: newBlob });
+      reencrypted += 1;
+    } catch (e) {
+      lastError = e;
+      console.warn(
+        `[wallet-api] changePin: skipping entry "${entry.id}" (old PIN did not open it)`,
+      );
+    }
+  }
+  if (reencrypted === 0) {
+    throw lastError instanceof Error ? lastError : new Error('No stored wallet to re-encrypt');
+  }
 }
 
 /** Derive a new HD account from the current wallet's master seed. */
@@ -195,13 +234,11 @@ export async function deriveNewHdAccount(
     throw new Error('Current wallet has no HD master seed (imported via private key)');
   }
   assertValidPin(pin);
+  await assertPinMatchesExistingWallets(pin);
   const newWallet = _deriveHd(parent, accountIndex, name);
-  // Persist: we currently overwrite the default wallet entry.
-  // For multi-account storage, the manifest + a separate wallet entry per account
-  // would be needed. For now, we just add to manifest.
   const blob = await saveWalletEncrypted(newWallet, pin);
   await saveWalletEntry({
-    id: `acct-${newWallet.addr.slice(0, 12)}`,
+    id: walletIdForAddr(newWallet.addr),
     blob,
     addrHint: newWallet.addr.slice(0, 8) + '...',
     name: newWallet.name,
@@ -282,9 +319,12 @@ export async function switchAccount(addr: string): Promise<Manifest> {
  * so the caller can push it into the store.
  *
  * Resolution order:
- *   1. The per-account blob written by `deriveNewHdAccount` (`acct-<addr12>`).
- *   2. The `default` blob — either it already IS the target account, or it holds
- *      the BIP39 master seed we can deterministically derive the target from.
+ *   1. The account's own blob (`acct-<addr12>`), written for every account
+ *      created or imported since per-account keystores — this is what makes
+ *      accounts from different recovery phrases switchable.
+ *   2. The `default` blob — either it already IS the target account, or (legacy
+ *      accounts persisted before per-account keystores) it holds the BIP39
+ *      master seed we can deterministically derive the target from.
  *
  * The manifest's active account is only updated once a wallet is resolved, so a
  * wrong PIN leaves the previous selection untouched.
@@ -304,8 +344,9 @@ export async function unlockAccount(addr: string, pin: string): Promise<Wallet> 
   const entry = manifest.accounts.find((a) => a.addr === addr);
   if (!entry) throw new Error(`Account ${addr} is not in the manifest`);
 
-  // 1. Per-account blob (present for accounts created via "Derive New").
-  const perAccount = await loadWalletEntry(`acct-${addr.slice(0, 12)}`);
+  // 1. The account's own blob — present for every account created or imported
+  //    as a per-account keystore, whatever recovery phrase it came from.
+  const perAccount = await loadWalletEntry(walletIdForAddr(addr));
   if (perAccount) {
     const w = await loadWalletEncrypted(perAccount.blob, pin); // throws on wrong PIN
     if (w.addr === addr) {
@@ -332,8 +373,13 @@ export async function unlockAccount(addr: string, pin: string): Promise<Wallet> 
 
   const derived = _deriveHd(rootWallet, entry.index, entry.name);
   if (derived.addr !== addr) {
+    // The manifest knows this account but no keystore on this device derives
+    // it — the signature of an account whose blob was overwritten by a later
+    // import under the old single-slot storage, or one derived from a different
+    // recovery phrase that is no longer stored here.
     throw new Error(
-      `Derivation mismatch for account index ${entry.index}: expected ${addr}, got ${derived.addr}`,
+      `The keys for ${addr.slice(0, 16)}… are not stored on this device (no keystore ` +
+        `derives that address). Re-import its recovery phrase to restore access.`,
     );
   }
   await setActiveAccount(addr);
@@ -342,19 +388,18 @@ export async function unlockAccount(addr: string, pin: string): Promise<Wallet> 
 
 /** Remove an account from the manifest and delete its encrypted wallet blob. */
 export async function removeAccount(addr: string): Promise<Manifest> {
-  const manifest = await loadManifest();
-  const entry = manifest.accounts.find((a) => a.addr === addr);
-
   // Delete the per-account encrypted blob (best-effort)
   try {
-    await deleteWalletEntry(`acct-${addr.slice(0, 12)}`);
+    await deleteWalletEntry(walletIdForAddr(addr));
   } catch {
     // May not exist — that's fine
   }
 
-  // If this is the default (index 0) account, also delete the default blob
-  // since it holds the HD master seed that derives all accounts.
-  if (entry && entry.index === 0) {
+  // The default blob belongs to the wallet it was first persisted as — match it
+  // by address hint, never by HD index: with multiple recovery phrases, several
+  // accounts share index 0 and only one of them owns `default`.
+  const def = await loadWalletEntry('default');
+  if (def && def.addrHint === addr.slice(0, 8) + '...') {
     try {
       await deleteWalletEntry('default');
     } catch {
@@ -375,7 +420,7 @@ export async function getActiveAddress(): Promise<string | null> {
 export async function exportPrivateKey(wallet: Wallet, pin: string): Promise<string> {
   assertCanSign(wallet, 'export a private key');
   // Verify PIN by re-decrypting the stored blob
-  const entry = await loadWalletEntry('default');
+  const entry = await findWalletEntryFor(wallet.addr);
   if (!entry) throw new Error('No stored wallet');
   await loadWalletEncrypted(entry.blob, pin); // throws on wrong PIN
   return wallet.privB64;
@@ -390,7 +435,7 @@ export async function exportPrivateKey(wallet: Wallet, pin: string): Promise<str
  */
 export async function exportMnemonic(wallet: Wallet, pin: string): Promise<string> {
   assertCanSign(wallet, 'show a recovery phrase');
-  const entry = await loadWalletEntry('default');
+  const entry = await findWalletEntryFor(wallet.addr);
   if (!entry) throw new Error('No stored wallet');
   await loadWalletEncrypted(entry.blob, pin); // throws on wrong PIN
   if (!wallet.mnemonic) {

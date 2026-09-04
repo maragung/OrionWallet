@@ -9,8 +9,12 @@ import {
   deriveNewHdAccount,
   removeAccount,
   getActiveAddress,
+  changePin,
+  exportMnemonic,
+  exportPrivateKey,
+  walletIdForAddr,
 } from '../../src/api/wallet-api';
-import { wipeEverything, closeDb } from '../../src/wallet/storage';
+import { wipeEverything, closeDb, loadWalletEntry } from '../../src/wallet/storage';
 import { validateMnemonic } from '../../src/crypto/bip39';
 import { isValidAddress } from '../../src/crypto/address';
 
@@ -38,10 +42,11 @@ describe('wallet API (integration with IndexedDB)', () => {
     expect(wallet.mnemonic).toBe(mnemonic);
     expect(validateMnemonic(mnemonic)).toBe(true);
 
-    // Wallet should be in storage
+    // Wallet should be in storage: its own per-account entry plus the
+    // `default` entry (first wallet on the device).
     const list = await listStoredWallets();
-    expect(list.length).toBe(1);
-    expect(list[0]!.name).toBe('Test Account');
+    expect(list.length).toBe(2);
+    expect(list.map((e) => e.id).sort()).toEqual(['default', walletIdForAddr(wallet.addr)].sort());
 
     // Should appear in manifest
     const accounts = await listAccounts();
@@ -170,6 +175,89 @@ describe('wallet API (integration with IndexedDB)', () => {
     it('rejects a malformed address', async () => {
       await createNewWallet('Account 1', PIN);
       await expect(unlockAccount('not-an-address', PIN)).rejects.toThrow('Invalid address');
+    });
+  });
+
+  describe('multi-account from different seed phrases', () => {
+    const PIN = 'Pass1word!abc';
+    const NEW_PIN = 'Pass2word!xyz';
+    const MNEMONIC_A =
+      'legal winner thank year wave sausage worth useful legal winner thank yellow';
+    const MNEMONIC_B =
+      'letter advice cage absurd amount doctor acoustic avoid letter advice cage above';
+
+    async function seedTwoWallets() {
+      const a = await importMnemonic(MNEMONIC_A, 'Seed A', PIN);
+      const b = await importMnemonic(MNEMONIC_B, 'Seed B', PIN);
+      expect(a.addr).not.toBe(b.addr); // two genuinely different seeds
+      return { a, b };
+    }
+
+    it('switches between accounts of different seeds without error', async () => {
+      const { a, b } = await seedTwoWallets();
+
+      const unlockedB = await unlockAccount(b.addr, PIN);
+      expect(unlockedB.addr).toBe(b.addr);
+      expect(unlockedB.mnemonic).toBe(MNEMONIC_B);
+      expect(await getActiveAddress()).toBe(b.addr);
+
+      const backToA = await unlockAccount(a.addr, PIN);
+      expect(backToA.addr).toBe(a.addr);
+      expect(backToA.mnemonic).toBe(MNEMONIC_A);
+      expect(await getActiveAddress()).toBe(a.addr);
+    });
+
+    it('importing a second seed does not overwrite the first wallet keystore', async () => {
+      const { a, b } = await seedTwoWallets();
+
+      // The default entry still belongs to the FIRST wallet…
+      const def = await loadWalletEntry('default');
+      expect(def).not.toBeNull();
+      const viaDefault = await unlockWallet(PIN);
+      expect(viaDefault.addr).toBe(a.addr);
+      // …and the second wallet has its own per-account entry.
+      const own = await loadWalletEntry(walletIdForAddr(b.addr));
+      expect(own).not.toBeNull();
+      expect(own!.addrHint).toBe(b.addr.slice(0, 8) + '...');
+    });
+
+    it('rejects importing with a PIN that does not match the existing wallets', async () => {
+      await importMnemonic(MNEMONIC_A, 'Seed A', PIN);
+      await expect(importMnemonic(MNEMONIC_B, 'Seed B', 'Other1Pass!qw')).rejects.toThrow(
+        'does not match',
+      );
+    });
+
+    it('changePin re-encrypts every account, all unlock with the new PIN', async () => {
+      const { a, b } = await seedTwoWallets();
+      const active = await unlockAccount(b.addr, PIN);
+
+      await changePin(active, PIN, NEW_PIN);
+
+      expect((await unlockAccount(a.addr, NEW_PIN)).addr).toBe(a.addr);
+      expect((await unlockAccount(b.addr, NEW_PIN)).addr).toBe(b.addr);
+      // …and the old PIN no longer opens anything.
+      await expect(unlockAccount(b.addr, PIN)).rejects.toThrow();
+    });
+
+    it('removing a second-seed account keeps the default keystore intact', async () => {
+      const { a, b } = await seedTwoWallets();
+      await removeAccount(b.addr);
+
+      expect(await loadWalletEntry(walletIdForAddr(b.addr))).toBeNull();
+      expect(await loadWalletEntry('default')).not.toBeNull();
+      expect((await unlockWallet(PIN)).addr).toBe(a.addr);
+      expect((await listAccounts()).map((x) => x.addr)).toEqual([a.addr]);
+    });
+
+    it('exports use the account’s own keystore, not the default one', async () => {
+      const { b } = await seedTwoWallets();
+      const unlockedB = await unlockAccount(b.addr, PIN);
+
+      expect(await exportMnemonic(unlockedB, PIN)).toBe(MNEMONIC_B);
+      expect(typeof (await exportPrivateKey(unlockedB, PIN))).toBe('string');
+      // Wrong PIN is still rejected against the account's own blob.
+      await expect(exportMnemonic(unlockedB, 'Wrong1word!xy')).rejects.toThrow();
     });
   });
 });

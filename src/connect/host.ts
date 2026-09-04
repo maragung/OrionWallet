@@ -36,7 +36,14 @@ interface PendingUnlock {
 let pendingUnlock: PendingUnlock | null = null;
 const unlockListeners = new Set<() => void>();
 
-// ── Account chosen in the connect picker (mirrors handler session account) ───
+// ── Account bound to the live session ────────────────────────────────────────
+//
+// Written ONLY by `setSessionAccount` (when a session is adopted or a fresh
+// connect binds its account): it routes reads like getBalance to the account
+// the dApp is actually connected with. It is deliberately never written from
+// the connect prompt's picker — the picked account travels on the approval
+// decision itself, so a selection left over from an earlier prompt or session
+// can never leak into a new connection.
 
 let chosenAccount: string | null = null;
 
@@ -77,10 +84,6 @@ export function resolveUnlockAccount(w: Wallet | null): void {
   pendingUnlock = null;
   unlockListeners.forEach((f) => f());
   r.resolve(w);
-}
-
-export function setChosenAccount(addr: string | null): void {
-  chosenAccount = addr;
 }
 
 export async function refreshHostAccounts(): Promise<void> {
@@ -158,9 +161,4 @@ export function createWalletHost(): WalletHost {
     },
     getSessionAccount: () => chosenAccount,
   };
-}
-
-/** Expose the chosen session account so the connect picker can default to it. */
-export function getChosenAccount(): string | null {
-  return chosenAccount;
 }

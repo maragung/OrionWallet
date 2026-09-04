@@ -3,11 +3,14 @@ import { useWalletStore } from '../store/wallet-store';
 import { ProcessingModal } from './ProcessingModal';
 import { usePanelLoading } from '../hooks/usePanelLoading';
 import { saveWalletEncrypted, loadWalletEncrypted } from '../wallet/wallet';
-import { saveWalletEntry } from '../wallet/storage';
-import { addAccountToManifest } from '../wallet/storage';
 import { assertValidPin } from '../wallet/pin';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Icon } from './icons';
+import {
+  assertPinMatchesExistingWallets,
+  findWalletEntryFor,
+  persistImportedWallet,
+} from '../api/wallet-api';
 
 export function WalletExportImport() {
   const { wallet, setWallet, pushToast } = useWalletStore();
@@ -31,9 +34,10 @@ export function WalletExportImport() {
     if (!exportPin) return pushToast('error', 'Enter PIN to authorize export');
     panelLoading.show('Exporting wallet', 'Encrypting and packaging the wallet file…');
     try {
-      // Verify PIN by re-decrypting (best-effort: try the default wallet entry)
-      const { loadWalletEntry } = await import('../wallet/storage');
-      const entry = await loadWalletEntry('default');
+      // Verify PIN by re-decrypting the active account's own keystore entry
+      // (which may not be the `default` one when several recovery phrases
+      // coexist on this device).
+      const entry = await findWalletEntryFor(wallet.addr);
       if (entry) {
         await loadWalletEncrypted(entry.blob, exportPin);
       }
@@ -71,25 +75,15 @@ export function WalletExportImport() {
 
     panelLoading.show('Importing wallet', `Reading ${file.name}…`);
     try {
+      // All accounts on this device share one PIN, so the "new" PIN the user
+      // typed must open the wallets already stored here.
+      await assertPinMatchesExistingWallets(importNewPin);
       const buf = new Uint8Array(await file.arrayBuffer());
       // Decrypt with the file's PIN
       const importedWallet = await loadWalletEncrypted(buf, importPin);
-      // Re-encrypt with the new PIN (the user's chosen PIN for this browser)
-      const newBlob = await saveWalletEncrypted(importedWallet, importNewPin);
-      await saveWalletEntry({
-        id: 'default',
-        blob: newBlob,
-        addrHint: importedWallet.addr.slice(0, 8) + '...',
-        name: importedWallet.name,
-        createdAt: importedWallet.createdAt,
-      });
-      await addAccountToManifest({
-        addr: importedWallet.addr,
-        name: importedWallet.name,
-        index: importedWallet.index,
-        pubB64: importedWallet.pubB64,
-        createdAt: importedWallet.createdAt,
-      });
+      // Re-encrypt with the shared PIN and persist under the account's own
+      // keystore entry (plus `default` when this is the first wallet).
+      await persistImportedWallet(importedWallet, importNewPin);
       setWallet(importedWallet);
       pushToast('success', `Wallet imported: ${importedWallet.addr.slice(0, 12)}…`);
       setImportPin('');

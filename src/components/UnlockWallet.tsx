@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useWalletStore } from '../store/wallet-store';
-import { unlockWallet, listStoredWallets } from '../api/wallet-api';
+import { unlockWallet, listStoredWallets, switchAccount } from '../api/wallet-api';
 import { recordPinAttempt, resetPinAttempts } from '../wallet/pin';
 import { isWebCryptoAvailable } from '../crypto/aes';
 import {
@@ -186,6 +186,11 @@ export function UnlockWallet({ onCreate, notice }: UnlockWalletProps) {
       // announce to someone who just wanted in.
       pushToast('success', `Unlocked ${wallet.name || 'wallet'}`);
       setWallet(wallet);
+      // Keep the manifest's active account in step with what actually opened —
+      // otherwise dApp connects and the account list would still consider the
+      // previously-active account "active". Best-effort: an unreadable manifest
+      // must not fail an unlock that already succeeded.
+      switchAccount(wallet.addr).catch(() => undefined);
       resetPinAttempts('unlock');
     } catch (e) {
       const msg = (e as Error).message;
