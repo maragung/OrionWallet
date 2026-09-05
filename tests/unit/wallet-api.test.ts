@@ -12,11 +12,14 @@ import {
   changePin,
   exportMnemonic,
   exportPrivateKey,
+  importPrivateKey,
   walletIdForAddr,
 } from '../../src/api/wallet-api';
 import { wipeEverything, closeDb, loadWalletEntry } from '../../src/wallet/storage';
 import { validateMnemonic } from '../../src/crypto/bip39';
 import { isValidAddress } from '../../src/crypto/address';
+import { hexEncode } from '../../src/crypto/hex';
+import { base64Decode } from '../../src/crypto/base64';
 
 describe('wallet API (integration with IndexedDB)', () => {
   beforeAll(async () => {
@@ -266,6 +269,39 @@ describe('wallet API (integration with IndexedDB)', () => {
       expect(typeof (await exportPrivateKey(unlockedB, PIN))).toBe('string');
       // Wrong PIN is still rejected against the account's own blob.
       await expect(exportMnemonic(unlockedB, 'Wrong1word!xy')).rejects.toThrow();
+    });
+  });
+
+  describe('import private key', () => {
+    const PIN = 'Pass1word!abc';
+    const MNEMONIC_A =
+      'legal winner thank year wave sausage worth useful legal winner thank yellow';
+
+    it('imports a base64 seed as an account with its own PIN and no phrase', async () => {
+      const a = await importMnemonic(MNEMONIC_A, 'Seed A', PIN);
+      const pk = await exportPrivateKey(a, PIN); // base64 of the 32-byte seed
+
+      const c = await importPrivateKey(pk, 'PK Import', 'Other1Pass!qw');
+      expect(c.addr).toBe(a.addr); // the same account, re-sealed under a new PIN
+      expect((await unlockAccount(c.addr, 'Other1Pass!qw')).addr).toBe(c.addr);
+      await expect(unlockAccount(c.addr, PIN)).rejects.toThrow();
+      // A key-imported account carries no recovery phrase to reveal.
+      await expect(exportMnemonic(c, 'Other1Pass!qw')).rejects.toThrow('no recovery phrase');
+    });
+
+    it('accepts hex keys, picking the decoding that lands on 32/64 bytes', async () => {
+      const a = await importMnemonic(MNEMONIC_A, 'Seed A', PIN);
+      const hexKey = hexEncode(base64Decode(await exportPrivateKey(a, PIN)));
+      // 64 hex chars are also well-formed base64 (decoding to 48 bytes) — the
+      // length filter must prefer the hex reading.
+      const c = await importPrivateKey(hexKey, 'Hex Import', PIN);
+      expect(c.addr).toBe(a.addr);
+    });
+
+    it('rejects material that decodes to neither 32 nor 64 bytes', async () => {
+      await expect(importPrivateKey('not-a-key!', 'Bad', PIN)).rejects.toThrow(
+        '32 bytes (seed) or 64 bytes',
+      );
     });
   });
 });

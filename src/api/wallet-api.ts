@@ -46,6 +46,7 @@ import { withTimeout } from '../utils/withTimeout';
 export const WALLET_READ_TIMEOUT_MS = DB_OPEN_BUDGET_MS + 5_000;
 import { isValidAddress } from '../crypto/address';
 import { base64Decode } from '../crypto/base64';
+import { hexDecode } from '../crypto/hex';
 
 export interface WalletState {
   wallet: Wallet | null;
@@ -124,6 +125,50 @@ export async function importMnemonic(mnemonic: string, name: string, pin: string
 export async function importSeed(seed: Uint8Array, name: string, pin: string): Promise<Wallet> {
   assertValidPin(pin);
   const wallet = _importSeed(seed);
+  wallet.name = name;
+  await persistImportedWallet(wallet, pin);
+  return wallet;
+}
+
+/**
+ * Import an account from raw key material: a 32-byte seed or a 64-byte secret
+ * key, written as hex or base64. Such an account has no recovery phrase and no
+ * HD master seed — the key material itself is the only backup.
+ *
+ * Hex and base64 overlap on some inputs (a 64-char hex string is also
+ * well-formed base64), so both decodings are tried and the one that lands on
+ * 32 or 64 bytes wins.
+ */
+export async function importPrivateKey(
+  material: string,
+  name: string,
+  pin: string,
+): Promise<Wallet> {
+  assertValidPin(pin);
+  const trimmed = material.trim().replace(/^0x/, '');
+  if (!trimmed) throw new Error('Enter the private key');
+
+  const candidates: Uint8Array[] = [];
+  if (/^[0-9a-fA-F]+$/.test(trimmed) && trimmed.length % 2 === 0) {
+    try {
+      candidates.push(hexDecode(trimmed));
+    } catch {
+      // Fall through to base64
+    }
+  }
+  try {
+    candidates.push(base64Decode(trimmed));
+  } catch {
+    // Invalid as base64 — the hex attempt may still have made it
+  }
+  const bytes = candidates.find((b) => b.length === 32 || b.length === 64);
+  if (!bytes) {
+    throw new Error(
+      'Private key must be hex or base64 encoding 32 bytes (seed) or 64 bytes (secret key)',
+    );
+  }
+
+  const wallet = bytes.length === 64 ? _importSk(bytes) : _importSeed(bytes);
   wallet.name = name;
   await persistImportedWallet(wallet, pin);
   return wallet;

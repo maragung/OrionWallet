@@ -9,12 +9,15 @@ import {
   removeAccount,
   addWatchOnlyAccount,
   openWatchOnlyAccount,
+  importMnemonic,
+  importPrivateKey,
 } from '../api/wallet-api';
 import type { ManifestEntry } from '../wallet/storage';
 import { isValidAddress } from '../crypto/address';
 import { PinModal } from './PinModal';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Icon } from './icons';
+import { InfoHint } from './Tooltip';
 
 export function AccountSwitcher() {
   const { wallet, setWallet, lock, pushToast } = useWalletStore();
@@ -24,6 +27,13 @@ export function AccountSwitcher() {
   const [showWatch, setShowWatch] = useState(false);
   const [watchAddr, setWatchAddr] = useState('');
   const [watchName, setWatchName] = useState('');
+  /** Import panel: seed phrase or raw private key, persisted as a new account. */
+  const [showImport, setShowImport] = useState(false);
+  const [importMode, setImportMode] = useState<'phrase' | 'key'>('phrase');
+  const [importName, setImportName] = useState('');
+  const [importMaterial, setImportMaterial] = useState('');
+  const [importPin, setImportPin] = useState('');
+  const [importConfirmPin, setImportConfirmPin] = useState('');
   const [newName, setNewName] = useState('');
   const [newIndex, setNewIndex] = useState(0);
   const [pin, setPin] = useState('');
@@ -104,6 +114,44 @@ export function AccountSwitcher() {
     }
   };
 
+  const resetImportForm = () => {
+    setImportMode('phrase');
+    setImportName('');
+    setImportMaterial('');
+    setImportPin('');
+    setImportConfirmPin('');
+  };
+
+  const handleImport = async () => {
+    if (!importName.trim()) return pushToast('error', 'Account name required');
+    if (!importMaterial.trim()) {
+      return pushToast(
+        'error',
+        importMode === 'phrase' ? 'Enter the seed phrase' : 'Enter the private key',
+      );
+    }
+    if (!importPin) return pushToast('error', 'Enter a PIN for this account');
+    if (importPin !== importConfirmPin) return pushToast('error', 'PINs do not match');
+    panelLoading.show('Importing account', 'Deriving keys and encrypting…');
+    try {
+      // The account gets its own keystore entry and its own PIN — nothing on
+      // this device is touched unless the phrase was already imported before.
+      const w =
+        importMode === 'phrase'
+          ? await importMnemonic(importMaterial, importName.trim(), importPin)
+          : await importPrivateKey(importMaterial, importName.trim(), importPin);
+      setWallet(w);
+      pushToast('success', `Imported ${w.name} (${w.addr.slice(0, 12)}…)`);
+      setShowImport(false);
+      resetImportForm();
+      await refresh();
+    } catch (e) {
+      pushToast('error', `Import failed: ${(e as Error).message}`);
+    } finally {
+      panelLoading.hide();
+    }
+  };
+
   const handleDerive = async () => {
     if (!pin) return pushToast('error', 'PIN required to derive new account');
     if (!newName.trim()) return pushToast('error', 'Account name required');
@@ -160,8 +208,25 @@ export function AccountSwitcher() {
             <button
               className="ghost btn-sm"
               onClick={() => {
+                setShowImport(!showImport);
+                setShowWatch(false);
+                setShowDerive(false);
+              }}
+            >
+              {showImport ? (
+                'Cancel'
+              ) : (
+                <>
+                  <Icon name="upload" size={14} /> Import
+                </>
+              )}
+            </button>
+            <button
+              className="ghost btn-sm"
+              onClick={() => {
                 setShowWatch(!showWatch);
                 setShowDerive(false);
+                setShowImport(false);
               }}
             >
               {showWatch ? (
@@ -177,6 +242,7 @@ export function AccountSwitcher() {
               onClick={() => {
                 setShowDerive(!showDerive);
                 setShowWatch(false);
+                setShowImport(false);
               }}
             >
               {showDerive ? (
@@ -227,6 +293,130 @@ export function AccountSwitcher() {
                 disabled={!isValidAddress(watchAddr.trim()) || !watchName.trim()}
               >
                 Add Watch-Only Account
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showImport && (
+          <div className="inset-panel">
+            <div className="card-desc">
+              Add an account from another recovery phrase or a raw private key. It gets its own
+              keystore entry and its own PIN — accounts already stored on this device are left
+              untouched, and the imported account becomes active once it is saved.
+            </div>
+            <div className="tab-bar" role="tablist" aria-label="Import mode">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={importMode === 'phrase'}
+                className={`tab ${importMode === 'phrase' ? 'active' : ''}`}
+                onClick={() => setImportMode('phrase')}
+              >
+                <Icon name="upload" size={16} /> Seed Phrase
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={importMode === 'key'}
+                className={`tab ${importMode === 'key' ? 'active' : ''}`}
+                onClick={() => setImportMode('key')}
+              >
+                <Icon name="key" size={16} /> Private Key
+              </button>
+            </div>
+            {importMode === 'phrase' ? (
+              <div className="form-row">
+                <label htmlFor="imp-mnemonic">
+                  Seed Phrase (12/15/18/21/24 words){' '}
+                  <InfoHint text="Enter your BIP39 mnemonic phrase. Words must be separated by spaces. The mnemonic is processed locally and never sent to any server." />
+                </label>
+                <textarea
+                  id="imp-mnemonic"
+                  className="mono resize-y"
+                  rows={3}
+                  value={importMaterial}
+                  onChange={(e) => setImportMaterial(e.target.value)}
+                  placeholder="abandon ability able about above absent absorb abstract absurd abuse access accident"
+                  spellCheck={false}
+                />
+              </div>
+            ) : (
+              <div className="form-row">
+                <label htmlFor="imp-key">
+                  Private Key{' '}
+                  <InfoHint text="Hex or base64, encoding a 32-byte seed or a 64-byte secret key. An account imported this way has no recovery phrase — the key itself is the only backup, so store it safely." />
+                </label>
+                <input
+                  id="imp-key"
+                  type="password"
+                  className="mono"
+                  value={importMaterial}
+                  onChange={(e) => setImportMaterial(e.target.value)}
+                  placeholder="hex or base64…"
+                  spellCheck={false}
+                  autoComplete="off"
+                />
+              </div>
+            )}
+            <div className="form-row">
+              <label htmlFor="imp-name">Account Name</label>
+              <input
+                id="imp-name"
+                value={importName}
+                onChange={(e) => setImportName(e.target.value)}
+                placeholder="Ledger, Trading, …"
+                maxLength={64}
+              />
+            </div>
+            <div className="grid-2">
+              <div className="form-row">
+                <label htmlFor="imp-pin">
+                  PIN (for this account){' '}
+                  <InfoHint text="Any characters you like — minimum 6. This PIN unlocks only the account being imported; your other accounts keep their own PINs." />
+                </label>
+                <input
+                  id="imp-pin"
+                  type="password"
+                  className="mono"
+                  value={importPin}
+                  onChange={(e) => setImportPin(e.target.value)}
+                  autoComplete="new-password"
+                />
+              </div>
+              <div className="form-row">
+                <label htmlFor="imp-pin2">Confirm PIN</label>
+                <input
+                  id="imp-pin2"
+                  type="password"
+                  className="mono"
+                  value={importConfirmPin}
+                  onChange={(e) => setImportConfirmPin(e.target.value)}
+                  autoComplete="new-password"
+                  aria-invalid={Boolean(importConfirmPin) && importPin !== importConfirmPin}
+                  data-invalid={
+                    Boolean(importConfirmPin) && importPin !== importConfirmPin ? 'true' : undefined
+                  }
+                />
+                {Boolean(importConfirmPin) && importPin !== importConfirmPin && (
+                  <div className="field-error">
+                    <Icon name="alert-triangle" size={12} /> The two PINs do not match.
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="form-actions">
+              <button
+                className="primary"
+                onClick={handleImport}
+                disabled={
+                  !importName.trim() ||
+                  !importMaterial.trim() ||
+                  !importPin ||
+                  importPin !== importConfirmPin
+                }
+              >
+                <Icon name="upload" size={16} /> Import Account
               </button>
             </div>
           </div>
@@ -386,11 +576,11 @@ export function AccountSwitcher() {
         <div className="info-box spaced-top">
           <Icon name="info" size={16} />
           <div className="info-box-body">
-            Accounts can come from different recovery phrases — importing another phrase adds its
-            first account here without touching the ones already stored. Each account has its own
-            PIN, so switching asks for the PIN of the account being opened (the signing keys must be
-            decrypted before an account can become active). Watch-only entries are just addresses —
-            removing one never deletes key material, because it holds none.
+            Accounts can come from different recovery phrases or raw private keys — use Import
+            (above) to add one without touching the accounts already stored. Each account has its
+            own PIN, so switching asks for the PIN of the account being opened (the signing keys
+            must be decrypted before an account can become active). Watch-only entries are just
+            addresses — removing one never deletes key material, because it holds none.
           </div>
         </div>
       </div>
