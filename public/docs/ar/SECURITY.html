@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>الأمان — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="security">الأمان</h1>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — الكود المصدري، والمسائل، والإصدارات.<br /><strong>الإبلاغ عن الثغرات:</strong> <a href="https://github.com/maragung/OrionWallet/security/advisories/new">GitHub Security Advisories</a></blockquote>
+<h2 id="audit-status">حالة التدقيق</h2>
+<p><strong>لم يخضع Orion Wallet لتدقيق أمني مستقل من طرف ثالث.</strong></p>
+<p>يتبع التصميم التشفيري تنفيذ <code>octra-labs/webcli</code> المرجعي، والمكوّنات الأولية (primitives) مأخوذة من<br />مكتبات مُراجعة جيدًا. لكن التكامل نفسه غير مُدقَّق.<br />يرجى وزن ذلك قبل تخزين قيمة كبيرة.</p>
+<hr />
+<h2 id="reporting-a-vulnerability">الإبلاغ عن ثغرة</h2>
+<p><strong>لا تفتح مسألة عامة (issue) لمشكلة أمنية.</strong></p>
+<p>أبلغ القائمين على الصيانة على انفراد، متضمنًا:</p>
+<ul>
+<li>وصفًا للمشكلة وأثرها</li>
+<li>خطوات إعادة الإنتاج</li>
+<li>الإصدار أو الالتزام (commit) المتأثر</li>
+<li>أي علاج مقترح</li>
+</ul>
+<p>يرجى إتاحة نافذة زمنية معقولة للإصلاح قبل الكشف العلني. التقارير مرحّب بها،<br />ويُنسب الفضل لأصحابها ما لم تفضّل خلاف ذلك.</p>
+<hr />
+<h2 id="threat-model">نموذج التهديدات</h2>
+<h3 id="what-orion-wallet-protects-against">ما يحمي منه Orion Wallet</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>التهديد</th><th>التخفيف</th></tr></thead>
+<tbody>
+<tr><td>تسرّب المفاتيح إلى خادم</td><td>لا توجد خلفية (backend). لا تغادر المفاتيح المتصفح أبدًا</td></tr>
+<tr><td>سرقة مخزن المفاتيح أثناء التخزين</td><td>AES-256-GCM، مفتاح مُشتق من رمز PIN عبر PBKDF2</td></tr>
+<tr><td>طلبات dApp خبيثة</td><td>أذونات لكل أصل (origin) مع مطالبات موافقة صريحة</td></tr>
+<tr><td>تزوير رسائل عبر الأصول</td><td>التحقق من الأصل في كل رسالة واردة</td></tr>
+<tr><td>إعادة بث رسالة (replay)</td><td>تحدٍّ من CSPRNG وقيمة nonce لكل جلسة</td></tr>
+<tr><td>XSS عبر ترميز مُحقن</td><td>لا <code>innerHTML</code> / <code>dangerouslySetInnerHTML</code>؛ CSP يقيّد المصادر</td></tr>
+<tr><td>بيانات RPC تالفة تعطّل التطبيق</td><td>تطبيع دفاعي بالإضافة إلى حدود الأخطاء</td></tr>
+<tr><td>عبارة استرداد لا يُدوِّنها المستخدم فعلًا</td><td>الإنشاء مشروط بإعادة كتابة 3 كلمات عشوائية</td></tr>
+<tr><td>توقيع من حساب بلا مفاتيح</td><td><code>assertCanSign</code> يرفض عند حدود API، وليس في الواجهة فقط</td></tr>
+<tr><td>تنصّت صامت على حركة RPC</td><td>نقاط النهاية بالنص الصريح تتطلب موافقة صريحة لكل أصل</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="what-it-cannot-protect-against">ما لا يستطيع الحماية منه</h3>
+<p>كن صريحًا مع نفسك بشأن هذه الأمور:</p>
+<ul>
+<li><strong>جهاز مخترَق.</strong> يمكن للبرمجيات الخبيثة أو keylogger أو إضافة متصفح معادية قراءة رمز PIN أثناء كتابته واستخراج المفاتيح المفكوكة من الذاكرة.</li>
+<li><strong>فقدان عبارة الاسترداد.</strong> لا توجد آلية استرداد. لا يمكن لأحد استعادتها.</li>
+<li><strong>التصيّد (Phishing).</strong> إذا أدخلت عبارة استردادك في موقع مزيف، ضاعت الأموال. لا تطلب Orion Wallet عبارتك بعد الإعداد أبدًا.</li>
+<li><strong>عقدة RPC مخترَقة.</strong> يمكن للعقدة الخبيثة عرض أرصدة زائفة أو حجب المعاملات. لا يمكنها تزوير التوقيعات أو سرقة المفاتيح.</li>
+<li><strong>اختراق سلسلة التوريد</strong> لتبعيات npm أو لمزود الاستضافة.</li>
+<li><strong>وصول مادي</strong> إلى جهاز غير مقفل والمحفظة مفتوحة القفل.</li>
+</ul>
+<hr />
+<h2 id="cryptographic-design">التصميم التشفيري</h2>
+<h3 id="key-derivation-and-storage">اشتقاق المفاتيح وتخزينها</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>الغرض</th><th>الخوارزمية</th></tr></thead>
+<tbody>
+<tr><td>العبارة التذكيرية (Mnemonic)</td><td>BIP39</td></tr>
+<tr><td>الاشتقاق الهرمي (HD)</td><td>Ed25519، بأسلوب SLIP-0010</td></tr>
+<tr><td>التوقيع</td><td>Ed25519 (tweetnacl)</td></tr>
+<tr><td>ECDH (للتحويلات الخفية)</td><td>X25519 (@noble/curves)</td></tr>
+<tr><td>تشفير مخزن المفاتيح</td><td>AES-256-GCM (WebCrypto)</td></tr>
+<tr><td>من رمز PIN إلى مفتاح</td><td>PBKDF2-HMAC-SHA256</td></tr>
+<tr><td>العشوائية</td><td><code>crypto.getRandomValues</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>يتطابق تنسيق مخزن المفاتيح مع الأصل المكتوب بلغة C++: قيمة سحرية (magic) <code>OCT1</code>، وإصدار،<br />وعدد تكرارات PBKDF2، وملح (salt)، وقيمة nonce، ثم النص المشفَّر AES-GCM مع وسم المصادقة الخاص به.</p>
+<h3 id="pin-handling">التعامل مع رمز PIN</h3>
+<p>لا يُحفظ رمز PIN <strong>أبدًا</strong>، بأي شكل من الأشكال. فهو يشتق مفتاح فك التشفير وقت فتح القفل<br />ثم يُتخلص منه فورًا. لا توجد ميزة "Remember my PIN" — وهذا مقصود. وبالتالي، لا يمكن حل<br />رمز PIN المنسي إلا بالاسترداد من عبارة الاسترداد.</p>
+<h3 id="unlock-session">جلسة فتح القفل</h3>
+<p>لا يُحفظ رمز PIN، لكن <em>نتيجة</em> فتح القفل تُحفظ لطول مدة الجلسة:<br />تحديث الصفحة يجب ألا يعيد المستخدم إلى شاشة رمز PIN. يختم <code>src/wallet/unlock-session.ts</code><br />المحفظة المفكوكة بـ AES-256-GCM ويقسّمها على مخزنين:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>النصف</th><th>أين</th><th>العمر</th></tr></thead>
+<tbody>
+<tr><td>النص المشفَّر (<code>orion:unlock-session</code>)</td><td><code>sessionStorage</code></td><td>تبويبة واحدة. يختفي عند إغلاق تلك التبويبة</td></tr>
+<tr><td>مفتاح الختم</td><td>IndexedDB <code>unlock-session-keys</code>، بوصفه <code>CryptoKey</code> <strong>غير قابل للاستخراج</strong></td><td>يُحذف عند القفل؛ تُقتلع اليتامى حسب العمر</td></tr>
+</tbody>
+</table>
+</div>
+<p>لا يمكن استخدام أي من النصفين وحده. ينجو IndexedDB من إغلاق التبويبة لكنه لا يحوي نصًا مشفَّرًا؛<br />ويحوي <code>sessionStorage</code> نصًا مشفَّرًا لكن بلا مفتاح، ولا يمكن لتبويبة ثانية أو أصل آخر قراءته.<br />يُولَّد المفتاح مع <code>extractable: false</code>، لذا يمكن <em>استخدامه</em> من هذا الأصل لكن لا يمكن<br />قراءة بايتاته — لا بكودنا الخاص، ولا بأي شيء ينجح في العمل داخل الصفحة. وتدور الجلسة (مفتاح جديد<br />وقيمة nonce جديدة) عند كل استعادة، وتحمل <code>createdAt</code> إلى الأمام بحيث لا يمكن للتحديث تمديد<br />الحد الأقصى المطلق.</p>
+<p>انتهاء الصلاحية: <strong>30 دقيقة خمول</strong> (قابل للضبط عبر <code>autoLockMinutes</code>؛ و<code>0</code> يعطّله)<br />و<strong>حد أقصى مطلق قدره 8 ساعات</strong> من فتح القفل الأصلي. يُطبَّق كلاهما عند الاستعادة، ويفرض<br /><code>useAutoLock</code> نافذة الخمول أيضًا مباشرةً، لذا فإن التبويبة المتروكة مفتوحة تقفل نفسها.</p>
+<p>ما لا يدافع عنه هذا — الجزء الصريح:</p>
+<ul>
+<li><strong>تنفيذ نصوص برمجية في التبويبة.</strong> يمكن للكود الذي يعمل في الصفحة أثناء جلسة حية أن يطلب من المتصفح فك تشفير الجلسة ثم التوقيع بالمفاتيح، تمامًا كما تفعل المحفظة. لا يمكنه إخراج مفتاح الختم، لذا ينتهي الاختراق مع التبويبة؛ ولا يتحول إلى مفتاح مسروق قابل للاستخدام في مكان آخر.</li>
+<li><strong>جهاز مخترَق.</strong> لم يتغير عن نموذج التهديدات أعلاه: يمكن للبرمجيات الخبيثة المحلية قراءة IndexedDB و<code>sessionStorage</code> معًا.</li>
+<li><strong>سياقات غير آمنة.</strong> دون <code>crypto.subtle</code> (عبر <code>http://</code> الصريح، انظر أدناه)، يتراجع مفتاح الختم إلى بايتات خام في IndexedDB وتضيع ضمانة عدم قابلية الاستخراج. غير أن التقسيم وانتهاء الصلاحية ما يزالان قائمين.</li>
+</ul>
+<p>لإلغاء الاشتراك كليًا، أطفئ <strong>Settings → Security → Stay unlocked after a page refresh</strong><br />(<code>keepUnlocked: false</code>). لا يُكتب أي شيء، وكل إعادة تحميل تطلب رمز PIN — وهو السلوك<br />الذي كان قائمًا قبل وجود هذه الميزة. القفل الصريح (🔒) يدمر النصفين فورًا.</p>
+<h3 id="passkey-unlock">فتح القفل بمفتاح المرور (passkey)</h3>
+<p>اختياري، ومعطَّل افتراضيًا، وإضافي: إنه وسيلة ثانية لفتح محفظة قائمة، وليس بديلًا عن رمز PIN<br />أبدًا. <code>src/wallet/passkey.ts</code>.</p>
+<p>ينشئ التسجيل بيانات اعتماد منصّية مع <code>userVerification: 'required'</code> وامتداد<br />WebAuthn <strong>PRF</strong>. يمنح PRF الصفحة سرًا مشتقًا من بيانات الاعتماد ومن<br />ملح (salt) مخزَّن طوله 32 بايت، ولن ينتجه المتصفح إلا بعد تحقق المستخدم. تأخذ المحفظة<br /><code>sha256("orion-passkey-unlock-v1" || prf)</code> مفتاح AES-256، وتختم المحفظة المتسلسلة<br />بـ AES-256-GCM، وتصفّر المفتاح، وتخزن الكتلة المختومة في IndexedDB بجوار معرّف بيانات الاعتماد والملح.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>مخزَّن</th><th>غير مخزَّن</th></tr></thead>
+<tbody>
+<tr><td>معرّف بيانات الاعتماد، وملح PRF، وIV، ونص المحفظة المشفَّر</td><td>مخرَج PRF، والمفتاح المشتق، ورمز PIN، وأي مادة مفاتيح بنص صريح</td></tr>
+</tbody>
+</table>
+</div>
+<p>تبعات جديرة بالذكر بوضوح:</p>
+<ul>
+<li><strong>PRF مطلوب، ولا يُخفَّض أبدًا.</strong> إذا لم يدعمه المُصادِق، يرمي التسجيل خطأً ولا يخزن شيئًا. البديل — إبقاء مفتاح قابل للقراءة بجوار النص المشفَّر — كان سيجعل السجل يفك تشفير نفسه بنفسه، وهو أسوأ من عدم تقديم الميزة.</li>
+<li><strong>السجل خامل بذاته.</strong> دون إيماءة ناجحة بتحقق المستخدم على ذلك المُصادِق، لا توجد طريقة لاشتقاق المفتاح مما هو على القرص.</li>
+<li><strong>إنه يختم المحفظة، لا رمز PIN.</strong> ما يزال رمز PIN هو الشيء الوحيد الذي يصدر المفاتيح، أو يكشف العبارة، أو يغيّر رمز PIN، أو يشتق حسابًا. لذلك لا يمكن استخدام فتح القفل بمفتاح المرور للتصعيد إلى تلك الأمور، والسجل المخزَّن يُسرّب أقل مما قد يسرّبه رمز PIN مخزَّن.</li>
+<li><strong>نموذج الجلسة نفسه كما في فتح القفل برمز PIN.</strong> ينتج فتح القفل بمفتاح المرور جلسة فتح القفل نفسها مع حدّي الخمول والمطلق نفسيهما؛ ولا يمدّ أيًّا منهما.</li>
+<li><strong>مقيَّد بالجهاز والمتصفح.</strong> مرتبط بـ <code>rpId</code> الخاص بالأصل ومخزَّن محليًا. وهو ليس جزءًا من تصدير المحفظة ولا مشتقًا من عبارة الاسترداد.</li>
+<li><strong>بيانات اعتماد قديمة تفشل في الاتجاه الآمن (fail closed).</strong> إذا فشل فك التشفير — بسبب بيانات اعتماد مُدوَّرة أو مُعاد تسجيلها، أو جهاز مستعاد — يُحذف السجل ويُطلب رمز PIN. وأما <em>الإيماءة المُلغاة أو المنتهية مهلةً</em> فلا تحذفه عمدًا، لذا لا يمكن لمطالبة مُلغاة أن تعطّل الميزة بصمت.</li>
+<li><strong>مرفوض للحسابات للعرض فقط.</strong> لا توجد مادة مفاتيح لتُختم.</li>
+</ul>
+<p>ما لا يدافع عنه هذا لم يتغير: جهاز مخترَق، وتنفيذ نصوص برمجية في جلسة حية، تمامًا كما في جلسة<br />فتح القفل أعلاه. غير أنه يزيل تعرضًا حقيقيًا واحدًا — رمز PIN الذي كان يُكتب ويُلتَقط بالمراقبة<br />عند كل فتح قفل.</p>
+<h3 id="watch-only-accounts">الحسابات للعرض فقط</h3>
+<p>يمكن إضافة حساب بالعنوان وحده، دون مخزن مفاتيح. الثابت هو أن مثل هذا الحساب لا يمكنه التوقيع أبدًا،<br />وهو مُطبَّق حيث يحدث التوقيع، لا في الواجهة:<br /><code>assertCanSign</code> (<code>src/wallet/watch-only.ts</code>) يُستدعى من مسارات الإرسال والتشفير والتحويلات<br />الخفية والعقود وطلبات dApp، ويرمي خطأ يسمّي الإجراءَ والإصلاحَ معًا.</p>
+<p>إنه يفشل في الاتجاه الآمن بتركيبه: يرفض الفحص أي محفظة لا يكون مفتاحها السري مفتاح Ed25519<br />كاملًا بطول 64 بايت، لذا يُرفض المفتاح المبتور أو المفقود حتى لو ضاع علم <code>watchOnly</code> بطريقة ما.<br />ويُحمَل العلم عبر <code>serializeWallet</code>/<code>deserializeWallet</code>،<br />لذا تبقى المحفظة المستعادة من جلسة فتح القفل للعرض فقط.</p>
+<h3 id="randomness">العشوائية</h3>
+<p>تستخدم كل القيم المتعلقة بالأمان <code>crypto.getRandomValues</code> عبر <code>src/crypto/random.ts</code>.</p>
+<p>لدى <code>makeId</code> في <code>src/sdk/protocol.ts</code> بديل <code>Math.random</code>. يُستخدم <strong>فقط</strong> لمعرّفات<br />ربط الرسائل، ولا يُستخدم للقيم الأمنية أبدًا، وهو مُعلَّم على هذا النحو. لا تعِد استخدامه<br />للتحديات أو nonce أو المفاتيح أو الأملاح.</p>
+<hr />
+<h2 id="browser-security-posture">الوضع الأمني للمتصفح</h2>
+<h3 id="content-security-policy">سياسة أمان المحتوى</h3>
+<p>مضبوطة في <code>index.html</code>:</p>
+<pre><code class="language-">default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob:; font-src 'self' data:;
+connect-src 'self' https: http://localhost:* http://127.0.0.1:* http://[::1]:*;
+frame-src 'self' https:; worker-src 'self' blob:; object-src 'none';
+base-uri 'self'; form-action 'self';</code></pre>
+<p>ثلاثة مداخل تستحق الشرح:</p>
+<ul>
+<li><strong><code>'wasm-unsafe-eval'</code></strong> مطلوب لوحدة PVAC FHE. يحجب Chromium استدعاء<br /><code>WebAssembly.instantiate()</code> بدونه. وهو يسمح بتجميع WebAssembly فقط —<br />ولا يعيد تفعيل <code>eval()</code> في JavaScript.</li>
+<li><strong><code>'unsafe-inline'</code> للأنماط</strong> مطلوب لـ CSS الحرج قبل الطلاء (pre-paint) الذي يتجنب<br />وميض المحتوى غير المنسّق. ينطبق على الأنماط فقط، ولا على النصوص البرمجية أبدًا.</li>
+<li><strong>الحلقة المحلية في <code>connect-src</code></strong> تسمح باستخدام عقدة تُشغَّل محليًا دون توسيع السياسة<br />إلى نص صريح عام. حركة المرور إلى <code>localhost</code> / <code>127.0.0.0/8</code> / <code>[::1]</code> لا تغادر<br />الجهاز أبدًا، فلا يوجد على الأسلاك ما يمكن اعتراضه.</li>
+</ul>
+<h3 id="plaintext-http-rpc-endpoints">نقاط نهاية RPC بالنص الصريح (http)</h3>
+<p>أي شيء آخر عبر <code>http://</code> الصريح مرفوض افتراضيًا، و<code>src/wallet/endpoint-policy.ts</code><br />هو المكان الوحيد الذي يقرر ذلك. وهو دالة خالصة من عنوان URL زائد سياق صريح،<br />لذا لا يمكن للمخزن أو واجهة الإعدادات أو الاختبارات أن تختلف حول ما هو مسموح.</p>
+<p>تنطبق ثلاثة حواجز مستقلة، ويذكر الحكم السببَ الأكثر جوهريةً أولًا،<br />حتى لا يُطلب من المستخدم أبدًا إصلاح القائمة المسموحة عندما يكون المحتوى المختلط هو السبب الحقيقي:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>الحاجز</th><th>من يفرضه</th><th>كيف يُرفع</th></tr></thead>
+<tbody>
+<tr><td>المحتوى المختلط</td><td>المتصفح، دون قيد أو شرط</td><td>لا يمكن رفعه. استخدم TLS أو وكيلًا</td></tr>
+<tr><td>سياسة أمان المحتوى</td><td>سياسة CSP للوسم الوصفي المُحمَّلة</td><td>أعد البناء مع <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code></td></tr>
+<tr><td>موافقة المستخدم</td><td><code>allowedInsecureOrigins</code> في الإعدادات</td><td><strong>ثق</strong> بالأصل في Settings → Network</td></tr>
+</tbody>
+</table>
+</div>
+<p>ملاحظات على التصميم:</p>
+<ul>
+<li>CSP وسم وصفي (meta tag)، لذا <strong>لا يمكن توسيعه وقت التشغيل</strong> — لا يمكن لأي إعداد منح هذا،<br />ولهذا هو علم بناء. يضيف <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code> قيمة <code>http:</code> إلى<br /><code>connect-src</code> وقت البناء ولا شيء غير ذلك؛ وما تزال موافقة المستخدم مطلوبة فوق ذلك.</li>
+<li>الموافقة <strong>لكل أصل</strong> — المخطط والمضيف والمنفذ. وهي ليست مطابقة لاسم المضيف ولا بادئة URL،<br />لذا فإن الثقة بـ <code>http://node.lan:8080</code> لا تعني الثقة بمنفذ آخر على ذلك المضيف،<br />ولا يُعامل <code>http://127.0.0.1.evil.com</code> كحلقة محلية.</li>
+<li><strong>عناوين المستكشف (Explorer) معفاة</strong> لأنها مجرد تنقلات <code>&lt;a href&gt;</code>، لا عمليات جلب.<br />لا ينطبق عليها <code>connect-src</code> ولا المحتوى المختلط. <code>relayerUrl</code> مخزَّن لكنه لا يُجلب أبدًا.<br />و<code>rpcUrl</code> وحده الخاضع لهذه السياسة.</li>
+<li>نقطة النهاية المحجوبة ما تزال تبني <code>RpcClient</code>، عمدًا: رفض بنائها كان سيترك المستخدم<br />غير قادر على بلوغ الإعدادات لإصلاحها. ويظهر السبب بدلًا من ذلك كشارة<br /><strong>⚠️ Insecure RPC</strong> في الترويسة وكخاصية <code>RpcClient.unreachableHint</code>، التي تُلحق فقط<br />بـ <code>TypeError</code> مُلقى — لا بخطأ خادم حقيقي ولا بمهلة، إذ سيكون ذلك مضللًا.</li>
+<li><strong><code>rpcProxyUrl</code></strong> ينقل القرار إلى الوكيل: تُقيَّم نقطة النهاية بمخطط الوكيل نفسه،<br />لأنه ما يتصل به المتصفح فعلًا. يرى الوكيل كل طلب، لذلك تقول الواجهة: شغّل وكيلك الخاص.<br />لا يمكنه بلوغ المفاتيح أو التوقيع.</li>
+</ul>
+<p>نص RPC الصريح تعرّض للسرية <em>والسلامة</em> معًا — يمكن لعقدة على المسار قراءة كل استعلام<br />وتغيير الردود — لكنه ليس تعرّضًا لاختراق المفاتيح: تُنتَج التوقيعات محليًا، ولا تحوّل المحفظة<br />أي شيء تستقبله إلى مادة مفاتيح.</p>
+<h3 id="cross-origin-isolation">العزل عبر الأصول</h3>
+<p>COOP/COEP هما <code>same-origin</code> / <code>require-corp</code> على مستوى التطبيق كله، مع تجاوزات<br /><code>unsafe-none</code> على <code>/connect</code> كي تتمكن نافذة الموافقة المنبثقة من تبادل MessagePort مع الفاتح.<br />هذا التضييق مقصود ومقتصر على هذا المسار الوحيد.</p>
+<hr />
+<h2 id="dapp-connection-security">أمان اتصال dApp</h2>
+<p>عندما يطلب موقع اتصالًا:</p>
+<ol>
+<li>تعرض النافذة المنبثقة الأصلَ الطالبَ في موضع بارز.</li>
+<li>يجب أن يوافق المستخدم صراحةً؛ لا يوجد اتصال صامت لأصل جديد.</li>
+<li>تُقيَّد الموافقة بذلك الأصل وتُحفظ لكل أصل.</li>
+<li>تتطلب عمليات التوقيع تأكيدًا دائمًا، حتى للمواقع الموثوقة.</li>
+</ol>
+<p>"Trust this site" يلغي مطالبات الطلبات <strong>ذات القراءة فقط</strong> (الرصيد، والحسابات،<br />والشبكة) فقط. وهو لا يمنح توقيعًا صامتًا أبدًا.</p>
+<p>يمكن مراجعة الاتصالات وإلغاؤها تحت <strong>Settings → Connected Sites</strong>.</p>
+<h3 id="what-a-dapp-learns-about-a-custom-network">ما يطّلع عليه تطبيق dApp حول شبكة مخصصة</h3>
+<p>الشبكات التي أضافها المستخدم يدويًا مرئية للمواقع المتصلة (<code>wallet_getNetworkInfo</code>،<br /><code>wallet_getNetworks</code>، وحدث <code>networkChanged</code>)، لأن تطبيق dApp لا يمكنه عرض رابط مستكشف<br />صحيح أو تسمية سلسلة دون معرفة الشبكة التي يعمل عليها. السجل الذي يعبر الأسلاك هو مجموعة مقصودة:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>مُرسَل</th><th>محجوب</th></tr></thead>
+<tbody>
+<tr><td><code>id</code>، <code>name</code>، <code>explorerUrl</code>، <code>icon</code>، <code>custom</code></td><td><code>rpcUrl</code>، <code>relayerUrl</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>تُحجب نقاط النهاية لأن الشبكة التي أضافها المستخدم تكون عادةً شبكة خاصة — عنوان LAN،<br />أو نفقًا، أو عنوان مزود مدفوع يحمل مفتاح API في سلسلة الاستعلام. اتصال الموقع<br />يجب ألا يكشف مكان عقدة المستخدم ولا يسلّم عنوان URL ببيانات اعتماد. لا تُفقد أي وظيفة:<br />تُمرَّر القراءات عبر المحفظة، وتُبنى المعاملات وتُبث بواسطة المحفظة،<br />لذا لا يحتاج تطبيق dApp إلى بلوغ RPC نفسه.</p>
+<p>نتيجتان جديرتان بالمعرفة:</p>
+<ul>
+<li>اسم الشبكة المخصصة من اختيار المستخدم ويُعرض على تطبيقات dApp. تسمية واحدة باسم معرّف شخصي<br />تكشف ذلك المعرّف لكل موقع تتصل به.</li>
+<li><code>wallet_getNetworks</code> يكشف <strong>كم</strong> عدد الشبكات التي هيّأتها. هذا سطح بصمة صغير،<br />مقبول كي يتمكن تطبيق dApp من تقديم إرشاد "Switch to X".</li>
+</ul>
+<p>لا يمكن لأي تطبيق dApp تغيير الشبكة. لا توجد طريقة <code>wallet_switchNetwork</code>؛ ويحدث التبديل<br />فقط في واجهة المحفظة نفسها، ويكتشفه تطبيق dApp بعد ذلك عبر <code>networkChanged</code>.</p>
+<hr />
+<h2 id="dependency-status">حالة التبعيات</h2>
+<p>التبعيات الإنتاجية: <strong>صفر ثغرات معروفة</strong> (<code>npm audit --omit=dev</code>).</p>
+<p>تبعيات التطوير تحمل تنبيهات في vitest وvite وesbuild والحزم ذات الصلة.<br />كل إصلاح متبقٍّ يتطلب ترقية رئيسية (vite 5→8 وvitest 2→4) قد تكسر البناء.<br />هذه الحزم أدوات بناء — لا تُشحن إلى المستخدمين ولا يمكن أن تؤثر في محفظة منشورة.</p>
+<p>هذه مقايضة مقصودة، يُعاد النظر فيها عند كل إصدار. شغّل <code>npm audit --omit=dev</code> لتأكيد<br />أن السطح المُشحون يبقى نظيفًا.</p>
+<hr />
+<h2 id="guidance-for-users">إرشادات للمستخدمين</h2>
+<p><strong>افعل</strong></p>
+<ul>
+<li>احفظ عبارة الاسترداد دون اتصال، على الورق، في أكثر من مكان</li>
+<li>تحقق من عناوين المستلم حرفًا حرفًا قبل الإرسال</li>
+<li>تحقق من الأصل في كل مطالبة اتصال dApp</li>
+<li>أرسل مبلغًا صغيرًا للاختبار أولًا عند استخدام عنوان جديد</li>
+<li>أبقِ متصفحك ونظام تشغيلك محدَّثَين</li>
+</ul>
+<p><strong>لا تفعل أبدًا</strong></p>
+<ul>
+<li>لا تدخل عبارة استردادك على أي موقع بعد الإعداد</li>
+<li>لا تخزن العبارة رقميًا — لا لقطات شاشة ولا ملاحظات سحابية ولا رسائل دردشة</li>
+<li>لا تشارك مفتاحك الخاص أو ملف النسخ الاحتياطي <code>.oct</code></li>
+<li>لا تستخدم محفظة تحمل أموالًا حقيقية على حاسوب مشترك أو غير موثوق</li>
+</ul>
+<hr />
+<h2 id="for-contributors">للمساهمين</h2>
+<p>ثوابت حساسة أمنيًا يجب ألا تُضعَف:</p>
+<ul>
+<li>التحقق من الأصل في كل <code>postMessage</code> وارد</li>
+<li>CSPRNG لكل القيم الأمنية؛ <code>makeId</code> ليس منها</li>
+<li>لا أسرار في <code>localStorage</code> أو <code>sessionStorage</code> أو السجلات أو رسائل الخطأ</li>
+<li>لا <code>innerHTML</code> ولا <code>dangerouslySetInnerHTML</code></li>
+<li>لا يُحفظ رمز PIN أبدًا</li>
+<li>يتطلب فتح القفل بمفتاح المرور PRF؛ ولا تراجع أبدًا إلى تخزين مفتاح قابل للقراءة</li>
+<li><code>assertCanSign</code> يحرس كل مسار توقيع — الحساب للعرض فقط يجب ألا يوقّع أبدًا</li>
+<li>تبقى سياسة نقطة النهاية الصريحة في <code>endpoint-policy.ts</code>؛ لا فحوص URL مرتجلة في مكان آخر</li>
+<li>يظل JSON المتعارف عليه مطابقًا للبايت تمامًا — التوقيعات تعتمد عليه</li>
+</ul>
+<p>أي تغيير يمس التشفير أو معالجة المفاتيح أو التخزين أو مسار الاتصال يجب أن يذكر ذلك<br />صراحةً في طلب السحب (pull request).</p>
+</body>
+</html>

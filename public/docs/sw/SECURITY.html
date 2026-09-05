@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="sw">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Usalama — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="security">Usalama</h1>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Msimbo chanzo, masuala, na matoleo.<br /><strong>Ripoti udhaifu:</strong> <a href="https://github.com/maragung/OrionWallet/security/advisories/new">GitHub Security Advisories</a></blockquote>
+<h2 id="audit-status">Hali ya ukaguzi</h2>
+<p><strong>Orion Wallet haijafanyiwa ukaguzi huru wa usalama wa mtu wa tatu.</strong></p>
+<p>Muundo wa kriptografia unafuata utekelezaji wa marejeleo wa <code>octra-labs/webcli</code>, na primitives<br />hutoka kwenye maktaba zilizokaguliwa vizuri. Lakini ushirikiano wenyewe haujakaguliwa.<br />Tafadhali pima hilo kabla ya kuhifadhi thamani kubwa.</p>
+<hr />
+<h2 id="reporting-a-vulnerability">Kuripoti udhaifu</h2>
+<p><strong>Usifungue suala la umma kwa tatizo la usalama.</strong></p>
+<p>Ripoti kwa faragha kwa walezi (maintainers), ukijumuisha:</p>
+<ul>
+<li>Maelezo ya tatizo na athari zake</li>
+<li>Hatua za kuzalisha upya (steps to reproduce)</li>
+<li>Toleo au commit iliyoathirika</li>
+<li>Suluhisho lolote linalopendekezwa</li>
+</ul>
+<p>Tafadhali ruhusu muda wa kuridhisha wa kurekebisha kabla ya ufichuzi wa umma. Ripoti zinakaribishwa<br />na kutambuliwa isipokuwa upende vinginevyo.</p>
+<hr />
+<h2 id="threat-model">Muundo wa vitisho</h2>
+<h3 id="what-orion-wallet-protects-against">Kile Orion Wallet inachokinga dhidi yake</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Tisho</th><th>Kukabiliana nalo</th></tr></thead>
+<tbody>
+<tr><td>Funguo kuvuja kwa seva</td><td>Hakuna seva ya nyuma. Funguo hazitoki kamwe kwenye kivinjari</td></tr>
+<tr><td>Wizi wa keystore ikiwa imepumzika (at rest)</td><td>AES-256-GCM, ufunguo unatokana na PIN kupitia PBKDF2</td></tr>
+<tr><td>Maombi hasidi ya dApp</td><td>Ruhusa za kila asili zenye vidokezo vya uidhinishaji vya wazi</td></tr>
+<tr><td>Ughushi wa ujumbe kuvuka asili</td><td>Asili huthibitishwa kwenye kila ujumbe unaoingia</td></tr>
+<tr><td>Kurudiwa kwa ujumbe</td><td>Changamoto ya CSPRNG na nonce kwa kila kipindi</td></tr>
+<tr><td>XSS kupitia markup iliyodungwa</td><td>Hakuna <code>innerHTML</code> / <code>dangerouslySetInnerHTML</code>; CSP huzuia vyanzo</td></tr>
+<tr><td>Data ya RPC iliyoharibika ikivunja programu</td><td>Usanifishaji wa kujihami pamoja na mipaka ya makosa</td></tr>
+<tr><td>Fungu la kurejesha ambalo halijaandikwa kamwe</td><td>Uundaji unategemea kuchapa tena maneno 3 ya nasibu</td></tr>
+<tr><td>Kutia sahihi kutoka akaunti isiyo na funguo</td><td><code>assertCanSign</code> inakataa kwenye mpaka wa API, si kwenye UI pekee</td></tr>
+<tr><td>Trafiki ya RPC kusikilizwa kimyakimya</td><td>Ncha za maandishi wazi zinahitaji idhini ya wazi ya kila asili</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="what-it-cannot-protect-against">Kile ambacho hakiwezi kukinga dhidi yake</h3>
+<p>Uwe wazi na wewe mwenyewe kuhusu haya:</p>
+<ul>
+<li><strong>Kifaa kilichoathirika.</strong> Programu hasidi, keylogger, au kiendelezi cha kivinjari kisicho cha kirafiki kinaweza kusoma<br />PIN unapoichapa na kutoa funguo zilizofichuliwa kutoka kwenye kumbukumbu.</li>
+<li><strong>Fungu la kurejesha lililopotea.</strong> Hakuna utaratibu wa kurejesha. Hakuna mtu anayeweza kulirudisha.</li>
+<li><strong>Ulaghai wa kijamii (Phishing).</strong> Ukiingiza fungu lako la kurejesha kwenye tovuti ghushi, fedha zinapotea. Orion<br />Wallet haikuulizi fungu lako baada ya usanidi.</li>
+<li><strong>Nodi ya RPC iliyoathirika.</strong> Nodi hasidi inaweza kutoa salio za uwongo au kunyima<br />muamala. Haiwezi kutengeneza sahihi za uwongo wala kuiba funguo.</li>
+<li><strong>Uhatarishaji wa mnyororo wa ugavi (supply-chain)</strong> wa vitegemezi vya npm au mtoa huduma wa ukaribishaji.</li>
+<li><strong>Ufikiaji wa kimwili</strong> kwa kifaa kilichofunguliwa na pochi ikiwa wazi.</li>
+</ul>
+<hr />
+<h2 id="cryptographic-design">Muundo wa kriptografia</h2>
+<h3 id="key-derivation-and-storage">Utoaji wa funguo na uhifadhi</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Kusudi</th><th>Algorithm</th></tr></thead>
+<tbody>
+<tr><td>Kumbukumbu (Mnemonic)</td><td>BIP39</td></tr>
+<tr><td>Utoaji wa HD</td><td>Ed25519, mtindo wa SLIP-0010</td></tr>
+<tr><td>Kutia sahihi</td><td>Ed25519 (tweetnacl)</td></tr>
+<tr><td>ECDH (stealth)</td><td>X25519 (@noble/curves)</td></tr>
+<tr><td>Usimbaji fiche wa keystore</td><td>AES-256-GCM (WebCrypto)</td></tr>
+<tr><td>PIN → ufunguo</td><td>PBKDF2-HMAC-SHA256</td></tr>
+<tr><td>Usadifu (Randomness)</td><td><code>crypto.getRandomValues</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Umbizo la keystore linalingana na asili ya C++: <code>OCT1</code> magic, toleo, hesabu ya marudio ya PBKDF2,<br />chumvi (salt), nonce, kisha ciphertext ya AES-GCM pamoja na lebo yake ya uthibitishaji.</p>
+<h3 id="pin-handling">Ushughulikiaji wa PIN</h3>
+<p>PIN <strong>hauhifadhiwi kamwe</strong>, kwa namna yoyote. Huutoa ufunguo wa kufichua wakati wa kufungua<br />na kisha hutupwa. Hakuna "nikumbuke PIN" — kwa muundo. Kwa hiyo, PIN iliyosahaulika<br />inaweza kutatuliwa tu kwa kurejesha kutoka kwenye fungu la kurejesha.</p>
+<h3 id="unlock-session">Kipindi cha kufungua</h3>
+<p>PIN hauhifadhiwi, lakini <em>matokeo</em> ya kufungua huhifadhiwa, kwa muda wa kipindi: kuonyesha upya ukurasa<br />haipaswi kumrudisha mtumiaji kwenye skrini ya PIN. <code>src/wallet/unlock-session.ts</code> huifunga pochi<br />iliyofichuliwa kwa AES-256-GCM na kuigawanya katika hifadhi mbili:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Nusu</th><th>Wapi</th><th>Muda wa maisha</th></tr></thead>
+<tbody>
+<tr><td>Ciphertext (<code>orion:unlock-session</code>)</td><td><code>sessionStorage</code></td><td>Kichupo kimoja. Huondoka kichupo kikifungwa</td></tr>
+<tr><td>Ufunguo wa kufunga (sealing key)</td><td>IndexedDB <code>unlock-session-keys</code>, kama <code>CryptoKey</code> isiyoweza kutolewa (non-extractable)</td><td>Hufutwa kwenye kufuli; yatima husafishwa kwa umri</td></tr>
+</tbody>
+</table>
+</div>
+<p>Hakuna nusu inayoweza kutumika peke yake. IndexedDB inaendelea kuwepo kichupo kikifungwa lakini haina ciphertext;<br /><code>sessionStorage</code> ina ciphertext lakini haina ufunguo, na kichupo cha pili au asili nyingine haiwezi kuisoma.<br />Ufunguo huzalishwa kwa <code>extractable: false</code>, kwa hivyo unaweza <em>kutumika</em> na asili hii lakini baiti zake<br />haziwezi kusomwa — si kwa msimbo wetu wenyewe, wala kwa chochote kinachofanikiwa kuendeshwa kwenye ukurasa.<br />Kipindi huzungushwa (ufunguo mpya, nonce mpya) kwenye kila kurejesha, na hubeba <code>createdAt</code><br />mbele ili kuonyesha upya kusiweze kuongeza kikomo kamili.</p>
+<p>Kumalizika kwa muda: <strong>dakika 30 za kutokutumika</strong> (kinachoweza kusanidiwa, <code>autoLockMinutes</code>; <code>0</code> kinakizima) na<br />kikomo kamili cha <strong>saa 8</strong> kutoka kwenye kufungua kwa asili. Zote mbili zinatekelezwa kwenye kurejesha, na dirisha la<br />kutokutumika pia linatetewa moja kwa moja na <code>useAutoLock</code>, ili kichupo kilichoachwa wazi kijifunge chenyewe.</p>
+<p>Kile hii <em>hai</em> kikingi dhidi yake — sehemu ya uaminifu:</p>
+<ul>
+<li><strong>Utekelezaji wa skripti kwenye kichupo.</strong> Msimbo unaoendeshwa kwenye ukurasa wakati wa kipindi hai unaweza kuomba<br />kivinjari kufichua kipindi na kisha kutia sahihi kwa funguo, haswa kama pochi inavyofanya. Hakiwezi<br />kupeleka nje ufunguo wa kufunga, kwa hivyo uhatarishaji unaishia kwenye kichupo; haukui kuwa<br />ufunguo ulioibwa unaoweza kutumika mahali pengine.</li>
+<li><strong>Kifaa kilichoathirika.</strong> Hakijabadilika kutoka muundo wa vitisho hapo juu: programu hasidi ya ndani inaweza kusoma<br />IndexedDB na <code>sessionStorage</code> kwa pamoja.</li>
+<li><strong>Miktadha isiyo salama.</strong> Bila <code>crypto.subtle</code> (<code>http://</code> ya kawaida, angalia hapa chini), ufunguo wa kufunga<br />huangukia kwenye baiti mbichi kwenye IndexedDB na dhamana ya kutoweza kutolewa inapotea. Mgawanyiko<br />na kumalizika bado vinashikilia.</li>
+</ul>
+<p>Ili kujiondoa kabisa, zima <strong>Mipangilio → Usalama → Kaa umefunguliwa baada ya kuonyesha upya ukurasa</strong><br />(<code>keepUnlocked: false</code>). Hakuna kinachoandikwa, na kila kupakia upya kunauliza PIN — tabia<br />iliyokuwepo kabla ya kipengele hiki. Kufuli la wazi (🔒) huharibu nusu zote mbili mara moja.</p>
+<h3 id="passkey-unlock">Kufungua kwa passkey</h3>
+<p>Ni ya hiari, imezimwa kwa kawaida, na ni nyongeza: ni njia ya pili ya kufungua pochi iliyopo, kamwe<br />si mbadala wa PIN. <code>src/wallet/passkey.ts</code>.</p>
+<p>Usajili huunda kitambulisho cha jukwaa kwa <code>userVerification: 'required'</code> na<br />kiendelezi cha <strong>PRF</strong> cha WebAuthn. PRF humpa ukurasa siri inayotokana na kitambulisho na<br />chumvi iliyohifadhiwa ya baiti 32, ambayo kivinjari huitoa tu baada ya mtumiaji kuthibitisha. Pochi<br />huchukua <code>sha256("orion-passkey-unlock-v1" || prf)</code> kama ufunguo wa AES-256, kuifunga<br />pochi iliyofanywa mfululizo kwa AES-256-GCM, kufuta ufunguo, na kuhifadhi blob iliyofungwa kwenye IndexedDB<br />kando ya ID ya kitambulisho na chumvi.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Iliyohifadhiwa</th><th>Haijahifadhiwa</th></tr></thead>
+<tbody>
+<tr><td>ID ya kitambulisho, chumvi ya PRF, IV, ciphertext ya pochi</td><td>Pato la PRF, ufunguo uliotolewa, PIN, nyenzo yoyote ya ufunguo wa maandishi wazi</td></tr>
+</tbody>
+</table>
+</div>
+<p>Matokeo yanayostahili kusemwa waziwazi:</p>
+<ul>
+<li><strong>PRF inahitajika, kamwe haipunguzwi.</strong> Ikiwa kithibitishaji hakikiiwi,<br />usajili hutupa na hauhifadhi chochote. Mbadala — kuweka ufunguo unaosomika<br />kando ya ciphertext — kungefanya rekodi ijifichue yenyewe, ambayo ni mbaya kuliko kutotoa<br />kipengele.</li>
+<li><strong>Rekodi haina uwezo peke yake.</strong> Bila ishara iliyofanikiwa ya kuthibitishwa na mtumiaji kwenye<br />kithibitishaji hicho, hakuna njia ya kupata ufunguo kutoka kwenye kile kilicho kwenye diski.</li>
+<li><strong>Inaifunga pochi, si PIN.</strong> PIN bado ndicho kitu pekee kinachotoa funguo,<br />kufichua fungu, kubadilisha PIN, au kupata akaunti. Kufungua kwa passkey kwa hivyo<br />hakuwezi kutumika kupanda hadi hizo, na rekodi iliyohifadhiwa inavuja kidogo kuliko<br />PIN iliyohifadhiwa ingefanya.</li>
+<li><strong>Mfano wa kipindi sawa na kufungua kwa PIN.</strong> Kufungua kwa passkey kunazalisha kipindi sawa cha kufungua<br />kwa mipaka ileile ya kutokutumika na kamili; hakiongezei hata moja.</li>
+<li><strong>Imefungwa kwa kifaa na kivinjari.</strong> Imefungwa kwenye <code>rpId</code> ya asili na kuhifadhiwa ndani. Si<br />sehemu ya usafirishaji wa pochi na haitokani na fungu la kurejesha.</li>
+<li><strong>Kitambulisho kilichopitwa na wakati hufunguka (fails closed).</strong> Ufichuaji ukishindikana — kitambulisho kilichozungushwa au kilichosajiliwa upya,<br />kifaa kilichorejeshwa — rekodi inafutwa na PIN inahitajika. Ishara iliyofutwa au iliyomaliza muda<br />kimakusudi <strong>haifuti</strong> rekodi, ili kidokezo kilichoghairiwa kisiweze kuzima kipengele kimyakimya.</li>
+<li><strong>Hukataliwa kwa akaunti za watch-only.</strong> Hakuna nyenzo ya ufunguo ya kuifunga.</li>
+</ul>
+<p>Kile kisichokingwa hakijabadilika: kifaa kilichoathirika, na utekelezaji wa msimbo kwenye kipindi hai, haswa kama<br />kipindi cha kufungua hapo juu. Huondoa uhatarishaji mmoja halisi — PIN kupigwa chapa na kuonekana kila kufungua.</p>
+<h3 id="watch-only-accounts">Akaunti za watch-only</h3>
+<p>Akaunti inaweza kuongezwa kwa anwani pekee, bila keystore. Kanuni ni kwamba akaunti kama hiyo haiwezi kamwe<br />kutia sahihi, na inatekelezwa mahali sahihi inapotokea, si kwenye UI:<br /><code>assertCanSign</code> (<code>src/wallet/watch-only.ts</code>) inaitwa na njia za kutuma, kusimba, stealth,<br />kontrakta, na maombi ya dApp, na hutupa ikitaja kitendo na suluhisho.</p>
+<p>Inafunguka kwa muundo (fails closed): ukaguzi hukataa pochi yoyote ambayo ufunguo wake wa siri si<br />ufunguo kamili wa Ed25519 wa baiti 64, kwa hivyo ufunguo uliopunguzwa au uliokosekana unakataliwa hata kama bendera ya<br /><code>watchOnly</code> ingepotea kwa namna fulani. Bendera hubebwa kupitia <code>serializeWallet</code>/<code>deserializeWallet</code>,<br />kwa hivyo pochi iliyorejeshwa kutoka kipindi cha kufungua bado ni watch-only.</p>
+<h3 id="randomness">Usadifu</h3>
+<p>Thamani zote nyeti za usalama hutumia <code>crypto.getRandomValues</code> kupitia <code>src/crypto/random.ts</code>.</p>
+<p><code>makeId</code> katika <code>src/sdk/protocol.ts</code> ina mbadala wa <code>Math.random</code>. Inatumika <strong>kwa</strong><br />ID za uhusiano wa ujumbe pekee, kamwe kwa thamani za usalama, na imebainishwa hivyo. Usiitumie tena<br />kwa changamoto, nonce, funguo, au chumvi.</p>
+<hr />
+<h2 id="browser-security-posture">Mkao wa usalama wa kivinjari</h2>
+<h3 id="content-security-policy">Content-Security-Policy</h3>
+<p>Imewekwa katika <code>index.html</code>:</p>
+<pre><code class="language-">default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob:; font-src 'self' data:;
+connect-src 'self' https: http://localhost:* http://127.0.0.1:* http://[::1]:*;
+frame-src 'self' https:; worker-src 'self' blob:; object-src 'none';
+base-uri 'self'; form-action 'self';</code></pre>
+<p>Viingilio vitatu vinastahili maelezo:</p>
+<ul>
+<li><strong><code>'wasm-unsafe-eval'</code></strong> inahitajika kwa moduli ya PVAC FHE. Chromium huzuia<br /><code>WebAssembly.instantiate()</code> bila hiyo. Inaruhusu ukusanyaji wa WebAssembly pekee — haiwashi upya<br />JavaScript <code>eval()</code>.</li>
+<li><strong><code>'unsafe-inline'</code> kwa mitindo</strong> inahitajika kwa CSS muhimu ya kabla ya uchoraji (pre-paint) inayoepuka<br />mwako wa maudhui yasiyopambwa. Inatumika kwa mitindo pekee, kamwe kwa skriptu.</li>
+<li><strong>Loopback katika <code>connect-src</code></strong> inaruhusu nodi inayoendeshwa ndani kutumika bila kupanua sera<br />kwa maandishi wazi kwa ujumla. Trafiki kwa <code>localhost</code> / <code>127.0.0.0/8</code> / <code>[::1]</code> haitoki kamwe kwenye<br />mashine, kwa hivyo hakuna kwenye waya cha kukatiza.</li>
+</ul>
+<h3 id="plaintext-http-rpc-endpoints">Ncha za RPC za maandishi wazi (http)</h3>
+<p>Kitu kingine chochote kupitia <code>http://</code> ya kawaida kinakataliwa kwa kawaida, na <code>src/wallet/endpoint-policy.ts</code><br />ndiyo sehemu moja inayoamua. Ni kazi safi ya URL pamoja na muktadha wa wazi,<br />kwa hivyo store, UI ya Mipangilio, na majaribio haviwezi kutofautiana kuhusu kinachoruhusiwa.</p>
+<p>Vizuizi vitatu vinavyojitegemea vinatumika, na uamuzi unataja la msingi zaidi kwanza ili<br />mtumiaji asisemwe kurekebisha orodha-nyeupe wakati mixed content ndio sababu halisi:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Kizuizi</th><th>Nani anakitumia</th><th>Kinaondolewaje</th></tr></thead>
+<tbody>
+<tr><td>Mixed content</td><td>Kivinjari, bila masharti</td><td>Hakiwezi kuondolewa. Tumia TLS au proksi</td></tr>
+<tr><td>Content-Security-Policy</td><td>CSP ya meta-tag inayosafirishwa</td><td>Jenga upya kwa <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code></td></tr>
+<tr><td>Idhini ya mtumiaji</td><td><code>allowedInsecureOrigins</code> kwenye mipangilio</td><td><strong>Iamini</strong> asili kwenye Mipangilio → Mtandao</td></tr>
+</tbody>
+</table>
+</div>
+<p>Maelezo kuhusu muundo:</p>
+<ul>
+<li>CSP ni meta tag, kwa hivyo <strong>haiwezi kupanjwa wakati wa uendeshaji</strong> — hakuna mpangilio unaoweza kutoa<br />hii, ndiyo maana ni bendera ya kuunda. <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code> huongeza <code>http:</code> kwenye<br /><code>connect-src</code> wakati wa kuunda na hakuna kingine; idhini ya mtumiaji bado inahitajika juu yake.</li>
+<li>Idhini ni <strong>kwa kila asili</strong> — scheme, host na port. Si ulinganifu wa hostname wala<br />kiambishi awali cha URL, kwa hivyo kuamini <code>http://node.lan:8080</code> hakuamini bandari nyingine kwenye host hiyo,<br />na <code>http://127.0.0.1.evil.com</code> haichukuliwi kama loopback.</li>
+<li><strong>URL za Explorer hazijumuishwi</strong> kwa sababu ni urambazaji wa <code>&lt;a href&gt;</code> pekee, si<br />fetches. <code>connect-src</code> na mixed content hazitumiki kwao. <code>relayerUrl</code> huhifadhiwa lakini<br />kamwe huchukuliwi. Ni <code>rpcUrl</code> pekee inayotegemea sera hii.</li>
+<li>Ncha iliyozuiwa bado inaunda <code>RpcClient</code>, kimakusudi: kukataa kuunda moja<br />kungemwacha mtumiaji asiweze kufikia Mipangilio kuirekebisha. Sababu inaonekana badala yake kama<br />beji ya <strong>⚠️ Insecure RPC</strong> kwenye kichwa na kama <code>RpcClient.unreachableHint</code>, ambayo<br />huambatishwa kwa <code>TypeError</code> inayotupwa pekee — kamwe kwa kosa halisi la seva au muda, ambalo<br />lingekuwa la kupotosha.</li>
+<li><strong><code>rpcProxyUrl</code></strong> huhamisha uamuzi kwa proksi: ncha huhukumiwa kwa scheme ya proksi<br />yenyewe, kwa kuwa ndiyo kivinjari kinachounganisha nacho hasa. Proksi inaona kila ombi, kwa hivyo<br />UI inasema endesha yako mwenyewe. Haiwezi kufikia funguo wala kutia sahihi.</li>
+</ul>
+<p>RPC ya maandishi wazi ni uhatarishaji wa usiri <em>na</em> uadilifu — nodi kwenye njia inaweza kusoma<br />kila uangalizi na kubadilisha majibu — lakini si ya kuhatarisha funguo: sahihi hutengenezwa<br />ndani na pochi haithibitishi chochote inachopokea kwenye nyenzo za funguo.</p>
+<h3 id="cross-origin-isolation">Kutengwa kwa kuvuka asili (cross-origin isolation)</h3>
+<p>COOP/COEP ni <code>same-origin</code> / <code>require-corp</code> kwa programu nzima, na vivukio vya <code>unsafe-none</code><br />kwenye <code>/connect</code> ili popup ya uidhinishaji iweze kubadilishana MessagePort na kifungua (opener).<br />Kupunguza huku ni kimakusudi na kumefungwa kwenye ruta hiyo moja.</p>
+<hr />
+<h2 id="dapp-connection-security">Usalama wa muunganisho wa dApp</h2>
+<p>Tovuti inapoomba muunganisho:</p>
+<ol>
+<li>Popup inaonyesha asili inayoomba kwa umashuhuri.</li>
+<li>Mtumiaji lazima aidhinishe kwa uwazi; hakuna muunganisho wa kimya kwa asili mpya.</li>
+<li>Uidhinishaji umefungwa kwa asili hiyo na hudumishwa kwa kila asili.</li>
+<li>Operesheni za kutia sahihi daima zinahitaji uthibitisho, hata kwa tovuti zinazoaminika.</li>
+</ol>
+<p>"Iamini tovuti hii" hukandamiza vidokezo kwa maombi ya <strong>kusoma tu</strong> (salio, akaunti,<br />mtandao) pekee. Kamwe hautoi utiaji sahihi wa kimya.</p>
+<p>Muunganisho unaweza kukaguliwa na kufutwa chini ya <strong>Mipangilio → Tovuti Zilizounganishwa</strong>.</p>
+<h3 id="what-a-dapp-learns-about-a-custom-network">Kile dApp inachojifunza kuhusu mtandao maalum</h3>
+<p>Mitandao iliyoongezwa kwa mkono na mtumiaji inaonekana kwa tovuti zilizounganishwa (<code>wallet_getNetworkInfo</code>,<br /><code>wallet_getNetworks</code>, na tukio la <code>networkChanged</code>), kwa sababu dApp haiwezi kutoa kiungo sahihi cha explorer<br />au lebo ya mnyororo bila kujua iko kwenye mtandao gani. Rekodi inayovuka waya ni kikundi kimakusudi:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Kinachotumwa</th><th>Kinachonyimwa</th></tr></thead>
+<tbody>
+<tr><td><code>id</code>, <code>name</code>, <code>explorerUrl</code>, <code>icon</code>, <code>custom</code></td><td><code>rpcUrl</code>, <code>relayerUrl</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Ncha zinanyimwa kwa sababu mtandao ulioongezwa na mtumiaji kwa kawaida ni wa kibinafsi — anwani ya LAN, tunnel,<br />URL ya mtoa huduma wa kulipia iliyo na ufunguo wa API kwenye mfuatano wa hoja. Kuunganisha kwenye<br />tovuti haipaswi kufichua mahali nodi ya mtumiaji ilipo au kukabidhi URL yenye sifa. Hakuna<br />utendaji unaopotea: usomaji hupitishwa kupitia pochi na muamala hujengwa na<br />kutangazwa na pochi, kwa hivyo dApp haihitaji kamwe kufikia RPC yenyewe.</p>
+<p>Matokeo mawili yanayostahili kujulikana:</p>
+<ul>
+<li><strong>Jina</strong> la mtandao maalum huchaguliwa na mtumiaji na linaonyeshwa kwa dApps. Kulipa jina baada ya<br />kitambulisho cha kibinafsi kunafichua kitambulisho hicho kwa kila tovuti unayounganisha nayo.</li>
+<li><code>wallet_getNetworks</code> inafichua <strong>mitandao mingapi</strong> umesanisha. Hii ni<br />uso mdogo wa uchapaji wa alama (fingerprinting), unaokubaliwa ili dApp iweze kutoa mwongozo wa "badilisha hadi X".</li>
+</ul>
+<p>Hakuna dApp inayoweza kubadilisha mtandao. Hakuna mbinu ya <code>wallet_switchNetwork</code>; ubadilishaji unatokea<br />kwenye UI ya pochi yenyewe tu, na dApp inagundua baadaye kupitia <code>networkChanged</code>.</p>
+<hr />
+<h2 id="dependency-status">Hali ya vitegemezi</h2>
+<p>Vitegemezi vya uzalishaji: <strong>udhaifu sifuri unaojulikana</strong> (<code>npm audit --omit=dev</code>).</p>
+<p>Vitegemezi vya maendeleo vinabeba ushauri katika vitest, vite, esbuild, na vifurushi vinavyohusiana.<br />Kila suluhisho lililobaki linahitaji sasisho kuu (vite 5→8, vitest 2→4) linalohatarisha kuvunja<br />ujenzi. Vifurushi hivi ni zana za kuunda — havisafirishwi kwa watumiaji na haviwezi kuathiri<br />pochi iliyotumwa.</p>
+<p>Hii ni biashara ya kimakusudi, inayopitiwa upya kila toleo. Endesha <code>npm audit --omit=dev</code> ili<br />kuthibitisha uso unaosafirishwa unakaa safi.</p>
+<hr />
+<h2 id="guidance-for-users">Mwongozo kwa watumiaji</h2>
+<p><strong>Fanya</strong></p>
+<ul>
+<li>Weka fungu lako la kurejesha nje ya mtandao, kwenye karatasi, katika zaidi ya eneo moja</li>
+<li>Thibitisha anwani za mpokeaji herufi kwa herufi kabla ya kutuma</li>
+<li>Thibitisha asili katika kila kidokezo cha muunganisho wa dApp</li>
+<li>Tuma kiasi kidogo cha majaribio kwanza unapotumia anwani mpya</li>
+<li>Weka kivinjari chako na OS vimesasishwa</li>
+</ul>
+<p><strong>Kamwe</strong></p>
+<ul>
+<li>Usiingize fungu lako la kurejesha kwenye tovuti yoyote baada ya usanidi</li>
+<li>Usihifadhi fungu kidijitali — hakuna skrini-shot, maelezo ya wingu, au ujumbe wa gumzo</li>
+<li>Usishiriki ufunguo wako wa faragha au faili ya chelezo ya <code>.oct</code></li>
+<li>Usitumie pochi iliyo na fedha halisi kwenye kompyuta inayoshirikiwa au isiyoaminika</li>
+</ul>
+<hr />
+<h2 id="for-contributors">Kwa wachangiaji</h2>
+<p>Vikwazo visivyobadilika nyeti vya usalama ambavyo haipaswi kupunguzwa:</p>
+<ul>
+<li>Uthibitishaji wa asili kwenye kila <code>postMessage</code> unaoingia</li>
+<li>CSPRNG kwa thamani zote za usalama; <code>makeId</code> si mojawapo</li>
+<li>Hakuna siri kwenye <code>localStorage</code>, <code>sessionStorage</code>, kumbukumbu, au ujumbe wa makosa</li>
+<li>Hakuna <code>innerHTML</code> wala <code>dangerouslySetInnerHTML</code></li>
+<li>PIN hauhifadhiwi kamwe</li>
+<li>Kufungua kwa passkey kunahitaji PRF; kamwe usirudi kwenye kuhifadhi ufunguo unaosomika</li>
+<li><code>assertCanSign</code> hulinda kila njia ya kutia sahihi — akaunti ya watch-only haipaswi kamwe kutia sahihi</li>
+<li>Sera ya ncha ya maandishi wazi inabaki kwenye <code>endpoint-policy.ts</code>; hakuna ukaguzi wa URL wa dharula mahali pengine</li>
+<li>Canonical JSON inabaki sawasawa kwa baiti — sahihi zinategemea hilo</li>
+</ul>
+<p>Mabadiliko yoyote yanayogusa kriptografia, ushughulikiaji wa funguo, uhifadhi, au mzunguko wa muunganisho<br />yanapaswa kusema hivyo kwa uwazi kwenye ombi la kuvuta (pull request).</p>
+</body>
+</html>

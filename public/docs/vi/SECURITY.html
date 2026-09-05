@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bảo mật — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="security">Bảo mật</h1>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Mã nguồn, vấn đề (issues) và các bản phát hành.<br /><strong>Báo cáo lỗ hổng:</strong> <a href="https://github.com/maragung/OrionWallet/security/advisories/new">GitHub Security Advisories</a></blockquote>
+<h2 id="audit-status">Tình trạng kiểm toán</h2>
+<p><strong>Orion Wallet chưa trải qua một cuộc kiểm toán bảo mật độc lập bởi bên thứ ba.</strong></p>
+<p>Thiết kế mật mã tuân theo bộ cài đặt tham chiếu <code>octra-labs/webcli</code>, và các<br />nguyên thủy mật mã đến từ các thư viện được đánh giá kỹ lưỡng. Nhưng bản thân phần tích hợp thì chưa được kiểm toán.<br />Hãy cân nhắc điều đó trước khi lưu trữ giá trị lớn.</p>
+<hr />
+<h2 id="reporting-a-vulnerability">Báo cáo lỗ hổng</h2>
+<p><strong>Đừng mở một issue công khai cho một vấn đề bảo mật.</strong></p>
+<p>Hãy báo cáo riêng tư cho những người duy trì, bao gồm:</p>
+<ul>
+<li>Mô tả vấn đề và tác động của nó</li>
+<li>Các bước tái hiện</li>
+<li>Phiên bản hoặc commit bị ảnh hưởng</li>
+<li>Bất kỳ đề xuất khắc phục nào</li>
+</ul>
+<p>Vui lòng cho một khoảng thời gian hợp lý để sửa trước khi tiết lộ công khai. Các báo cáo luôn được hoan nghênh<br />và được ghi công trừ khi bạn muốn khác đi.</p>
+<hr />
+<h2 id="threat-model">Mô hình mối đe dọa</h2>
+<h3 id="what-orion-wallet-protects-against">Orion Wallet chống lại những gì</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Mối đe dọa</th><th>Cách giảm thiểu</th></tr></thead>
+<tbody>
+<tr><td>Khóa rò rỉ tới máy chủ</td><td>Không có máy chủ hậu phương. Khóa không bao giờ rời khỏi trình duyệt</td></tr>
+<tr><td>Trộm keystore lúc lưu trữ</td><td>AES-256-GCM, khóa được dẫn xuất từ PIN qua PBKDF2</td></tr>
+<tr><td>Các yêu cầu dApp độc hại</td><td>Quyền hạn theo từng origin kèm các lời nhắc phê duyệt tường minh</td></tr>
+<tr><td>Giả mạo thông điệp chéo origin</td><td>Origin được kiểm tra trên mọi thông điệp đi vào</td></tr>
+<tr><td>Phát lại thông điệp</td><td>Thử thách CSPRNG và nonce cho mỗi phiên</td></tr>
+<tr><td>XSS qua markup bị chèn</td><td>Không dùng <code>innerHTML</code> / <code>dangerouslySetInnerHTML</code>; CSP giới hạn các nguồn</td></tr>
+<tr><td>Dữ liệu RPC sai định dạng làm sập ứng dụng</td><td>Chuẩn hóa phòng thủ cùng các error boundary</td></tr>
+<tr><td>Cụm từ khôi phục chưa bao giờ thực sự được ghi ra</td><td>Việc tạo ví bị chặn cho tới khi gõ lại 3 từ ngẫu nhiên</td></tr>
+<tr><td>Ký từ một tài khoản không có khóa</td><td><code>assertCanSign</code> từ chối ở ranh giới API, không chỉ trong giao diện</td></tr>
+<tr><td>Lưu lượng RPC bị nghe lén âm thầm</td><td>Các điểm cuối plaintext cần sự đồng ý tường minh theo origin</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="what-it-cannot-protect-against">Điều nó không thể chống lại</h3>
+<p>Hãy thật rõ ràng với chính mình về những điều này:</p>
+<ul>
+<li><strong>Một thiết bị bị xâm nhập.</strong> Phần mềm độc hại, keylogger, hoặc một tiện ích mở rộng trình duyệt thù địch có thể đọc<br />PIN khi bạn gõ nó và trích xuất các khóa đã giải mã từ bộ nhớ.</li>
+<li><strong>Một cụm từ khôi phục bị mất.</strong> Không có cơ chế khôi phục nào. Không ai có thể khôi phục lại nó.</li>
+<li><strong>Lừa đảo (phishing).</strong> Nếu bạn nhập cụm từ khôi phục trên một trang giả mạo, tiền sẽ biến mất. Orion<br />Wallet không bao giờ hỏi cụm từ của bạn sau khi thiết lập.</li>
+<li><strong>Một nút RPC bị xâm nhập.</strong> Một nút độc hại có thể phục vụ số dư sai hoặc giữ lại các<br />giao dịch. Nó không thể giả mạo chữ ký hay đánh cắp khóa.</li>
+<li><strong>Sự xâm nhập chuỗi cung ứng</strong> của các dependency npm hoặc nhà cung cấp lưu trữ.</li>
+<li><strong>Truy cập vật lý</strong> vào một thiết bị đang mở khóa với ví đang mở khóa.</li>
+</ul>
+<hr />
+<h2 id="cryptographic-design">Thiết kế mật mã</h2>
+<h3 id="key-derivation-and-storage">Dẫn xuất và lưu trữ khóa</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Mục đích</th><th>Thuật toán</th></tr></thead>
+<tbody>
+<tr><td>Câu ghi nhớ (mnemonic)</td><td>BIP39</td></tr>
+<tr><td>Dẫn xuất HD</td><td>Ed25519, kiểu SLIP-0010</td></tr>
+<tr><td>Ký</td><td>Ed25519 (tweetnacl)</td></tr>
+<tr><td>ECDH (stealth)</td><td>X25519 (@noble/curves)</td></tr>
+<tr><td>Mã hóa keystore</td><td>AES-256-GCM (WebCrypto)</td></tr>
+<tr><td>PIN → khóa</td><td>PBKDF2-HMAC-SHA256</td></tr>
+<tr><td>Tính ngẫu nhiên</td><td><code>crypto.getRandomValues</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Định dạng keystore khớp với bản gốc C++: magic <code>OCT1</code>, phiên bản, số vòng lặp PBKDF2,<br />salt, nonce, rồi đến bản mã AES-GCM kèm thẻ xác thực (authentication tag) của nó.</p>
+<h3 id="pin-handling">Xử lý PIN</h3>
+<p>PIN <strong>không bao giờ được lưu trữ</strong>, dưới bất kỳ hình thức nào. Nó dẫn xuất khóa giải mã tại thời điểm mở khóa<br />và sau đó bị vứt bỏ. Không có chức năng "remember my PIN" — theo thiết kế. Do đó, một PIN bị quên<br />chỉ có thể được giải quyết bằng cách khôi phục từ cụm từ khôi phục.</p>
+<h3 id="unlock-session">Phiên mở khóa</h3>
+<p>PIN không được lưu trữ, nhưng <em>kết quả</em> của việc mở khóa thì có, trong suốt thời gian phiên tồn tại:<br />làm mới trang không được ném người dùng trở lại màn hình PIN. <code>src/wallet/unlock-session.ts</code><br />niêm phong ví đã giải mã bằng AES-256-GCM và chia nó ra hai store:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Một nửa</th><th>Nơi lưu</th><th>Vòng đời</th></tr></thead>
+<tbody>
+<tr><td>Bản mã (<code>orion:unlock-session</code>)</td><td><code>sessionStorage</code></td><td>Một tab. Biến mất khi tab đó đóng</td></tr>
+<tr><td>Khóa niêm phong</td><td>IndexedDB <code>unlock-session-keys</code>, dưới dạng một <code>CryptoKey</code> <strong>không thể trích xuất</strong></td><td>Bị xóa khi khóa; các bản mồ côi bị dọn theo tuổi</td></tr>
+</tbody>
+</table>
+</div>
+<p>Không nửa nào dùng được một mình. IndexedDB sống sót khi một tab đóng nhưng không giữ bản mã;<br /><code>sessionStorage</code> giữ bản mã nhưng không có khóa, và một tab thứ hai hay một origin khác không thể đọc được<br />nó. Khóa được tạo với <code>extractable: false</code>, nên origin này có thể <em>dùng</em> nó nhưng không thể đọc ra các byte của nó —<br />không phải chính mã của chúng ta, và cũng không phải bất kỳ thứ gì xoay xở chạy được trong<br />trang. Phiên xoay vòng (khóa mới, nonce mới) mỗi lần khôi phục, và mang <code>createdAt</code><br />về phía trước để việc làm mới không thể kéo dài giới hạn tuyệt đối.</p>
+<p>Hết hạn: <strong>30 phút rảnh</strong> (có thể cấu hình, <code>autoLockMinutes</code>; <code>0</code> tắt nó) và một <strong>giới hạn tuyệt đối 8 giờ</strong><br />tính từ lúc mở khóa ban đầu. Cả hai đều được thực thi khi khôi phục, và cửa sổ thời gian rảnh cũng<br />được thực thi trực tiếp bởi <code>useAutoLock</code>, nên một tab bị bỏ ngỏ sẽ tự khóa.</p>
+<p>Điều mà cơ chế này <em>không</em> chống lại — phần thành thật:</p>
+<ul>
+<li><strong>Việc thực thi script trong tab.</strong> Mã chạy trong trang trong lúc có một phiên sống có thể yêu cầu<br />trình duyệt giải mã phiên rồi ký bằng các khóa, đúng như ví vẫn làm. Nó<br />không thể đánh cắp khóa niêm phong ra ngoài, nên sự xâm nhập kết thúc cùng với tab; nó không trở thành<br />một khóa bị đánh cắp dùng được ở nơi khác.</li>
+<li><strong>Một thiết bị bị xâm nhập.</strong> Không đổi so với mô hình mối đe dọa ở trên: phần mềm độc hại cục bộ có thể đọc<br />cả IndexedDB lẫn <code>sessionStorage</code>.</li>
+<li><strong>Các ngữ cảnh không an toàn.</strong> Không có <code>crypto.subtle</code> (plain <code>http://</code>, xem bên dưới), khóa niêm phong<br />suy biến thành các byte thô trong IndexedDB và lời đảm bảo không thể trích xuất bị mất. Việc chia tách<br />và sự hết hạn vẫn còn nguyên.</li>
+</ul>
+<p>Để từ chối hoàn toàn, hãy tắt <strong>Settings → Security → Stay unlocked after a page refresh</strong><br />(<code>keepUnlocked: false</code>). Không có gì được ghi ra, và mỗi lần tải lại đều hỏi PIN — hành vi<br />trước khi tính năng này tồn tại. Một thao tác khóa tường minh (🔒) phá hủy cả hai nửa ngay lập tức.</p>
+<h3 id="passkey-unlock">Mở khóa bằng passkey</h3>
+<p>Tùy chọn, tắt theo mặc định, và chỉ thêm vào: nó là một cách thứ hai để mở một ví hiện có, không bao<br />giờ là sự thay thế cho PIN. <code>src/wallet/passkey.ts</code>.</p>
+<p>Việc đăng ký tạo một credential nền tảng với <code>userVerification: 'required'</code> và phần mở rộng<br />WebAuthn <strong>PRF</strong>. PRF cung cấp cho trang một bí mật được dẫn xuất từ credential và một<br />salt 32 byte đã lưu, thứ mà trình duyệt chỉ tạo ra sau khi người dùng xác minh. Ví<br />lấy <code>sha256("orion-passkey-unlock-v1" || prf)</code> làm một khóa AES-256, niêm phong<br />ví đã tuần tự hóa bằng AES-256-GCM, xóa về zero khóa đó, và lưu blob đã niêm phong trong IndexedDB<br />cạnh ID credential và salt.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Được lưu</th><th>Không được lưu</th></tr></thead>
+<tbody>
+<tr><td>ID credential, salt PRF, IV, bản mã của ví</td><td>Đầu ra PRF, khóa đã dẫn xuất, PIN, mọi vật liệu khóa dạng plaintext</td></tr>
+</tbody>
+</table>
+</div>
+<p>Những hệ quả đáng nói rõ ràng:</p>
+<ul>
+<li><strong>PRF là bắt buộc, không bao giờ bị hạ cấp.</strong> Nếu authenticator không hỗ trợ nó,<br />việc đăng ký ném lỗi và không lưu trữ gì. Phương án thay thế — giữ một khóa đọc được<br />cạnh bản mã — sẽ khiến bản ghi tự giải mã được, tệ hơn cả việc không cung cấp tính năng.</li>
+<li><strong>Bản ghi tự nó là trơ.</strong> Không có một cử chỉ đã xác minh người dùng thành công trên đúng<br />authenticator đó, không có cách nào dẫn xuất khóa từ những gì nằm trên đĩa.</li>
+<li><strong>Nó niêm phong ví, không phải PIN.</strong> PIN vẫn là thứ duy nhất xuất khóa,<br />hiện cụm từ, đổi PIN, hay dẫn xuất một tài khoản. Do đó mở khóa bằng passkey<br />không thể được dùng để leo thang tới những thao tác đó, và bản ghi được lưu làm lộ ít hơn hẳn<br />một PIN được lưu trữ.</li>
+<li><strong>Cùng mô hình phiên như mở khóa bằng PIN.</strong> Một lần mở khóa bằng passkey tạo ra cùng một phiên mở khóa<br />với cùng các giới hạn rảnh và tuyệt đối; nó không kéo dài giới hạn nào.</li>
+<li><strong>Giới hạn trong thiết bị và trình duyệt.</strong> Gắn với <code>rpId</code> của origin và được lưu cục bộ. Nó<br />không nằm trong một lần xuất ví và không được dẫn xuất từ cụm từ khôi phục.</li>
+<li><strong>Một credential cũ sẽ đóng an toàn (fail closed).</strong> Nếu việc giải mã thất bại — một credential đã xoay vòng hoặc đăng ký lại,<br />một thiết bị được khôi phục — bản ghi bị xóa và bắt buộc dùng PIN. Một<br /><em>cử chỉ bị bỏ qua hoặc hết giờ</em> cố tình <strong>không</strong> xóa nó, nên một lời nhắc bị hủy<br />không thể âm thầm vô hiệu hóa tính năng.</li>
+<li><strong>Từ chối đối với các tài khoản watch-only.</strong> Không có vật liệu khóa nào để niêm phong.</li>
+</ul>
+<p>Điều nó không chống lại là không đổi: một thiết bị bị xâm nhập, và việc thực thi script trong<br />một phiên sống, đúng như với phiên mở khóa ở trên. Nó có loại bỏ một điểm phơi nhiễm thật —<br />việc PIN bị gõ và bị quan sát trong mỗi lần mở khóa.</p>
+<h3 id="watch-only-accounts">Tài khoản watch-only</h3>
+<p>Một tài khoản có thể được thêm chỉ bằng địa chỉ, không cần keystore. Bất biến là một tài khoản như vậy<br />không bao giờ có thể ký, và nó được thực thi đúng nơi việc ký xảy ra, không phải trong giao diện:<br /><code>assertCanSign</code> (<code>src/wallet/watch-only.ts</code>) được gọi bởi các đường dẫn gửi, mã hóa, stealth,<br />hợp đồng, và yêu cầu dApp, và ném lỗi nêu tên cả hành động lẫn cách sửa.</p>
+<p>Nó đóng an toàn ngay từ cấu trúc: kiểm tra từ chối bất kỳ ví nào có khóa bí mật không phải là một<br />khóa Ed25519 64 byte đầy đủ, nên một khóa bị cắt ngắn hoặc thiếu sẽ bị từ chối kể cả khi cờ <code>watchOnly</code><br />chẳng may bị mất. Cờ được mang qua <code>serializeWallet</code>/<code>deserializeWallet</code>,<br />nên một ví được khôi phục từ một phiên mở khóa vẫn là watch-only.</p>
+<h3 id="randomness">Tính ngẫu nhiên</h3>
+<p>Tất cả các giá trị liên quan tới bảo mật đều dùng <code>crypto.getRandomValues</code> qua <code>src/crypto/random.ts</code>.</p>
+<p><code>makeId</code> trong <code>src/sdk/protocol.ts</code> có một phương án dự phòng <code>Math.random</code>. Nó được dùng <strong>duy nhất</strong> cho<br />các ID tương quan thông điệp, không bao giờ cho các giá trị bảo mật, và được chú thích như vậy. Đừng tái dùng<br />nó cho các thử thách, nonce, khóa, hoặc salt.</p>
+<hr />
+<h2 id="browser-security-posture">Tư thế bảo mật của trình duyệt</h2>
+<h3 id="content-security-policy">Content-Security-Policy</h3>
+<p>Được đặt trong <code>index.html</code>:</p>
+<pre><code class="language-">default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob:; font-src 'self' data:;
+connect-src 'self' https: http://localhost:* http://127.0.0.1:* http://[::1]:*;
+frame-src 'self' https:; worker-src 'self' blob:; object-src 'none';
+base-uri 'self'; form-action 'self';</code></pre>
+<p>Ba mục đáng được giải thích:</p>
+<ul>
+<li><strong><code>'wasm-unsafe-eval'</code></strong> là bắt buộc cho mô-đun PVAC FHE. Chromium chặn<br /><code>WebAssembly.instantiate()</code> nếu thiếu nó. Nó chỉ cho phép biên dịch WebAssembly — nó<br /><strong>không</strong> bật lại JavaScript <code>eval()</code>.</li>
+<li><strong><code>'unsafe-inline'</code> cho styles</strong> là cần thiết cho CSS tới hạn trước khi vẽ (pre-paint) nhằm tránh<br />hiện tượng chớp nội dung chưa định dạng (flash of unstyled content). Nó chỉ áp dụng cho styles, không bao giờ cho scripts.</li>
+<li><strong>Loopback trong <code>connect-src</code></strong> cho phép một nút chạy cục bộ được dùng mà không phải nới chính sách<br />ra plaintext nói chung. Lưu lượng tới <code>localhost</code> / <code>127.0.0.0/8</code> / <code>[::1]</code> không bao giờ rời khỏi<br />máy, nên không có gì trên đường truyền để chặn.</li>
+</ul>
+<h3 id="plaintext-http-rpc-endpoints">Các điểm cuối RPC dạng plaintext (http)</h3>
+<p>Bất cứ thứ gì khác qua plain <code>http://</code> đều bị từ chối theo mặc định, và <code>src/wallet/endpoint-policy.ts</code><br />là nơi duy nhất quyết định. Nó là một hàm thuần của URL cộng một ngữ cảnh tường minh,<br />nên store, giao diện Settings và các bài kiểm thử không thể bất đồng về điều được phép.</p>
+<p>Ba rào cản độc lập được áp dụng, và kết luận nêu rào cản cơ bản nhất trước tiên để<br />người dùng không bao giờ bị bảo đi sửa danh sách cho phép khi mixed content mới là nguyên nhân thật:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Rào cản</th><th>Ai thực thi</th><th>Được gỡ bằng cách nào</th></tr></thead>
+<tbody>
+<tr><td>Mixed content</td><td>Trình duyệt, vô điều kiện</td><td>Không thể gỡ. Dùng TLS hoặc một proxy</td></tr>
+<tr><td>Content-Security-Policy</td><td>CSP dạng meta-tag được đóng gói</td><td>Build lại với <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code></td></tr>
+<tr><td>Sự đồng ý của người dùng</td><td><code>allowedInsecureOrigins</code> trong cài đặt</td><td>Chọn <strong>Trust</strong> origin trong Settings → Network</td></tr>
+</tbody>
+</table>
+</div>
+<p>Các ghi chú về thiết kế:</p>
+<ul>
+<li>CSP là một meta tag, nên nó <strong>không thể được nới rộng lúc chạy</strong> — không một cài đặt nào có thể cấp<br />điều này, đó là lý do nó là một cờ build. <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code> thêm <code>http:</code> vào<br /><code>connect-src</code> tại thời điểm build và không gì khác; sự đồng ý của người dùng vẫn được yêu cầu thêm lên trên.</li>
+<li>Sự đồng ý là <strong>theo từng origin</strong> — scheme, host và port. Nó không phải là khớp hostname và không phải là một<br />tiền tố URL, nên việc tin tưởng <code>http://node.lan:8080</code> không tin tưởng một port khác trên cùng host đó,<br />và <code>http://127.0.0.1.evil.com</code> không bị coi là loopback.</li>
+<li><strong>Các URL explorer được miễn trừ</strong> vì chúng chỉ là các điều hướng <code>&lt;a href&gt;</code>, không phải các<br />lệnh fetch. <code>connect-src</code> và mixed content không áp dụng cho chúng. <code>relayerUrl</code> được lưu nhưng<br />không bao giờ được fetch. Chỉ <code>rpcUrl</code> chịu sự điều chỉnh của chính sách này.</li>
+<li>Một điểm cuối bị chặn vẫn tạo ra một <code>RpcClient</code>, có chủ đích: từ chối tạo một cái<br />sẽ khiến người dùng không thể tới được Settings để sửa. Thay vào đó, lý do hiện ra dưới dạng một<br />huy hiệu <strong>⚠️ Insecure RPC</strong> trong header và như <code>RpcClient.unreachableHint</code>, thứ được nối<br />chỉ vào một <code>TypeError</code> bị ném — không bao giờ vào một lỗi máy chủ thật hay một lần hết giờ,<br />vốn sẽ gây hiểu lầm.</li>
+<li><strong><code>rpcProxyUrl</code></strong> chuyển quyết định tới proxy: điểm cuối được đánh giá theo scheme của chính proxy,<br />vì đó là thứ trình duyệt thực sự kết nối tới. Proxy thấy mọi yêu cầu,<br />nên giao diện khuyên bạn hãy tự chạy proxy của mình. Nó không thể chạm tới khóa hay ký.</li>
+</ul>
+<p>RPC plaintext là một sự phơi nhiễm bảo mật <em>và</em> toàn vẹn — một nút trên đường đi có thể đọc<br />mọi tra cứu và sửa các phản hồi — nhưng không phải là một sự xâm nhập khóa: các chữ ký được tạo<br />cục bộ và ví không xác minh bất cứ thứ gì nó nhận được vào vật liệu khóa.</p>
+<h3 id="cross-origin-isolation">Cô lập chéo origin</h3>
+<p>COOP/COEP là <code>same-origin</code> / <code>require-corp</code> trên toàn ứng dụng, với các ghi đè <code>unsafe-none</code><br />trên <code>/connect</code> để popup phê duyệt có thể trao đổi một MessagePort với cửa sổ đã mở nó.<br />Việc thu hẹp này là có chủ đích và chỉ giới hạn ở đúng một route đó.</p>
+<hr />
+<h2 id="dapp-connection-security">Bảo mật kết nối dApp</h2>
+<p>Khi một trang web yêu cầu kết nối:</p>
+<ol>
+<li>Popup hiển thị origin yêu cầu một cách nổi bật.</li>
+<li>Người dùng phải phê duyệt một cách tường minh; không có kết nối âm thầm nào cho một origin mới.</li>
+<li>Sự phê duyệt được phạm vi vào đúng origin đó và được lưu theo từng origin.</li>
+<li>Các thao tác ký luôn luôn cần xác nhận, kể cả với các trang web đáng tin.</li>
+</ol>
+<p>"Trust this site" chỉ ngăn các lời nhắc cho các yêu cầu <strong>chỉ đọc</strong> (số dư, tài khoản,<br />mạng). Nó không bao giờ cho phép ký âm thầm.</p>
+<p>Các kết nối có thể được rà soát và thu hồi trong <strong>Settings → Connected Sites</strong>.</p>
+<h3 id="what-a-dapp-learns-about-a-custom-network">Điều một dApp biết về một mạng tùy chỉnh</h3>
+<p>Các mạng do người dùng tự tay thêm được hiển thị cho các trang đã kết nối (<code>wallet_getNetworkInfo</code>,<br /><code>wallet_getNetworks</code>, và sự kiện <code>networkChanged</code>), vì một dApp không thể hiển thị đúng<br />liên kết explorer hay nhãn chuỗi nếu không biết nó đang ở mạng nào. Bản ghi đi qua<br />đường truyền là một tập con có chủ đích:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Được gửi</th><th>Bị giữ lại</th></tr></thead>
+<tbody>
+<tr><td><code>id</code>, <code>name</code>, <code>explorerUrl</code>, <code>icon</code>, <code>custom</code></td><td><code>rpcUrl</code>, <code>relayerUrl</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Các điểm cuối bị giữ lại vì một mạng do người dùng thêm thường là một mạng riêng tư — một địa chỉ LAN,<br />một đường hầm, một URL nhà cung cấp trả phí với khóa API trong chuỗi truy vấn. Kết nối với một<br />trang web không nên tiết lộ nơi nút của người dùng đang chạy hay trao đi một URL có thông tin xác thực. Không<br />mất chức năng nào: các thao tác đọc được ủy quyền qua ví và các giao dịch được xây dựng và<br />phát sóng bởi ví, nên một dApp không bao giờ cần tự vươn tới RPC.</p>
+<p>Hai hệ quả đáng biết:</p>
+<ul>
+<li><strong>Tên</strong> của một mạng tùy chỉnh do người dùng chọn và được hiển thị cho các dApp. Đặt tên một mạng theo một<br />định danh cá nhân sẽ tiết lộ định danh đó cho mọi trang bạn kết nối tới.</li>
+<li><code>wallet_getNetworks</code> tiết lộ <strong>có bao nhiêu</strong> mạng bạn đã cấu hình. Đây là một bề mặt<br />lấy dấu vân tay (fingerprinting) nhỏ, được chấp nhận để một dApp có thể đưa ra chỉ dẫn "switch to X".</li>
+</ul>
+<p>Không dApp nào có thể đổi mạng. Không có phương thức <code>wallet_switchNetwork</code>; việc chuyển mạng chỉ xảy ra<br />trong chính giao diện của ví, và dApp biết được sau đó qua <code>networkChanged</code>.</p>
+<hr />
+<h2 id="dependency-status">Tình trạng dependency</h2>
+<p>Dependency sản xuất: <strong>không có lỗ hổng đã biết</strong> (<code>npm audit --omit=dev</code>).</p>
+<p>Các dependency phát triển mang các cảnh báo trong vitest, vite, esbuild, và các gói liên quan.<br />Mỗi cách sửa còn lại đều cần một bản nâng cấp lớn (vite 5→8, vitest 2→4) có rủi ro làm gãy<br />build. Các gói này là công cụ build — chúng không được chuyển tới người dùng và không thể ảnh hưởng tới một<br />ví đã triển khai.</p>
+<p>Đây là một sự đánh đổi có chủ đích, được xem lại ở mỗi bản phát hành. Chạy <code>npm audit --omit=dev</code> để<br />xác nhận bề mặt được chuyển tới người dùng luôn sạch.</p>
+<hr />
+<h2 id="guidance-for-users">Chỉ dẫn cho người dùng</h2>
+<p><strong>Nên</strong></p>
+<ul>
+<li>Giữ cụm từ khôi phục của bạn ngoại tuyến, trên giấy, ở nhiều hơn một nơi</li>
+<li>Kiểm tra địa chỉ người nhận từng ký tự trước khi gửi</li>
+<li>Kiểm tra origin trong mọi lời nhắc kết nối dApp</li>
+<li>Gửi một khoản thử nhỏ trước khi dùng một địa chỉ mới</li>
+<li>Luôn cập nhật trình duyệt và hệ điều hành của bạn</li>
+</ul>
+<p><strong>Không bao giờ</strong></p>
+<ul>
+<li>Nhập cụm từ khôi phục trên bất kỳ trang web nào sau khi thiết lập</li>
+<li>Lưu cụm từ dưới dạng kỹ thuật số — không chụp màn hình, ghi chú đám mây, hay tin nhắn trò chuyện</li>
+<li>Chia sẻ khóa riêng tư hoặc tệp sao lưu <code>.oct</code> của bạn</li>
+<li>Dùng một ví đang nắm tiền thật trên một máy tính dùng chung hoặc không đáng tin</li>
+</ul>
+<hr />
+<h2 id="for-contributors">Dành cho người đóng góp</h2>
+<p>Các bất biến nhạy cảm về bảo mật không được làm suy yếu:</p>
+<ul>
+<li>Kiểm tra origin trên mọi <code>postMessage</code> đi vào</li>
+<li>CSPRNG cho mọi giá trị bảo mật; <code>makeId</code> không phải là một trong số đó</li>
+<li>Không có bí mật nào trong <code>localStorage</code>, <code>sessionStorage</code>, log, hoặc thông báo lỗi</li>
+<li>Không dùng <code>innerHTML</code> hay <code>dangerouslySetInnerHTML</code></li>
+<li>PIN không bao giờ được lưu trữ</li>
+<li>Mở khóa bằng passkey yêu cầu PRF; không bao giờ hạ cấp xuống việc lưu một khóa đọc được</li>
+<li><code>assertCanSign</code> bảo vệ mọi đường dẫn ký — một tài khoản watch-only không bao giờ được ký</li>
+<li>Chính sách điểm cuối plaintext nằm trong <code>endpoint-policy.ts</code>; không có kiểm tra URL tùy tiện ở nơi khác</li>
+<li>Canonical JSON luôn khớp chính xác từng byte — các chữ ký phụ thuộc vào nó</li>
+</ul>
+<p>Bất kỳ thay đổi nào đụng tới crypto, xử lý khóa, lưu trữ, hoặc luồng kết nối đều nên nói rõ điều đó<br />một cách tường minh trong pull request.</p>
+</body>
+</html>

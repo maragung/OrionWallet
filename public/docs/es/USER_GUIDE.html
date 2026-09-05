@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guía del usuario — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="orion-wallet-user-guide">Orion Wallet — Guía del usuario</h1>
+<p>Orion Wallet se ejecuta por completo en su navegador. Sus claves se generan localmente, se cifran<br />con su PIN y se almacenan únicamente en su propio dispositivo. No se envía nada a ningún servidor.</p>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Código fuente, incidencias y versiones.</blockquote>
+<hr />
+<h2 id="contents">Contenido</h2>
+<ul>
+<li><a href="#getting-started">Primeros pasos</a></li>
+<li><a href="#creating-a-wallet">Crear una cartera</a></li>
+<li><a href="#importing-an-existing-wallet">Importar una cartera existente</a></li>
+<li><a href="#everyday-use">Uso diario</a></li>
+<li><a href="#contacts-address-book">Contactos (libreta de direcciones)</a></li>
+<li><a href="#watch-only-accounts">Cuentas de solo lectura</a></li>
+<li><a href="#encrypted-balance-fhe">Saldo cifrado (FHE)</a></li>
+<li><a href="#stealth-transfers">Transferencias sigilosas</a></li>
+<li><a href="#connecting-to-a-dapp">Conexión a una dApp</a></li>
+<li><a href="#locking-and-unlocking">Bloqueo y desbloqueo</a></li>
+<li><a href="#session-expiry">Caducidad de la sesión</a></li>
+<li><a href="#network-settings">Configuración de red</a></li>
+<li><a href="#backup-and-recovery">Copia de seguridad y recuperación</a></li>
+<li><a href="#troubleshooting">Resolución de problemas</a></li>
+<li><a href="#keeping-your-funds-safe">Mantenga sus fondos seguros</a></li>
+</ul>
+<hr />
+<h2 id="getting-started">Primeros pasos</h2>
+<h3 id="requirements">Requisitos</h3>
+<ul>
+<li>Una versión actual de Chrome, Edge, Firefox o Safari</li>
+<li>JavaScript habilitado</li>
+<li>Aproximadamente 4 GB de RAM si piensa usar las funciones de saldo cifrado</li>
+</ul>
+<h3 id="running-it">Ejecutarlo</h3>
+<p>Use una implementación alojada o ejecútelo localmente:</p>
+<pre><code class="language-bash">npm install --legacy-peer-deps
+npm run dev</code></pre>
+<p>Luego abra &lt;http://localhost:5173&gt;.</p>
+<hr />
+<h2 id="creating-a-wallet">Crear una cartera</h2>
+<ol>
+<li>Seleccione <strong>Create New Wallet</strong>, dé un nombre a la cuenta y elija un PIN. El PIN cifra la cartera en este dispositivo.</li>
+<li><strong>Anote su frase de recuperación.</strong> Se le muestran 12 palabras. Cópielas en papel en el orden exacto indicado.</li>
+<li>Seleccione <strong>I've Written It Down</strong>. La cartera le pide entonces que vuelva a escribir <strong>3 de las palabras</strong>, elegidas al azar, para comprobar que la frase realmente salió de la pantalla. <strong>Show Phrase Again</strong> la vuelve a mostrar si necesita verla otra vez; una respuesta incorrecta simplemente le permite reintentar.</li>
+<li>Una vez que las palabras se verifican, la cartera se abre.</li>
+</ol>
+<blockquote><strong>Crear la cartera no la abre; superar la comprobación de palabras sí.</strong> Hasta entonces todavía<br />puede marcharse y no se pierde nada, porque aún no se ha dependido de la frase.</blockquote>
+<blockquote><strong>Su frase de recuperación es la única manera de restaurar su cartera.</strong> Cualquiera que la tenga<br />controla sus fondos. Guárdela sin conexión. Nunca la fotografíe, la escriba en un sitio web<br />ni la pegue en un chat o correo electrónico.</blockquote>
+<h3 id="pin-versus-recovery-phrase">PIN frente a frase de recuperación</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>Frase de recuperación</th><th>PIN</th></tr></thead>
+<tbody>
+<tr><td>Propósito</td><td>Restaura su cartera en cualquier lugar</td><td>La desbloquea solo en este dispositivo</td></tr>
+<tr><td>Si se pierde</td><td>Los fondos son irrecuperables</td><td>Restaure desde la frase de recuperación</td></tr>
+<tr><td>Dónde se guarda</td><td>Sin conexión, por usted</td><td>Nunca se almacena; solo usted lo conoce</td></tr>
+</tbody>
+</table>
+</div>
+<hr />
+<h2 id="importing-an-existing-wallet">Importar una cartera existente</h2>
+<p>Elija <strong>Import</strong> y seleccione una de estas opciones:</p>
+<ul>
+<li><strong>Frase de recuperación</strong> — introduzca sus 12/24 palabras</li>
+<li><strong>Clave privada</strong> — pegue una clave privada en base64</li>
+<li><strong>Archivo de cartera</strong> — cargue un archivo <code>.oct</code> cifrado e introduzca su PIN</li>
+</ul>
+<hr />
+<h2 id="everyday-use">Uso diario</h2>
+<h3 id="checking-your-balance">Comprobar su saldo</h3>
+<p>La pestaña <strong>Balance</strong> muestra su saldo público y, si PVAC está habilitado, su saldo cifrado.</p>
+<h3 id="receiving">Recibir</h3>
+<p>Abra <strong>Receive</strong> para mostrar su dirección y un código QR. Su dirección es pública y puede<br />compartirse con seguridad.</p>
+<p>También puede <strong>solicitar un importe concreto</strong>. El código QR lleva entonces el importe junto a<br />la dirección (como <code>octra:&lt;address&gt;?amount=&lt;OCT&gt;</code>), de modo que una cartera que lo escanee rellena ambos.<br />Si no se solicita ningún importe, el código sigue siendo una dirección simple, que cualquier lector puede leer.</p>
+<h3 id="sending">Enviar</h3>
+<ol>
+<li>Abra <strong>Send</strong>.</li>
+<li>Indique el destinatario de la forma que le resulte más cómoda:
+<ul>
+<li>Pegue la dirección (empieza por <code>oct</code>).</li>
+<li>Elija un nombre guardado en <strong>📇 Contacts…</strong>.</li>
+<li>Seleccione <strong>📷 Scan</strong> para leer un código QR con su cámara. El navegador pide permiso de cámara la primera vez; la imagen se procesa en la página y nunca se sube. Al escanear un código que lleva un importe, este también se rellena.</li>
+</ul>
+</li>
+<li>Introduzca un importe.</li>
+<li>Revise la comisión y el nonce, luego confirme con su PIN.</li>
+</ol>
+<p>Cuando la dirección coincide con un contacto guardado, el formulario muestra el nombre junto a ella; un nombre que<br />reconoce es una comprobación mucho mejor que una cadena en base58. Para una dirección nueva, <strong>＋ Save to contacts</strong> la guarda bajo una etiqueta que usted elija, de modo que el siguiente pago sea una selección, no un pegado.</p>
+<p>Verifique siempre los primeros y los últimos caracteres de la dirección del destinatario antes de confirmar.<br />Las transacciones no se pueden revertir.</p>
+<h3 id="history">Historial</h3>
+<p><strong>History</strong> enumera las transacciones recientes. Cuando la red no es accesible, se muestran las entradas en caché<br />marcadas como <code>⚠ Cached</code>.</p>
+<p><strong>⤓</strong> exporta la tabla a un archivo CSV (hora, hash, tipo, origen, destino, dirección, importe, comisión,<br />estado) para una hoja de cálculo o sus propios registros. Exporta <strong>las filas cargadas actualmente</strong>:<br />lo que ve es lo que obtiene, así que use <strong>Load more</strong> primero si desea un rango más amplio. El<br />archivo lo escribe su navegador en su carpeta de descargas; no se envía nada a ninguna parte.</p>
+<hr />
+<h2 id="contacts-address-book">Contactos (libreta de direcciones)</h2>
+<p><strong>Settings → 📇 Contacts</strong> mantiene una lista de direcciones bajo los nombres que usted elija. Cada entrada tiene<br />una dirección, un nombre y una nota opcional: un buen lugar para "memo required" o para indicar a qué<br />exchange pertenece una dirección de depósito.</p>
+<p>Por qué molestarse: una dirección que no puede leer es una dirección que no puede comprobar. Una vez guardado un<br />beneficiario, el formulario Send lo ofrece por su nombre y etiqueta la dirección cuando la vuelve a pegar, de modo que<br />una dirección cambiada o truncada destaca en lugar de pasar desapercibida.</p>
+<ul>
+<li><strong>Add</strong> añade una entrada aquí, o use <strong>＋ Save to contacts</strong> directamente desde el formulario Send.</li>
+<li><strong>✎</strong> cambia el nombre de una entrada, <strong>🗑</strong> la elimina. Eliminar un contacto no afecta a nada en la cadena.</li>
+<li><strong>⤓</strong> exporta la lista como CSV, de modo que pueda conservarse con sus otros registros o trasladarse a otro navegador.</li>
+</ul>
+<p>Los contactos residen solo en este navegador, junto con el resto de los datos de su cartera. No se<br />suben, y se borran junto con todo lo demás si borra la cartera.</p>
+<hr />
+<h2 id="watch-only-accounts">Cuentas de solo lectura</h2>
+<p>Una cuenta de solo lectura hace seguimiento de una dirección de la que <strong>no</strong> posee las claves: almacenamiento en frío, una<br />cartera de hardware, una dirección de depósito de un exchange o la dirección de otra persona que quiere vigilar.</p>
+<p>Añada una en <strong>Settings → 👥 Accounts → 👁 Watch Address</strong>: pegue la dirección, dele un<br />nombre y se unirá a su lista de cuentas.</p>
+<p>Lo que puede hacer: mostrar el saldo, enumerar el historial, exportar CSV y activarse sin<br />PIN; no hay ningún almacén de claves que descifrar, así que no hay nada que desbloquear.</p>
+<p>Lo que no puede hacer: <strong>firmar nada.</strong> Enviar, cifrar/descifrar, las transferencias sigilosas, las llamadas a<br />contratos y las solicitudes de firma de dApps se rechazan todas, y el formulario Send lo indica antes de que lo rellene,<br />no después. Las cuentas de solo lectura se marcan con 👁 en la lista de cuentas y en la<br />cabecera, para que siempre sepa qué tipo está viendo.</p>
+<p>Para convertir una cuenta de solo lectura en una real, importe la frase de recuperación o la clave privada de<br />esa dirección. Añadir las claves es la única manera; no hay ningún atajo.</p>
+<hr />
+<h2 id="encrypted-balance-fhe">Saldo cifrado (FHE)</h2>
+<p>Orion Wallet puede mantener parte de su saldo cifrado mediante cifrado totalmente homomórfico,<br />de modo que el importe no sea visible públicamente en la cadena.</p>
+<p>Esto es opcional. Todo lo demás funciona esté o no habilitado.</p>
+<h3 id="enabling-it">Habilitarlo</h3>
+<p>Vaya a <strong>Settings → PVAC</strong>. Dos indicadores deben estar ambos en verde:</p>
+<ul>
+<li><strong>WASM Module</strong> — el módulo criptográfico se ha cargado</li>
+<li><strong>Bridge Initialized</strong> — se ha inicializado con clave a partir de la semilla de su cartera</li>
+</ul>
+<p>Si alguno no está listo, el panel explica la causa exacta y la solución.</p>
+<h3 id="encrypting-and-decrypting">Cifrar y descifrar</h3>
+<p>Use <strong>Encrypt</strong> para mover fondos entre sus saldos público y cifrado. Estas<br />operaciones son costosas en cómputo y pueden tardar varios segundos; un cuadro de diálogo de progreso<br />muestra cada etapa.</p>
+<hr />
+<h2 id="stealth-transfers">Transferencias sigilosas</h2>
+<p>Las transferencias sigilosas envían fondos a una dirección de un solo uso derivada de la clave pública<br />del destinatario, de modo que el pago no sea vinculable públicamente a su dirección principal.</p>
+<p>Abra <strong>Stealth</strong>, introduzca el destinatario y el importe, y confirme. El destinatario reclama los<br />fondos desde su propia pestaña Stealth.</p>
+<hr />
+<h2 id="connecting-to-a-dapp">Conexión a una dApp</h2>
+<p>Cuando un sitio web solicita una conexión, aparece una ventana emergente que muestra el origen solicitante.</p>
+<p>Antes de aprobar:</p>
+<ul>
+<li><strong>Compruebe el origen con atención.</strong> Confirme que el dominio es exactamente el sitio que pretendía.</li>
+<li>Apruebe solo los permisos que espera.</li>
+<li>"Trust this site" omite futuras solicitudes para peticiones de solo lectura; úselo con moderación.</li>
+<li>Compruebe el selector de <strong>red</strong> en la ventana emergente. Enumera todas las redes que tiene, incluidas las que usted mismo añadió, para que pueda conectarse en la correcta sin salir de la ventana emergente.</li>
+</ul>
+<p>Revise y revoque las conexiones en cualquier momento en <strong>Settings → Connected Sites</strong>.</p>
+<hr />
+<h2 id="locking-and-unlocking">Bloqueo y desbloqueo</h2>
+<p>Su PIN descifra la cartera. Las claves descifradas permanecen entonces disponibles mientras<br />dure la sesión de desbloqueo; no se le vuelve a pedir el PIN hasta que esta termina.</p>
+<ul>
+<li><strong>Actualizar la página lo mantiene desbloqueado.</strong> Las claves se vuelven a sellar para la pestaña del navegador en la que se encuentra, de modo que una recarga retoma la sesión en lugar de devolverlo a la pantalla del PIN. Verá brevemente "Restoring your session…" mientras eso ocurre.</li>
+<li><strong>Cerrar la pestaña finaliza la sesión.</strong> La copia sellada está limitada a esa única pestaña y desaparece con ella, de modo que una pestaña o ventana nueva comienza bloqueada.</li>
+<li><strong>🔒 en la cabecera bloquea de inmediato</strong> y destruye la copia sellada; una recarga tras el bloqueo pide el PIN, como debe ser.</li>
+<li><strong>La inactividad bloquea la cartera</strong> tras 30 minutos de forma predeterminada, y un único desbloqueo nunca se mantiene más de 8 horas independientemente de la actividad.</li>
+</ul>
+<p>Ninguna mitad de la sesión sellada es útil por sí sola: las claves cifradas las guarda la<br />pestaña, mientras que la clave que las abre la conserva el navegador en una forma que ninguna página —<br />incluida esta— puede volver a leer.</p>
+<p>En <strong>Settings → Security → Session &amp; Auto-Lock</strong>:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Ajuste</th><th>Predeterminado</th><th>Qué hace</th></tr></thead>
+<tbody>
+<tr><td>Permanecer desbloqueado tras actualizar la página</td><td>Activado</td><td>Desactívelo para exigir el PIN en cada recarga</td></tr>
+<tr><td>Bloqueo automático tras inactividad</td><td>30 minutos</td><td>5 / 15 / 30 / 60 minutos, o nunca (hasta que se cierre la pestaña)</td></tr>
+</tbody>
+</table>
+</div>
+<p>Ambos se aplican a la vez, incluida la sesión que ya tiene abierta. En un ordenador compartido o<br />en el que no confía, desactive el primero y bloquee la cartera cuando se aleje.</p>
+<h3 id="unlocking-with-a-passkey">Desbloquear con una clave de acceso</h3>
+<p>Si su dispositivo tiene un lector de huellas, Face ID, Windows Hello o una llave de seguridad, puede<br />desbloquear con eso en lugar de escribir el PIN.</p>
+<p>Actívelo en <strong>Settings → 🔑 Security → Passkey Unlock → Enable passkey unlock</strong>. Su<br />dispositivo le pide registrarse; puede pedírselo <strong>dos veces</strong>, una para crear la clave de acceso y<br />otra para usarla. La pantalla de desbloqueo ofrece entonces <strong>👆 Unlock with passkey</strong> encima del campo del PIN.</p>
+<p>Conviene saber:</p>
+<ul>
+<li><strong>El PIN sigue existiendo y sigue importando.</strong> La clave de acceso abre la cartera; no sustituye al PIN. Exportar claves, revelar la frase de recuperación, cambiar el PIN y derivar nuevas cuentas siguen pidiéndolo. Conserve el PIN: perderlo no se soluciona por tener una clave de acceso.</li>
+<li><strong>Está vinculada a este dispositivo y a este navegador.</strong> Las claves de acceso no viajan con los datos de su cartera. En otro dispositivo, desbloquee con el PIN y registre allí una clave de acceso si desea una.</li>
+<li><strong>Su huella nunca llega a la cartera.</strong> El dispositivo lo verifica localmente y entrega a la página un secreto derivado de la clave de acceso; ese secreto es lo que abre la cartera.</li>
+<li><strong>La disponibilidad depende de su dispositivo y navegador.</strong> Si el suyo no puede hacer lo que esto requiere, el panel Security lo indica y la opción permanece desactivada; el PIN sigue funcionando exactamente igual que antes.</li>
+<li><strong>Desactive el desbloqueo con clave de acceso</strong> en el mismo panel. Eso elimina la copia almacenada de inmediato; no elimina la clave de acceso de su dispositivo, que puede quitar en la configuración de su sistema operativo o navegador.</li>
+</ul>
+<p>Si alguna vez una clave de acceso deja de abrir la cartera —una credencial rotada o vuelta a registrar, o un<br />dispositivo restaurado—, la cartera lo indica, descarta la copia obsoleta y pide el PIN. No se<br />pierde nada; después puede registrar una clave de acceso nueva.</p>
+<p>El desbloqueo con clave de acceso no se puede registrar mientras haya una cuenta de solo lectura activa: no contiene claves,<br />así que no hay nada que una clave de acceso pueda sellar. El panel Security lo indica en lugar del botón.</p>
+<hr />
+<h2 id="session-expiry">Caducidad de la sesión</h2>
+<p>Las mismas ventanas de tiempo rigen las conexiones de dApps, que caducan automáticamente:</p>
+<ul>
+<li><strong>Tiempo de espera por inactividad:</strong> 30 minutos de inactividad</li>
+<li><strong>Tiempo de espera absoluto:</strong> 8 horas desde la conexión</li>
+</ul>
+<p>Cuando una sesión caduca, la cartera cierra la conexión y se notifica a la dApp.<br />La dApp debería entonces pedirle que se vuelva a conectar.</p>
+<h3 id="what-happens-when-your-session-expires">Qué ocurre cuando su sesión caduca</h3>
+<ol>
+<li>La cartera emite un evento <code>sessionExpired</code> a la dApp.</li>
+<li>La dApp detecta la sesión caducada y muestra un aviso "Reconnect".</li>
+<li>Usted hace clic en <strong>Connect</strong> para abrir de nuevo la ventana emergente de la cartera.</li>
+<li>La cartera restaura su sesión y la dApp se reanuda.</li>
+</ol>
+<h3 id="if-a-dapp-doesnt-reconnect-automatically">Si una dApp no se vuelve a conectar automáticamente</h3>
+<ul>
+<li>Haga clic en el botón <strong>Connect</strong> de la dApp.</li>
+<li>Se abre la ventana emergente de la cartera; apruebe la conexión.</li>
+<li>Los datos de su sesión anterior se conservan, así que no necesita volver a importar su cartera.</li>
+</ul>
+<hr />
+<h2 id="network-settings">Configuración de red</h2>
+<p><strong>Settings → ⚙️ General</strong> contiene la URL de RPC con la que se comunica la cartera, el explorador al que enlaza<br />y un proxy opcional. Cambie la URL de RPC y seleccione <strong>Save URLs</strong> para apuntar la cartera<br />a un nodo diferente.</p>
+<h3 id="adding-your-own-network">Añadir su propia red</h3>
+<p>Devnet y Mainnet vienen incluidas con la cartera. Para añadir otra —su propio nodo, una bifurcación de devnet, un<br />RPC de pago— desplácese hasta <strong>Custom Networks</strong> en el mismo panel y rellene:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Campo</th><th>Obligatorio</th><th>Notas</th></tr></thead>
+<tbody>
+<tr><td>Nombre de la red</td><td>sí</td><td>Se muestra en todos los lugares donde aparece la red, incluso a las dApps</td></tr>
+<tr><td>URL de RPC</td><td>sí</td><td><code>http://</code> o <code>https://</code></td></tr>
+<tr><td>URL del explorador</td><td>no</td><td>Por defecto, la URL de RPC</td></tr>
+<tr><td>URL del relayer</td><td>no</td><td>Solo se necesita para transferencias sigilosas</td></tr>
+</tbody>
+</table>
+</div>
+<p>Seleccione <strong>Add network</strong> y se unirá a la lista. A partir de entonces es una opción normal:</p>
+<ul>
+<li>la <strong>píldora de red</strong> de la barra superior cambia a ella como con cualquier preajuste,</li>
+<li>la <strong>ventana emergente de conexión</strong> la enumera cuando un sitio pide conectarse, marcada como <em>(custom)</em>,</li>
+<li>y una dApp conectada puede leer su nombre y explorador para etiquetar las cosas correctamente.</li>
+</ul>
+<p>Cambiar de red actualiza los tres extremos a la vez —RPC, explorador y relayer—, de modo que la<br />cartera nunca acabe leyendo una red mientras enlaza a otra.</p>
+<p>Elimine una red con la ✕ que hay junto a ella. Si borra la red en la que se encuentra actualmente, la<br />cartera recurre a un preajuste.</p>
+<p><strong>Lo que ve una dApp.</strong> Los sitios a los que se conecta pueden leer el nombre, el icono y la URL del explorador<br />de una red personalizada, y el hecho de que usted la añadió. <strong>No pueden</strong> leer su URL de RPC ni de relayer: la dirección de un<br />nodo doméstico o una clave de proveedor permanece en la cartera. Como el nombre es visible, evite<br />poner a una red un nombre relacionado con algo personal.</p>
+<h3 id="nodes-without-https">Nodos sin HTTPS</h3>
+<p>Un nodo <code>https://</code> no requiere ningún tratamiento especial. Un nodo accesible solo por <code>http://</code> simple es<br />otra cuestión, porque todo lo que la cartera le pide —cada consulta de saldo e historial,<br />cada transacción que envía— viaja sin cifrar, donde cualquiera en la ruta de<br />red puede leerlo <em>y cambiar las respuestas</em>. Por eso la cartera pregunta primero.</p>
+<ul>
+<li><strong>El bucle local (loopback) no requiere permiso.</strong> <code>localhost</code>, <code>127.0.0.1</code>, <code>[::1]</code> y similares nunca salen de su máquina, así que un nodo local funciona sin más.</li>
+<li><strong>Cualquier otra dirección <code>http://</code> debe ser de confianza de forma explícita.</strong> Pegue la URL y el panel explica lo que está en juego con un botón <strong>Trust <code>http://…</code></strong> junto a ella. La confianza se almacena por origen (esquema, host y puerto), de modo que confiar en un nodo no implica confiar en otro, y un puerto diferente en el mismo host es una decisión aparte.</li>
+<li><strong>Trusted plaintext endpoints</strong> enumera aquello en lo que ha confiado, con <strong>Remove</strong> para retirarlo.</li>
+</ul>
+<p>Dos límites no está en nuestra mano levantarlos, y el panel indica cuál de ellos está estorbando:</p>
+<ul>
+<li><strong>Una cartera servida por <code>https://</code> no puede obtener <code>http://</code> en absoluto.</strong> Los navegadores lo bloquean (se denomina contenido mixto), y confiar en el origen no lo cambiará. Ponga el nodo detrás de TLS, use un proxy o abra la cartera desde una compilación de http simple o localhost.</li>
+<li><strong>La compilación distribuida solo permite <code>https://</code> y bucle local.</strong> Su política de seguridad se fija en el momento de compilación y no se puede ampliar en tiempo de ejecución. Quienes se autoalojan y necesitan http simple pueden compilar con <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code>; la lista de confianza anterior sigue aplicándose por encima.</li>
+</ul>
+<p>La URL del explorador está exenta de todo esto: nunca es más que un enlace en el que hace clic, no<br />algo que la cartera obtenga.</p>
+<h3 id="rpc-proxy">Proxy de RPC</h3>
+<p><strong>RPC proxy (optional)</strong> enruta las llamadas a través de una URL de su elección: la URL de RPC se<br />le añade al final, codificada en porcentaje, y el navegador solo se conecta al proxy. Es la<br />solución práctica para un nodo sin TLS o sin cabeceras CORS, y cumple las reglas anteriores<br />porque la conexión que hace el navegador es con el proxy.</p>
+<p>El proxy ve cada petición que hace la cartera, así que <strong>use el suyo propio</strong>. No puede firmar nada<br />ni acceder a sus claves, pero puede observar y puede mentir.</p>
+<h3 id="when-something-is-off">Cuando algo va mal</h3>
+<p>Si el extremo de RPC no se puede usar tal como está configurado, aparece <strong>⚠️ Insecure RPC</strong> en la cabecera;<br />selecciónelo para saltar directamente al ajuste. Los errores de red también llevan el motivo, de modo que un simple<br />"Failed to fetch" le indica qué corregir.</p>
+<hr />
+<h2 id="backup-and-recovery">Copia de seguridad y recuperación</h2>
+<h3 id="exporting">Exportar</h3>
+<p><strong>Settings → Backup → Export</strong> descarga un archivo <code>.oct</code> cifrado. Está protegido por<br />su PIN, pero trátelo como algo sensible.</p>
+<h3 id="restoring">Restaurar</h3>
+<p>Use <strong>Import → Wallet file</strong> y proporcione el PIN que estaba en uso cuando se exportó el archivo.</p>
+<h3 id="multiple-accounts">Varias cuentas</h3>
+<p><strong>Settings → Accounts</strong> deriva cuentas adicionales a partir de la misma frase de recuperación. Una<br />sola frase las restaura todas.</p>
+<p>Dos cosas que la frase <strong>no</strong> restaura, porque nunca se derivaron de ella:</p>
+<ul>
+<li><strong>Cuentas de solo lectura</strong>: son solo direcciones que le pidió a la cartera que siguiera. Anótelas por separado si quiere recuperarlas tras una reinstalación.</li>
+<li><strong>Contactos</strong>: expórtelos con <strong>⤓</strong> en Settings → Contacts si le importan.</li>
+</ul>
+<p>Ninguno contiene fondos, así que perderlos le cuesta comodidad, no dinero.</p>
+<hr />
+<h2 id="troubleshooting">Resolución de problemas</h2>
+<h3 id="the-page-is-blank-or-stuck-loading">La página está en blanco o se queda cargando</h3>
+<p>Recargue. Si persiste, debería aparecer una tarjeta de error con un botón <strong>Retry</strong>. Informe del<br />mensaje que se muestra allí.</p>
+<h3 id="encrypted-balance-is-unavailable">El saldo cifrado no está disponible</h3>
+<p>Settings → PVAC muestra uno de los siguientes:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Mensaje</th><th>Significado</th><th>Solución</th></tr></thead>
+<tbody>
+<tr><td><em>The WASM module has not been compiled</em></td><td><code>pvac.js</code> no se está sirviendo</td><td>Ejecute <code>npm run build:wasm</code></td></tr>
+<tr><td><em>Content-Security-Policy is blocking WebAssembly</em></td><td>La CSP carece de <code>'wasm-unsafe-eval'</code></td><td>Añádalo a <code>script-src</code> en <code>index.html</code></td></tr>
+<tr><td><em>The compiled module is out of date</em></td><td>La compilación es anterior a las funciones requeridas</td><td>Vuelva a compilar con <code>npm run build:wasm</code></td></tr>
+<tr><td><em>FHE key generation failed</em></td><td>El módulo se cargó pero la generación de claves falló</td><td>Revise la consola del navegador e infórmelo</td></tr>
+</tbody>
+</table>
+</div>
+<p>Pulse <strong>↻ Reload PVAC</strong> después de aplicar una solución; no hace falta reiniciar.</p>
+<h3 id="failed-to-load-history-network-errors">"Failed to load history" / errores de red</h3>
+<p>Normalmente el nodo de RPC no es accesible o está bloqueando CORS. Verifique la URL de RPC en<br /><strong>Settings</strong> y consulte las <a href="../README.md#cors">notas sobre CORS</a>. Si el error indica un motivo —<br />texto plano, contenido mixto o una restricción de compilación—, consulte<br /><a href="#network-settings">Configuración de red</a>; un <strong>RPC proxy</strong> soluciona el caso de CORS.</p>
+<h3 id="the-header-shows-insecure-rpc">La cabecera muestra "⚠️ Insecure RPC"</h3>
+<p>El extremo de RPC configurado es <code>http://</code> simple y no se puede usar tal como está. Seleccione la<br />insignia para abrir el ajuste, donde se detallan la causa exacta y la solución. Consulte<br /><a href="#network-settings">Configuración de red</a>.</p>
+<h3 id="the-camera-wont-open-when-i-select-scan">La cámara no se abre cuando selecciono 📷 Scan</h3>
+<ul>
+<li>Conceda el permiso de cámara cuando el navegador lo pida; si lo descartó, vuelva a permitirlo en los permisos del sitio e inténtelo de nuevo.</li>
+<li>El acceso a la cámara necesita una página segura. Funciona en <code>https://</code> y en <code>localhost</code>, pero no en una página <code>http://</code> simple en otro host.</li>
+<li>Si otra aplicación tiene la cámara, ciérrela primero. Siempre puede pegar la dirección en su lugar.</li>
+</ul>
+<h3 id="unlock-with-passkey-isnt-offered">No se ofrece "Unlock with passkey"</h3>
+<p>O bien no hay ninguna clave de acceso registrada en este navegador, o bien el dispositivo no puede hacer lo que el desbloqueo con clave de acceso<br />requiere. <strong>Settings → 🔑 Security → Passkey Unlock</strong> indica cuál. Las claves de acceso son por dispositivo<br />y por navegador, así que una registrada en otro lugar no aparece aquí. El PIN siempre funciona.</p>
+<h3 id="i-forgot-my-pin">Olvidé mi PIN</h3>
+<p>Reinstale la cartera usando su frase de recuperación y establezca un PIN nuevo. Sin la frase,<br />los fondos no se pueden recuperar, por nadie.</p>
+<h3 id="could-not-read-your-saved-wallets-could-not-read-your-accounts">"Could not read your saved wallets" / "Could not read your accounts"</h3>
+<p>La cartera no pudo abrir su base de datos local. No se ha eliminado nada; casi<br />siempre se debe a otra pestaña de Orion, o a una ventana emergente <strong>Connect</strong> sobrante, que sigue manteniendo abierta la base de datos.<br />Tras una actualización, el navegador no actualizará la base de datos mientras una pestaña más antigua siga<br />conectada a ella.</p>
+<p>Cierre las demás pestañas y ventanas emergentes de Orion, luego seleccione <strong>↻ Try again</strong>. Si el mensaje persiste,<br />cierre todas las pestañas de Orion y vuelva a abrir la cartera en una sola pestaña.</p>
+<p>La pantalla de desbloqueo distingue los dos estados a propósito: <em>No stored wallet found</em> significa que la<br />base de datos está realmente vacía, mientras que <em>Could not read your saved wallets</em> significa que sus cuentas están<br />ahí pero temporalmente inaccesibles. <strong>No cree una cartera nueva</strong> mientras esté viendo el<br />segundo mensaje.</p>
+<h3 id="my-wallet-vanished-after-an-update">Mi cartera desapareció tras una actualización</h3>
+<p>Los datos se migran automáticamente desde compilaciones anteriores en el primer inicio. Si sus cuentas<br />faltan, <strong>no cree una cartera nueva</strong>: eso podría sobrescribir los datos antiguos. Informe del<br />problema y, mientras tanto, restaure desde su frase de recuperación.</p>
+<h3 id="dapp-says-session-expired">La dApp dice "Session expired"</h3>
+<p>Esto significa que la sesión de la cartera expiró (30 min de inactividad / 8 h absolutas). Vuelva a conectarse<br />haciendo clic en <strong>Connect</strong> en la dApp. Los datos de su cartera se conservan; solo necesita<br />volver a aprobar la conexión.</p>
+<hr />
+<h2 id="keeping-your-funds-safe">Mantenga sus fondos seguros</h2>
+<p><strong>Hágalo</strong></p>
+<ul>
+<li>Mantenga su frase de recuperación sin conexión, en papel, idealmente en más de un lugar</li>
+<li>Verifique las direcciones de los destinatarios antes de enviar</li>
+<li>Verifique el origen mostrado en los avisos de conexión de las dApps</li>
+<li>Empiece con una pequeña transacción de prueba al enviar a una dirección nueva</li>
+<li>Guarde a los beneficiarios como contactos y compruebe el nombre; un nombre que reconoce supera a leer base58</li>
+<li>Use una cuenta de solo lectura para vigilar el almacenamiento en frío, en lugar de desbloquear la cuenta real</li>
+</ul>
+<p><strong>Nunca</strong></p>
+<ul>
+<li>Introducir su frase de recuperación en cualquier sitio web. Orion Wallet nunca la pedirá después de la configuración</li>
+<li>Guardar la frase en una captura de pantalla, una nota de gestor de contraseñas, una unidad en la nube o un chat</li>
+<li>Compartir su clave privada o su archivo <code>.oct</code></li>
+<li>Usar una cartera con fondos reales en un ordenador compartido o en el que no confía</li>
+</ul>
+<p>Orion Wallet <strong>no ha sido auditada de forma independiente</strong>. Revise el<br /><a href="SECURITY.html">documento de seguridad</a> antes de almacenar un valor significativo.</p>
+</body>
+</html>

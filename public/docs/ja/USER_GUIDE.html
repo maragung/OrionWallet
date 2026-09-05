@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ユーザーガイド — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="orion-wallet-user-guide">Orion Wallet — ユーザーガイド</h1>
+<p>Orion Wallet はすべてブラウザ内で動作します。鍵はローカルで生成され、PIN で暗号化されて<br />お使いの端末にのみ保存されます。サーバーには何も送信されません。</p>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — ソースコード、Issue、リリース。</blockquote>
+<hr />
+<h2 id="contents">目次</h2>
+<ul>
+<li><a href="#getting-started">はじめに</a></li>
+<li><a href="#creating-a-wallet">ウォレットの作成</a></li>
+<li><a href="#importing-an-existing-wallet">既存ウォレットのインポート</a></li>
+<li><a href="#everyday-use">日常の使い方</a></li>
+<li><a href="#contacts-address-book">連絡先（アドレス帳）</a></li>
+<li><a href="#watch-only-accounts">ウォッチ専用アカウント</a></li>
+<li><a href="#encrypted-balance-fhe">暗号化残高（FHE）</a></li>
+<li><a href="#stealth-transfers">ステルス送金</a></li>
+<li><a href="#connecting-to-a-dapp">dApp への接続</a></li>
+<li><a href="#locking-and-unlocking">ロックとロック解除</a></li>
+<li><a href="#session-expiry">セッションの有効期限</a></li>
+<li><a href="#network-settings">ネットワーク設定</a></li>
+<li><a href="#backup-and-recovery">バックアップと復元</a></li>
+<li><a href="#troubleshooting">トラブルシューティング</a></li>
+<li><a href="#keeping-your-funds-safe">資金を安全に保つには</a></li>
+</ul>
+<hr />
+<h2 id="getting-started">はじめに</h2>
+<h3 id="requirements">動作要件</h3>
+<ul>
+<li>Chrome、Edge、Firefox、Safari の最新版</li>
+<li>JavaScript が有効であること</li>
+<li>暗号化残高機能を使う予定がある場合はおよそ 4 GB の RAM</li>
+</ul>
+<h3 id="running-it">起動方法</h3>
+<p>ホスティング済みのデプロイを利用するか、ローカルで実行します。</p>
+<pre><code class="language-bash">npm install --legacy-peer-deps
+npm run dev</code></pre>
+<p>続いて &lt;http://localhost:5173&gt; を開きます。</p>
+<hr />
+<h2 id="creating-a-wallet">ウォレットの作成</h2>
+<ol>
+<li><strong>Create New Wallet</strong> を選択し、アカウントに名前を付けて PIN を決めます。PIN はこの端末上のウォレットを暗号化します。</li>
+<li><strong>リカバリーフレーズを書き留めてください。</strong>12 個の単語が表示されます。表示されたとおりの順序で紙に書き写します。</li>
+<li><strong>I've Written It Down</strong> を選択します。するとウォレットは、フレーズが実際に画面から消えたことを確認するため、ランダムに選ばれた <strong>3 個の単語</strong>の再入力を求めます。もう一度確認したいときは <strong>Show Phrase Again</strong> で再表示でき、誤って入力しても、やり直せるだけです。</li>
+<li>単語の確認が済むと、ウォレットが開きます。</li>
+</ol>
+<blockquote><strong>ウォレットを作成しただけでは開きません。単語の確認に通ることで開きます。</strong>それまでは<br />いつでも離れることができ、フレーズはまだ頼りにされていないため、失われるものは何もありません。</blockquote>
+<blockquote><strong>リカバリーフレーズは、ウォレットを復元する唯一の手段です。</strong>フレーズを持つ者は誰でも<br />あなたの資金を支配できます。オフラインで保管してください。決して写真に撮ったり、ウェブサイトに入力したり、<br />チャットやメールに貼り付けたりしないでください。</blockquote>
+<h3 id="pin-versus-recovery-phrase">PIN とリカバリーフレーズの違い</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>リカバリーフレーズ</th><th>PIN</th></tr></thead>
+<tbody>
+<tr><td>用途</td><td>どこからでもウォレットを復元する</td><td>この端末上でのみロックを解除する</td></tr>
+<tr><td>紛失した場合</td><td>資金は復元不能</td><td>リカバリーフレーズから復元する</td></tr>
+<tr><td>保管場所</td><td>あなた自身がオフラインで</td><td>保存されない — あなただけが知っている</td></tr>
+</tbody>
+</table>
+</div>
+<hr />
+<h2 id="importing-an-existing-wallet">既存ウォレットのインポート</h2>
+<p><strong>Import</strong> を選び、次のいずれかを選択します。</p>
+<ul>
+<li><strong>リカバリーフレーズ</strong> — 12/24 個の単語を入力します</li>
+<li><strong>秘密鍵</strong> — base64 形式の秘密鍵を貼り付けます</li>
+<li><strong>ウォレットファイル</strong> — 暗号化された <code>.oct</code> ファイルをアップロードし、その PIN を入力します</li>
+</ul>
+<hr />
+<h2 id="everyday-use">日常の使い方</h2>
+<h3 id="checking-your-balance">残高の確認</h3>
+<p><strong>Balance</strong> タブには公開残高が表示され、PVAC が有効な場合は暗号化残高も表示されます。</p>
+<h3 id="receiving">受け取り</h3>
+<p><strong>Receive</strong> を開くと、あなたのアドレスと QR コードが表示されます。アドレスは公開情報であり、<br />共有しても安全です。</p>
+<p><strong>特定の金額を要求する</strong>こともできます。その場合、QR コードにはアドレスと並んで金額も含まれ<br />（<code>octra:&lt;address&gt;?amount=&lt;OCT&gt;</code> の形式）、読み取ったウォレットは両方を自動入力します。<br />金額を要求しなければ、コードは単なるアドレスのままで、どのスキャナーでも読み取れます。</p>
+<h3 id="sending">送金</h3>
+<ol>
+<li><strong>Send</strong> を開きます。</li>
+<li>受取人を、都合のよい方法で指定します。
+<ul>
+<li>アドレスを貼り付けます（<code>oct</code> で始まります）。</li>
+<li><strong>📇 Contacts…</strong> から保存済みの名前を選びます。</li>
+<li><strong>📷 Scan</strong> を選ぶと、カメラで QR コードを読み取れます。初回はブラウザがカメラの許可を求めます。画像はページ内で処理され、アップロードされることは決してありません。金額を含むコードを読み取れば、金額も入力されます。</li>
+</ul>
+</li>
+<li>金額を入力します。</li>
+<li>手数料とノンスを確認し、PIN で承認します。</li>
+</ol>
+<p>アドレスが保存済みの連絡先と一致すると、フォームはその隣に名前を表示します。見覚えのある名前は<br />base58 の文字列よりもはるかに確実な確認手段です。新しいアドレスなら、<strong>＋ Save to contacts</strong><br />で任意のラベルを付けて保存でき、次回の支払いは貼り付けではなく選択で済みます。</p>
+<p>承認する前に、必ず受取アドレスの最初と最後の文字を確認してください。<br />取引を取り消すことはできません。</p>
+<h3 id="history">履歴</h3>
+<p><strong>History</strong> には最近の取引が一覧表示されます。ネットワークに到達できない場合は、キャッシュされた項目が<br />表示され、<code>⚠ Cached</code> と印が付きます。</p>
+<p><strong>⤓</strong> はテーブルを CSV ファイル（時刻、ハッシュ、種別、送信元、送信先、方向、金額、手数料、<br />ステータス）に書き出し、表計算ソフトやご自身の記録に利用できます。書き出されるのは<strong>現在読み込まれている行</strong><br />です — 見えているものがそのまま出力されます — ので、より広い範囲が必要なら先に <strong>Load more</strong> を使ってください。<br />ファイルはブラウザによってダウンロードフォルダに書き込まれ、どこにも送信されません。</p>
+<hr />
+<h2 id="contacts-address-book">連絡先（アドレス帳）</h2>
+<p><strong>Settings → 📇 Contacts</strong> は、任意の名前を付けたアドレスの一覧を保持します。各項目には<br />アドレス、名前、そして任意のメモがあり、メモは「memo required」や、入金アドレスがどの取引所の<br />ものかといった情報を書くのに適しています。</p>
+<p>意義: 読めないアドレスは、確認できないアドレスです。受取人を一度保存しておけば、Send フォームは<br />その人を名前で提示し、貼り付け直したアドレスにも名前を表示するので、すり替えられたり切り詰められたりした<br />アドレスは、紛れ込むのではなく目立つようになります。</p>
+<ul>
+<li>ここで項目を <strong>Add</strong> するか、Send フォームから直接 <strong>＋ Save to contacts</strong> を使います。</li>
+<li><strong>✎</strong> は項目の名前を変更し、<strong>🗑</strong> は削除します。連絡先を削除しても、オンチェーンには何の影響もありません。</li>
+<li><strong>⤓</strong> は一覧を CSV として書き出すので、他の記録と一緒に保管したり、別のブラウザへ移したりできます。</li>
+</ul>
+<p>連絡先はこのブラウザ内にのみ、他のウォレットデータと並んで保存されます。アップロードされることはなく、<br />ウォレットを消去すると他のすべてと一緒に消去されます。</p>
+<hr />
+<h2 id="watch-only-accounts">ウォッチ専用アカウント</h2>
+<p>ウォッチ専用アカウントは、あなたが鍵を<strong>持っていない</strong>アドレスを追跡します — コールドストレージ、<br />ハードウェアウォレット、取引所の入金アドレス、見守りたい他人のアドレスなどです。</p>
+<p><strong>Settings → 👥 Accounts → 👁 Watch Address</strong> から追加します。アドレスを貼り付け、名前を付ければ、<br />アカウント一覧に加わります。</p>
+<p>できること: 残高の表示、履歴の一覧、CSV の書き出し、そして PIN なしでの切り替え — 復号すべき<br />キーストアがないので、ロックを解除するものが何もないのです。</p>
+<p>できないこと: <strong>署名すること。</strong>送金、暗号化/復号、ステルス送金、コントラクト呼び出し、dApp の署名要求は<br />すべて拒否され、Send フォームは入力後ではなく入力前にその旨を伝えます。ウォッチ専用アカウントは<br />アカウント一覧とヘッダーで 👁 と印が付くので、どちらの種類を見ているかが常に分かります。</p>
+<p>ウォッチ専用アカウントを本物のアカウントにするには、そのアドレスのリカバリーフレーズか秘密鍵を<br />インポートします。鍵を追加することが唯一の方法で、近道はありません。</p>
+<hr />
+<h2 id="encrypted-balance-fhe">暗号化残高（FHE）</h2>
+<p>Orion Wallet は残高の一部を完全準同型暗号（FHE）を使って暗号化した状態で保持でき、<br />金額がオンチェーンで公開表示されないようにできます。</p>
+<p>これは任意です。有効にしていてもいなくても、その他すべては動作します。</p>
+<h3 id="enabling-it">有効化する</h3>
+<p><strong>Settings → PVAC</strong> に移動します。2 つのインジケーターが両方とも緑になっている必要があります。</p>
+<ul>
+<li><strong>WASM Module</strong> — 暗号モジュールが読み込まれた</li>
+<li><strong>Bridge Initialized</strong> — ウォレットのシードから鍵が生成された</li>
+</ul>
+<p>いずれかが準備できていない場合、パネルが正確な原因と対処法を説明します。</p>
+<h3 id="encrypting-and-decrypting">暗号化と復号</h3>
+<p><strong>Encrypt</strong> を使って、公開残高と暗号化残高の間で資金を移動します。これらの操作は<br />計算負荷が高く、数秒かかることがあります。進捗ダイアログが各段階を表示します。</p>
+<hr />
+<h2 id="stealth-transfers">ステルス送金</h2>
+<p>ステルス送金は、受取人の公開鍵から導出した使い捨てアドレスへ資金を送るため、<br />その支払いが受取人のメインアドレスと公開の場で結び付けられません。</p>
+<p><strong>Stealth</strong> を開き、受取人と金額を入力して承認します。受取人は自分の Stealth タブから<br />資金を受け取ります。</p>
+<hr />
+<h2 id="connecting-to-a-dapp">dApp への接続</h2>
+<p>ウェブサイトが接続を要求すると、要求元のオリジンを示すポップアップが表示されます。</p>
+<p>承認する前に:</p>
+<ul>
+<li><strong>オリジンを注意深く確認してください。</strong>ドメインが意図したサイトと正確に一致することを確かめます。</li>
+<li>想定どおりの権限のみを承認します。</li>
+<li>「Trust this site」は読み取り専用の要求について今後の確認を省略します — 控えめに使ってください。</li>
+<li>ポップアップの<strong>ネットワーク</strong>セレクターを確認します。自分で追加したものも含め、保有するすべてのネットワークが一覧表示されるので、ポップアップを離れずに正しいネットワークで接続できます。</li>
+</ul>
+<p>接続はいつでも <strong>Settings → Connected Sites</strong> で確認・取り消しができます。</p>
+<hr />
+<h2 id="locking-and-unlocking">ロックとロック解除</h2>
+<p>PIN はウォレットを復号します。復号された鍵はロック解除セッションが続く間ずっと利用可能な状態で保たれ、<br />セッションが終わるまで PIN を再度求められることはありません。</p>
+<ul>
+<li><strong>ページを再読み込みしてもロック解除は維持されます。</strong>鍵は今いるブラウザタブ向けに再封印されるので、再読み込みしても PIN 画面に戻ることなくセッションが引き継がれます。その間、一瞬だけ「Restoring your session…」と表示されます。</li>
+<li><strong>タブを閉じるとセッションは終了します。</strong>封印されたコピーはその 1 つのタブに限定されており、タブとともに消えるため、新しいタブやウィンドウはロックされた状態で始まります。</li>
+<li><strong>ヘッダーの 🔒 は即座にロックし</strong>、封印されたコピーを破棄します — ロック後に再読み込みすると、当然ながら PIN を求められます。</li>
+<li><strong>無操作が続くとウォレットはロックされます。</strong>既定では 30 分後で、1 回のロック解除は活動の有無にかかわらず 8 時間を超えて持ち越されることはありません。</li>
+</ul>
+<p>封印されたセッションは、どちらの半分だけでも役に立ちません。暗号化された鍵はタブが保持し、<br />それを開く鍵はブラウザが、どのページ — このページ自身を含め — も読み出せない形で保持します。</p>
+<p><strong>Settings → Security → Session &amp; Auto-Lock</strong> では:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>設定</th><th>既定値</th><th>動作</th></tr></thead>
+<tbody>
+<tr><td>Stay unlocked after a page refresh</td><td>オン</td><td>オフにすると、再読み込みのたびに PIN が必要になります</td></tr>
+<tr><td>Auto-lock after inactivity</td><td>30 分</td><td>5 / 15 / 30 / 60 分、または無効（タブを閉じるまで）</td></tr>
+</tbody>
+</table>
+</div>
+<p>両方が同時に適用され、すでに開いているセッションにも適用されます。共有の、あるいは信頼できない<br />コンピューターでは、前者をオフにし、離席するときはウォレットをロックしてください。</p>
+<h3 id="unlocking-with-a-passkey">パスキーでのロック解除</h3>
+<p>お使いの端末に指紋リーダー、Face ID、Windows Hello、またはセキュリティキーがあれば、PIN を入力する<br />代わりにそれでロックを解除できます。</p>
+<p><strong>Settings → 🔑 Security → Passkey Unlock → Enable passkey unlock</strong> でオンにします。端末が登録を<br />求めます — パスキーを作成するときと使用するときの<strong>2 回</strong>求められることがあります。その後、ロック解除画面には<br />PIN 入力欄の上に <strong>👆 Unlock with passkey</strong> が表示されます。</p>
+<p>知っておくとよいこと:</p>
+<ul>
+<li><strong>PIN は依然として存在し、依然として重要です。</strong>パスキーはウォレットを開きますが、PIN を置き換えるものではありません。鍵のエクスポート、リカバリーフレーズの表示、PIN の変更、新しいアカウントの導出は、いずれも引き続き PIN を求めます。PIN は保持してください — 紛失してもパスキーがあれば解決するわけではありません。</li>
+<li><strong>この端末とこのブラウザに紐付いています。</strong>パスキーはウォレットデータとともに移動しません。別の端末では PIN でロックを解除し、必要ならそこでパスキーを登録してください。</li>
+<li><strong>あなたの指紋がウォレットに届くことはありません。</strong>端末はローカルであなたを検証し、パスキーから導出した秘密をページに渡します。ウォレットを開くのはその秘密です。</li>
+<li><strong>利用可否は端末とブラウザに依存します。</strong>お使いの環境がこの機能に必要なことを行えない場合、Security パネルがその旨を伝え、オプションはオフのままになります — PIN はこれまでどおり正確に機能し続けます。</li>
+<li><strong>パスキーによるロック解除をオフにする</strong>には、同じパネルで行います。それにより保存されたコピーは即座に削除されます。端末からパスキー自体が削除されるわけではなく、そちらは OS やブラウザの設定で削除できます。</li>
+</ul>
+<p>パスキーがウォレットを開けなくなった場合 — 更新・再登録された資格情報や、復元された端末など — ウォレットは<br />その旨を伝え、古くなったコピーを破棄して PIN を求めます。失われるものは何もなく、後で新しいパスキーを<br />登録できます。</p>
+<p>ウォッチ専用アカウントがアクティブな間は、パスキーによるロック解除を登録できません — 鍵を保持していないので、<br />パスキーが封印すべきものがないのです。Security パネルはボタンの代わりにその旨を表示します。</p>
+<hr />
+<h2 id="session-expiry">セッションの有効期限</h2>
+<p>同じ制限時間が dApp 接続にも適用され、接続は自動的に期限切れになります。</p>
+<ul>
+<li><strong>アイドルタイムアウト:</strong> 無操作が 30 分</li>
+<li><strong>絶対タイムアウト:</strong> 接続から 8 時間</li>
+</ul>
+<p>セッションが期限切れになると、ウォレットは接続を閉じ、dApp に通知します。<br />その後、dApp は再接続を促すはずです。</p>
+<h3 id="what-happens-when-your-session-expires">セッションが期限切れになると何が起きるか</h3>
+<ol>
+<li>ウォレットが dApp に <code>sessionExpired</code> イベントを送出します。</li>
+<li>dApp が期限切れのセッションを検出し、「Reconnect」の案内を表示します。</li>
+<li><strong>Connect</strong> をクリックすると、ウォレットのポップアップが再び開きます。</li>
+<li>ウォレットがセッションを復元し、dApp が再開します。</li>
+</ol>
+<h3 id="if-a-dapp-doesnt-reconnect-automatically">dApp が自動的に再接続しない場合</h3>
+<ul>
+<li>dApp の <strong>Connect</strong> ボタンをクリックします。</li>
+<li>ウォレットのポップアップが開きます — 接続を承認します。</li>
+<li>以前のセッションデータは保持されているので、ウォレットを再インポートする必要はありません。</li>
+</ul>
+<hr />
+<h2 id="network-settings">ネットワーク設定</h2>
+<p><strong>Settings → ⚙️ General</strong> には、ウォレットが通信する RPC URL、リンク先のエクスプローラー、および<br />任意のプロキシが保持されます。RPC URL を変更して <strong>Save URLs</strong> を選ぶと、ウォレットを別のノードに<br />向けられます。</p>
+<h3 id="adding-your-own-network">独自ネットワークの追加</h3>
+<p>Devnet と Mainnet はウォレットに同梱されています。別のもの — 自分のノード、devnet のフォーク、<br />有料 RPC — を追加するには、同じパネルの <strong>Custom Networks</strong> までスクロールし、次を入力します。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>項目</th><th>必須</th><th>備考</th></tr></thead>
+<tbody>
+<tr><td>Network name</td><td>はい</td><td>dApp を含め、ネットワークが表示されるあらゆる場所に表示されます</td></tr>
+<tr><td>RPC URL</td><td>はい</td><td><code>http://</code> または <code>https://</code></td></tr>
+<tr><td>Explorer URL</td><td>いいえ</td><td>既定では RPC URL になります</td></tr>
+<tr><td>Relayer URL</td><td>いいえ</td><td>ステルス送金にのみ必要です</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Add network</strong> を選ぶと一覧に加わります。それ以降は通常の選択肢になります。</p>
+<ul>
+<li>上部バーの<strong>ネットワークピル</strong>が、他のプリセットと同様にそれへ切り替わります。</li>
+<li><strong>接続ポップアップ</strong>は、サイトが接続を求めるときにそれを <em>(custom)</em> と印を付けて一覧に表示します。</li>
+<li>そして接続中の dApp はその名前とエクスプローラーを読み取れるので、表示を正しくラベル付けできます。</li>
+</ul>
+<p>ネットワークを切り替えると、3 つのエンドポイント — RPC、エクスプローラー、リレイヤー — がまとめて<br />更新されるので、ウォレットが一方のネットワークを読みながら別のネットワークにリンクする状態には決してなりません。</p>
+<p>ネットワークはその横の ✕ で削除します。現在使用中のものを削除した場合、ウォレットは<br />プリセットにフォールバックします。</p>
+<p><strong>dApp から見えるもの。</strong>接続先のサイトは、カスタムネットワークの名前、アイコン、エクスプローラー<br />URL、そしてあなたが追加したという事実を読み取れます。その RPC やリレイヤーの URL は<strong>読み取れません</strong> — 自宅<br />ノードのアドレスやプロバイダーのキーはウォレット内にとどまります。名前は見えるので、ネットワークに<br />個人的なものにちなんだ名前を付けるのは避けてください。</p>
+<h3 id="nodes-without-https">HTTPS を使わないノード</h3>
+<p><code>https://</code> のノードには特別な対応は不要です。プレーンな <code>http://</code> でのみ到達できるノードは<br />別問題です。ウォレットがそのノードに尋ねること — あらゆる残高・履歴の照会、送信するすべての取引 — が<br />平文で流れ、経路上の誰もがそれを読み取り<em>、答えを書き換えることさえできる</em>からです。そのため、<br />ウォレットはまず尋ねます。</p>
+<ul>
+<li><strong>ループバックには許可は不要です。</strong><code>localhost</code>、<code>127.0.0.1</code>、<code>[::1]</code> などは決してマシンの外に出ないので、ローカルノードはそのまま動作します。</li>
+<li><strong>それ以外の <code>http://</code> アドレスは明示的に信頼する必要があります。</strong>URL を貼り付けると、パネルが隣の <strong>Trust <code>http://…</code></strong> ボタンとともに何が問題になるかを説明します。信頼はオリジン単位（スキーム、ホスト、ポート）で保存されるので、あるノードを信頼しても別のノードは信頼されず、同じホストの別ポートは別の判断になります。</li>
+<li><strong>Trusted plaintext endpoints</strong> には信頼済みのものが一覧表示され、<strong>Remove</strong> で取り消せます。</li>
+</ul>
+<p>私たちには解除できない制限が 2 つあり、パネルはそのうち妨げになっている方を示します。</p>
+<ul>
+<li><strong><code>https://</code> で配信されたウォレットは、<code>http://</code> をまったく取得できません。</strong>ブラウザがそれをブロックし（混在コンテンツと呼ばれます）、オリジンを信頼しても変わりません。ノードを TLS の背後に置くか、プロキシを使うか、プレーン http もしくは localhost のビルドからウォレットを開いてください。</li>
+<li><strong>同梱のビルドは <code>https://</code> とループバックのみを許可します。</strong>そのセキュリティポリシーはビルド時に固定されており、実行中に緩めることはできません。プレーン http が必要な自己ホスト運用者は <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code> でビルドできますが、その上でも上記の信頼リストは適用されます。</li>
+</ul>
+<p>エクスプローラー URL はこれらすべての対象外です — それはクリックするリンクにすぎず、ウォレットが<br />取得するものではないからです。</p>
+<h3 id="rpc-proxy">RPC プロキシ</h3>
+<p><strong>RPC proxy (optional)</strong> は、お好みの URL を経由して呼び出しをルーティングします。RPC URL が<br />パーセントエンコードされてそれに付加され、ブラウザは常にプロキシにのみ接続します。これは TLS も CORS<br />ヘッダーも持たないノードに対する実用的な解決策であり、ブラウザが行う接続先はプロキシなので、上記の規則も<br />満たします。</p>
+<p>プロキシはウォレットが行うすべての要求を見るので、<strong>自分で運用してください</strong>。プロキシは何にも署名<br />できず、鍵にも到達できませんが、監視することはでき、嘘をつくこともできます。</p>
+<h3 id="when-something-is-off">何かおかしいとき</h3>
+<p>RPC エンドポイントを設定どおりに使えない場合、ヘッダーに <strong>⚠️ Insecure RPC</strong> が表示されます。<br />それを選ぶと、その設定へ直接移動します。ネットワークエラーにも理由が付くので、素っ気ない<br />「Failed to fetch」だけでなく、何を直せばよいかが分かります。</p>
+<hr />
+<h2 id="backup-and-recovery">バックアップと復元</h2>
+<h3 id="exporting">エクスポート</h3>
+<p><strong>Settings → Backup → Export</strong> は暗号化された <code>.oct</code> ファイルをダウンロードします。<br />PIN で保護されていますが、機密情報として扱ってください。</p>
+<h3 id="restoring">復元</h3>
+<p><strong>Import → Wallet file</strong> を使い、そのファイルをエクスポートしたときに使っていた PIN を入力します。</p>
+<h3 id="multiple-accounts">複数アカウント</h3>
+<p><strong>Settings → Accounts</strong> は、同じリカバリーフレーズから追加のアカウントを導出します。<br />1 つのフレーズでそれらすべてを復元できます。</p>
+<p>フレーズが<strong>復元しない</strong>ものが 2 つあります。もともとフレーズから導出されていないからです。</p>
+<ul>
+<li><strong>ウォッチ専用アカウント</strong> — これらは単に、ウォレットに追跡を依頼したアドレスにすぎません。再インストール後に取り戻したい場合は、別途書き留めておいてください。</li>
+<li><strong>連絡先</strong> — 大切なら、Settings → Contacts で <strong>⤓</strong> を使ってエクスポートしてください。</li>
+</ul>
+<p>どちらも資金を保持していないので、失っても失うのは利便性であって、お金ではありません。</p>
+<hr />
+<h2 id="troubleshooting">トラブルシューティング</h2>
+<h3 id="the-page-is-blank-or-stuck-loading">ページが真っ白、または読み込みで止まる</h3>
+<p>再読み込みしてください。それでも続く場合は、<strong>Retry</strong> ボタンの付いたエラーカードが表示されるはずです。<br />そこに表示されるメッセージを報告してください。</p>
+<h3 id="encrypted-balance-is-unavailable">暗号化残高が利用できない</h3>
+<p>Settings → PVAC には次のいずれかが表示されます。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>メッセージ</th><th>意味</th><th>対処</th></tr></thead>
+<tbody>
+<tr><td><em>The WASM module has not been compiled</em></td><td><code>pvac.js</code> が配信されていない</td><td><code>npm run build:wasm</code> を実行する</td></tr>
+<tr><td><em>Content-Security-Policy is blocking WebAssembly</em></td><td>CSP に <code>'wasm-unsafe-eval'</code> が欠けている</td><td><code>index.html</code> の <code>script-src</code> に追加する</td></tr>
+<tr><td><em>The compiled module is out of date</em></td><td>ビルドが必要な関数より古い</td><td><code>npm run build:wasm</code> で再ビルドする</td></tr>
+<tr><td><em>FHE key generation failed</em></td><td>モジュールは読み込まれたが鍵生成に失敗した</td><td>ブラウザのコンソールを確認し報告する</td></tr>
+</tbody>
+</table>
+</div>
+<p>対処を適用したら <strong>↻ Reload PVAC</strong> を押してください — 再起動は不要です。</p>
+<h3 id="failed-to-load-history-network-errors">「Failed to load history」／ネットワークエラー</h3>
+<p>たいていは RPC ノードに到達できないか、CORS をブロックしています。<strong>Settings</strong> で RPC URL を<br />確認し、<a href="../README.md#cors">CORS に関する注記</a>を参照してください。エラーに理由が示されている場合 —<br />平文、混在コンテンツ、またはビルドの制限 — は、<a href="#network-settings">ネットワーク設定</a>を参照してください。<br />CORS のケースは <strong>RPC proxy</strong> で解決できます。</p>
+<h3 id="the-header-shows-insecure-rpc">ヘッダーに「⚠️ Insecure RPC」と表示される</h3>
+<p>設定された RPC エンドポイントがプレーンな <code>http://</code> で、そのままでは使用できません。バッジを選ぶと<br />その設定が開き、正確な原因と対処法が詳しく示されます。<a href="#network-settings">ネットワーク設定</a>を<br />参照してください。</p>
+<h3 id="the-camera-wont-open-when-i-select-scan">📷 Scan を選んでもカメラが開かない</h3>
+<ul>
+<li>ブラウザが尋ねてきたらカメラの許可を与えてください。却下してしまった場合は、サイトの権限設定で再度許可し、もう一度試します。</li>
+<li>カメラへのアクセスには安全なページが必要です。<code>https://</code> と <code>localhost</code> では動作しますが、別ホスト上のプレーンな <code>http://</code> ページでは動作しません。</li>
+<li>別のアプリがカメラを占有している場合は、先にそれを閉じてください。いつでも代わりにアドレスを貼り付けることもできます。</li>
+</ul>
+<h3 id="unlock-with-passkey-isnt-offered">「Unlock with passkey」が表示されない</h3>
+<p>このブラウザにパスキーが登録されていないか、端末がパスキーによるロック解除に必要なことを行えないかの<br />いずれかです。<strong>Settings → 🔑 Security → Passkey Unlock</strong> がどちらかを示します。パスキーは端末ごと・<br />ブラウザごとなので、別の場所で登録したものはここには表示されません。PIN は常に機能します。</p>
+<h3 id="i-forgot-my-pin">PIN を忘れた</h3>
+<p>リカバリーフレーズを使ってウォレットを再インストールし、新しい PIN を設定してください。フレーズがなければ、<br />資金は誰にも復元できません。</p>
+<h3 id="could-not-read-your-saved-wallets-could-not-read-your-accounts">「Could not read your saved wallets」／「Could not read your accounts」</h3>
+<p>ウォレットがローカルデータベースを開けませんでした。何も削除されていません — これはほぼ必ず、別の Orion<br />タブか、閉じ残った <strong>Connect</strong> ポップアップがデータベースを開いたまま保持していることが原因です。<br />更新後、古いタブがまだ接続している間は、ブラウザはデータベースをアップグレードしません。</p>
+<p>他の Orion タブとポップアップを閉じてから、<strong>↻ Try again</strong> を選んでください。メッセージが消えない場合は、<br />すべての Orion タブを閉じ、1 つのタブでウォレットを開き直してください。</p>
+<p>ロック解除画面は 2 つの状態を意図的に区別します。<em>No stored wallet found</em> はデータベースが本当に空で<br />あることを意味し、<em>Could not read your saved wallets</em> はアカウントは存在するが一時的に到達できないことを<br />意味します。2 つ目のメッセージが出ている間は、<strong>新しいウォレットを作成しないでください</strong>。</p>
+<h3 id="my-wallet-vanished-after-an-update">更新後にウォレットが消えた</h3>
+<p>データは初回起動時に古いビルドから自動的に移行されます。アカウントが見当たらない場合は、<strong>新しいウォレットを<br />作成しないでください</strong> — 古いデータを上書きしてしまうおそれがあります。この問題を報告し、その間は<br />リカバリーフレーズから復元してください。</p>
+<h3 id="dapp-says-session-expired">dApp に「Session expired」と表示される</h3>
+<p>これはウォレットのセッションがタイムアウトした（30 分アイドル／8 時間絶対）ことを意味します。dApp の<br /><strong>Connect</strong> をクリックして再接続してください。ウォレットのデータは保持されており、接続を承認し直すだけで済みます。</p>
+<hr />
+<h2 id="keeping-your-funds-safe">資金を安全に保つには</h2>
+<p><strong>すべきこと</strong></p>
+<ul>
+<li>リカバリーフレーズをオフラインで、紙に、できれば複数の場所に保管する</li>
+<li>送金前に受取アドレスを確認する</li>
+<li>dApp の接続確認に表示されるオリジンを確認する</li>
+<li>新しいアドレスに送るときは、まず少額のテスト取引から始める</li>
+<li>受取人を連絡先に保存し、名前を確認する — 見覚えのある名前は base58 を読むよりも確実</li>
+<li>本物のアカウントのロックを解除する代わりに、ウォッチ専用アカウントでコールドストレージを見守る</li>
+</ul>
+<p><strong>決してしないこと</strong></p>
+<ul>
+<li>リカバリーフレーズをどのウェブサイトにも入力する。Orion Wallet はセットアップ後にそれを尋ねることは決してありません</li>
+<li>フレーズをスクリーンショット、パスワードマネージャーのメモ、クラウドドライブ、チャットに保存する</li>
+<li>秘密鍵や <code>.oct</code> ファイルを共有する</li>
+<li>実際の資金を保持するウォレットを、共有または信頼できないコンピューターで使う</li>
+</ul>
+<p>Orion Wallet は<strong>独立した監査を受けていません</strong>。相応の価値を保管する前に、<br /><a href="SECURITY.html">セキュリティドキュメント</a>をご確認ください。</p>
+</body>
+</html>

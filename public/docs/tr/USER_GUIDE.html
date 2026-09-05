@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kullanıcı Rehberi — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="orion-wallet-user-guide">Orion Wallet — Kullanıcı Rehberi</h1>
+<p>Orion Wallet tamamen tarayıcınızda çalışır. Anahtarlarınız yerel olarak üretilir, PIN'inizle<br />şifrelenir ve yalnızca kendi cihazınızda saklanır. Hiçbir şey bir sunucuya gönderilmez.</p>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Kaynak kod, sorunlar ve sürümler.</blockquote>
+<hr />
+<h2 id="contents">İçindekiler</h2>
+<ul>
+<li><a href="#getting-started">Başlarken</a></li>
+<li><a href="#creating-a-wallet">Cüzdan oluşturma</a></li>
+<li><a href="#importing-an-existing-wallet">Mevcut bir cüzdanı içe aktarma</a></li>
+<li><a href="#everyday-use">Günlük kullanım</a></li>
+<li><a href="#contacts-address-book">Kişiler (adres defteri)</a></li>
+<li><a href="#watch-only-accounts">Salt-izleme hesapları</a></li>
+<li><a href="#encrypted-balance-fhe">Şifrelenmiş bakiye (FHE)</a></li>
+<li><a href="#stealth-transfers">Stealth transferleri</a></li>
+<li><a href="#connecting-to-a-dapp">Bir dApp'e bağlanma</a></li>
+<li><a href="#locking-and-unlocking">Kilitleme ve kilidi açma</a></li>
+<li><a href="#session-expiry">Oturum süre sonu</a></li>
+<li><a href="#network-settings">Ağ ayarları</a></li>
+<li><a href="#backup-and-recovery">Yedekleme ve kurtarma</a></li>
+<li><a href="#troubleshooting">Sorun giderme</a></li>
+<li><a href="#keeping-your-funds-safe">Fonlarınızı güvende tutma</a></li>
+</ul>
+<hr />
+<h2 id="getting-started">Başlarken</h2>
+<h3 id="requirements">Gereksinimler</h3>
+<ul>
+<li>Chrome, Edge, Firefox veya Safari'nin güncel bir sürümü</li>
+<li>JavaScript'in etkin olması</li>
+<li>Şifrelenmiş bakiye özelliklerini kullanmayı planlıyorsanız yaklaşık 4 GB RAM</li>
+</ul>
+<h3 id="running-it">Çalıştırma</h3>
+<p>Barındırılan bir dağıtım kullanın veya yerel olarak çalıştırın:</p>
+<pre><code class="language-bash">npm install --legacy-peer-deps
+npm run dev</code></pre>
+<p>Ardından &lt;http://localhost:5173&gt; adresini açın.</p>
+<hr />
+<h2 id="creating-a-wallet">Cüzdan oluşturma</h2>
+<ol>
+<li><strong>Create New Wallet</strong> seçeneğini seçin, hesabı adlandırın ve bir PIN belirleyin. PIN, cüzdanı bu cihazda şifreler.</li>
+<li><strong>Kurtarma ifadenizi yazın.</strong> Size 12 kelime gösterilir. Bunları tam olarak verilen sırayla kâğıda kopyalayın.</li>
+<li><strong>I've Written It Down</strong> seçeneğini seçin. Cüzdan, ifadenin gerçekten ekrandan çıktığını kanıtlamak için rastgele seçilen <strong>3 kelimeyi</strong> yeniden yazmanızı ister. <strong>Show Phrase Again</strong><br />ifadeye tekrar bakmak isterseniz onu geri getirir; yanlış bir cevap yalnızca yeniden denemenize izin verir.</li>
+<li>Kelimeler doğrulandığında cüzdan açılır.</li>
+</ol>
+<blockquote><strong>Cüzdanı oluşturmak onu açmaz — kelime kontrolünü geçmek açar.</strong> O zamana dek<br />hâlâ uzaklaşabilirsiniz ve hiçbir şey kaybolmaz, çünkü ifade henüz güvenilerek kullanılmamıştır.</blockquote>
+<blockquote><strong>Kurtarma ifadeniz cüzdanınızı geri yüklemenin tek yoludur.</strong> İfadeye sahip olan herkes<br />fonlarınızı kontrol eder. Onu çevrimdışı saklayın. Sakın fotoğraflamayın, bir web sitesine yazmayın<br />veya bir sohbete ya da e-postaya yapıştırmayın.</blockquote>
+<h3 id="pin-versus-recovery-phrase">PIN ile kurtarma ifadesi arasındaki fark</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>Kurtarma ifadesi</th><th>PIN</th></tr></thead>
+<tbody>
+<tr><td>Amaç</td><td>Cüzdanı her yerde geri yükler</td><td>Yalnızca bu cihazda kilidini açar</td></tr>
+<tr><td>Kaybedilirse</td><td>Fonlar kurtarılamaz</td><td>Kurtarma ifadesinden geri yükleyin</td></tr>
+<tr><td>Nerede saklanır</td><td>Çevrimdışı, sizde</td><td>Asla saklanmaz — yalnızca siz bilirsiniz</td></tr>
+</tbody>
+</table>
+</div>
+<hr />
+<h2 id="importing-an-existing-wallet">Mevcut bir cüzdanı içe aktarma</h2>
+<p><strong>Import</strong> seçeneğini belirleyin ve aşağıdakilerden birini seçin:</p>
+<ul>
+<li><strong>Recovery phrase</strong> — 12/24 kelimenizi girin</li>
+<li><strong>Private key</strong> — bir base64 özel anahtar yapıştırın</li>
+<li><strong>Wallet file</strong> — şifrelenmiş bir <code>.oct</code> dosyası yükleyin ve PIN'ini girin</li>
+</ul>
+<hr />
+<h2 id="everyday-use">Günlük kullanım</h2>
+<h3 id="checking-your-balance">Bakiyenizi kontrol etme</h3>
+<p><strong>Balance</strong> sekmesi, herkese açık bakiyenizi ve PVAC etkinse şifrelenmiş bakiyenizi gösterir.</p>
+<h3 id="receiving">Alma</h3>
+<p>Adresinizi ve bir QR kodunu görüntülemek için <strong>Receive</strong> bölümünü açın. Adresiniz herkese açıktır ve paylaşılması güvenlidir.</p>
+<p>Ayrıca <strong>belirli bir tutar isteyebilirsiniz</strong>. QR kodu daha sonra adresin yanı sıra tutarı da taşır<br />(<code>octra:&lt;address&gt;?amount=&lt;OCT&gt;</code> olarak), böylece onu tarayan bir cüzdan her ikisini de önceden doldurur.<br />Tutar istenmezse kod, herhangi bir tarayıcının okuyabileceği yalın bir adres olarak kalır.</p>
+<h3 id="sending">Gönderme</h3>
+<ol>
+<li><strong>Send</strong> bölümünü açın.</li>
+<li>Alıcıyı size uygun gelen herhangi bir şekilde belirtin:</li>
+</ol>
+<ul>
+<li>Adresi yapıştırın (<code>oct</code> ile başlar).</li>
+<li><strong>📇 Contacts…</strong> bölümünden kayıtlı bir isim seçin.</li>
+<li>Kameranızla bir QR kodu okumak için <strong>📷 Scan</strong> seçeneğini seçin. Tarayıcı ilk seferde kamera izni ister; görüntü sayfada işlenir ve asla yüklenmez.<br />Tutar taşıyan bir kodu taramak tutarı da doldurur.</li>
+</ul>
+<ol>
+<li>Bir tutar girin.</li>
+<li>Ücreti ve nonce'u gözden geçirin, ardından PIN'inizle onaylayın.</li>
+</ol>
+<p>Adres kayıtlı bir kişiyle eşleştiğinde form, adı adresin yanında gösterir — tanıdığınız bir isim,<br />bir base58 dizisini okumaktan çok daha iyi bir kontroldür. Yeni bir adres için <strong>＋ Save to<br />contacts</strong> onu sizin seçtiğiniz bir etiket altında saklar; böylece bir sonraki ödeme bir yapıştırma değil, bir seçim olur.</p>
+<p>Onaylamadan önce alıcı adresinin ilk ve son karakterlerini her zaman doğrulayın.<br />İşlemler geri alınamaz.</p>
+<h3 id="history">Geçmiş</h3>
+<p><strong>History</strong>, son işlemleri listeler. Ağa erişilemediğinde önbelleğe alınmış kayıtlar<br />gösterilir ve <code>⚠ Cached</code> olarak işaretlenir.</p>
+<p><strong>⤓</strong>, tabloyu bir elektronik tablo veya kendi kayıtlarınız için bir CSV dosyasına (zaman, hash, tür, gönderen,<br />alan, yön, tutar, ücret, durum) dışa aktarır. <strong>Şu anda yüklü satırları</strong> dışa aktarır —<br />ne görüyorsanız onu alırsınız — bu yüzden daha uzun bir aralık istiyorsanız önce <strong>Load more</strong> kullanın. Dosya<br />tarayıcınız tarafından indirme klasörünüze yazılır; hiçbir yere hiçbir şey gönderilmez.</p>
+<hr />
+<h2 id="contacts-address-book">Kişiler (adres defteri)</h2>
+<p><strong>Settings → 📇 Contacts</strong>, sizin seçtiğiniz isimler altında bir adres listesi tutar. Her kaydın bir adresi,<br />bir adı ve isteğe bağlı bir notu vardır — "memo required" gibi notlar veya bir para yatırma adresinin hangi<br />borsaya ait olduğu için iyi bir yerdir.</p>
+<p>Neden uğraşalım: Okuyamadığınız bir adres, kontrol edemeyeceğiniz bir adrestir. Bir alacaklı<br />kaydedildikten sonra Send formu onu ismiyle önerir ve adresi tekrar yapıştırdığınızda etiketler; böylece<br />değiştirilmiş veya kısaltılmış bir adres göze çarpar, araya karışıp kaybolmaz.</p>
+<ul>
+<li>Buraya bir <strong>Add</strong> kaydı ekleyin veya doğrudan Send formundan <strong>＋ Save to contacts</strong> seçeneğini kullanın.</li>
+<li><strong>✎</strong> bir kaydı yeniden adlandırır, <strong>🗑</strong> onu kaldırır. Bir kişiyi kaldırmak on-chain hiçbir şeyi etkilemez.</li>
+<li><strong>⤓</strong> listeyi CSV olarak dışa aktarır; böylece onu diğer kayıtlarınızla saklayabilir veya başka bir tarayıcıya taşıyabilirsiniz.</li>
+</ul>
+<p>Kişiler yalnızca bu tarayıcıda, cüzdan verilerinizin geri kalanıyla birlikte yaşar. Yüklenmezler<br />ve cüzdanı temizlerseniz diğer her şeyle birlikte silinirler.</p>
+<hr />
+<h2 id="watch-only-accounts">Salt-izleme hesapları</h2>
+<p>Bir salt-izleme hesabı, anahtarlarını <strong>elinde tutmadığınız</strong> bir adresi izler — soğuk depolama, bir<br />donanım cüzdanı, bir borsa yatırma adresi veya göz kulak olduğunuz başka birinin adresi.</p>
+<p>Bir tane eklemek için <strong>Settings → 👥 Accounts → 👁 Watch Address</strong> bölümüne gidin: adresi yapıştırın, ona bir<br />isim verin; hesap listenize katılır.</p>
+<p>Neler yapabilir: bakiyeyi göstermek, geçmişi listelemek, CSV dışa aktarmak ve PIN olmadan bu hesaba<br />geçilebilmesi — çözülecek bir anahtar deposu olmadığından kilidi açılacak bir şey yoktur.</p>
+<p>Neler yapamaz: <strong>hiçbir şeyi imzalayamaz.</strong> Gönderme, şifreleme/şifre çözme, stealth transferleri, sözleşme<br />çağrıları ve dApp imzalama isteklerinin tümü reddedilir ve Send formu bunu siz formu doldurmadan<br />önce söyler, sonradan değil. Salt-izleme hesapları, hesap listesinde ve başlık çubuğunda 👁 ile işaretlenir;<br />böylece hangi türe baktığınızı her zaman bilirsiniz.</p>
+<p>Bir salt-izleme hesabını gerçek bir hesaba dönüştürmek için o adresin kurtarma ifadesini veya özel anahtarını içe aktarın.<br />Anahtarları eklemek tek yoldur; bir kısayolu yoktur.</p>
+<hr />
+<h2 id="encrypted-balance-fhe">Şifrelenmiş bakiye (FHE)</h2>
+<p>Orion Wallet, bakiyenizin bir kısmını tam homomorfik şifreleme kullanarak şifreli tutabilir;<br />böylece tutar on-chain olarak herkese açık biçimde görünmez.</p>
+<p>Bu isteğe bağlıdır. Etkin olup olmamasından bağımsız olarak diğer her şey çalışır.</p>
+<h3 id="enabling-it">Etkinleştirme</h3>
+<p><strong>Settings → PVAC</strong> bölümüne gidin. İki gösterge de yeşil olmalıdır:</p>
+<ul>
+<li><strong>WASM Module</strong> — kriptografik modül yüklenmiştir</li>
+<li><strong>Bridge Initialized</strong> — cüzdan seed'inizden anahtarlanmıştır</li>
+</ul>
+<p>Bunlardan biri hazır değilse panel, kesin nedeni ve çözümü açıklar.</p>
+<h3 id="encrypting-and-decrypting">Şifreleme ve şifre çözme</h3>
+<p>Fonları açık bakiyeniz ile şifrelenmiş bakiyeniz arasında taşımak için <strong>Encrypt</strong> bölümünü kullanın. Bu<br />işlemler hesaplama açısından ağırdır ve birkaç saniye sürebilir; bir ilerleme penceresi her aşamayı gösterir.</p>
+<hr />
+<h2 id="stealth-transfers">Stealth transferleri</h2>
+<p>Stealth transferleri, fonları alıcının herkese açık anahtarından türetilen tek kullanımlık bir adrese gönderir;<br />böylece ödeme, alıcının ana adresiyle herkese açık olarak ilişkilendirilemez.</p>
+<p><strong>Stealth</strong> bölümünü açın, alıcıyı ve tutarı girin ve onaylayın. Alıcı, fonları kendi Stealth sekmesinden talep eder.</p>
+<hr />
+<h2 id="connecting-to-a-dapp">Bir dApp'e bağlanma</h2>
+<p>Bir web sitesi bağlantı istediğinde, istekte bulunan origin'i gösteren bir popup belirir.</p>
+<p>Onaylamadan önce:</p>
+<ul>
+<li><strong>Origin'i dikkatlice kontrol edin.</strong> Etki alanının tam olarak istediğiniz site olduğunu doğrulayın.</li>
+<li>Yalnızca beklediğiniz izinleri onaylayın.</li>
+<li>"Trust this site" salt-okunur istekler için gelecekteki istemleri atlar — bunu idareli kullanın.</li>
+<li>Popup'taki <strong>ağ</strong> seçicisini kontrol edin. Kendi ekledikleriniz de dahil olmak üzere sahip olduğunuz her ağı listeler;<br />böylece popup'tan çıkmadan doğru ağ üzerinden bağlanabilirsiniz.</li>
+</ul>
+<p>Bağlantıları istediğiniz zaman <strong>Settings → Connected Sites</strong> altında gözden geçirip iptal edebilirsiniz.</p>
+<hr />
+<h2 id="locking-and-unlocking">Kilitleme ve kilidi açma</h2>
+<p>PIN'iniz cüzdanın şifresini çözer. Çözülen anahtarlar daha sonra, oturumun kilidi açık olduğu sürece kullanılabilir kalır —<br />oturum bitene kadar sizden yeniden PIN istenmez.</p>
+<ul>
+<li><strong>Sayfayı yenilemek, kilidinizin açık kalmasını sağlar.</strong> Anahtarlar, içinde bulunduğunuz tarayıcı sekmesi için yeniden mühürlenir;<br />böylece bir yenileme sizi PIN ekranına döndürmek yerine oturumu devralır. Bu olurken kısaca "Restoring your session…" görürsünüz.</li>
+<li><strong>Sekmeyi kapatmak oturumu sona erdirir.</strong> Mühürlü kopya yalnızca o sekmeyle sınırlıdır ve onunla birlikte yok olur;<br />böylece yeni bir sekme veya pencere kilitli başlar.</li>
+<li><strong>Başlık çubuğundaki 🔒 anında kilitler</strong> ve mühürlü kopyayı yok eder — kilitlemeden sonraki bir yenileme,<br />olması gerektiği gibi PIN sorar.</li>
+<li><strong>Hareketsizlik cüzdanı kilitler</strong>; varsayılan olarak 30 dakika sonra ve tek bir kilit açma, etkinlik ne olursa olsun<br />asla 8 saatten uzun sürdürülmez.</li>
+</ul>
+<p>Mühürlü oturumun iki yarısından hiçbiri tek başına işe yaramaz: şifrelenmiş anahtarlar sekmeye aittir,<br />onları açan anahtar ise tarayıcı tarafından hiçbir sayfanın —bu sayfa dahil— geri okuyamayacağı<br />bir biçimde tutulur.</p>
+<p><strong>Settings → Security → Session &amp; Auto-Lock</strong> altında:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Ayar</th><th>Varsayılan</th><th>Ne işe yarar</th></tr></thead>
+<tbody>
+<tr><td>Sayfa yenilendikten sonra kilidi açık tut</td><td>Açık</td><td>Her yenilemede PIN istemek için kapatın</td></tr>
+<tr><td>Hareketsizlik sonrası otomatik kilitleme</td><td>30 dakika</td><td>5 / 15 / 30 / 60 dakika veya asla (sekme kapanana dek)</td></tr>
+</tbody>
+</table>
+</div>
+<p>Her ikisi de aynı anda geçerlidir; halihazırda açık olan oturum dahil. Paylaşılan veya<br />güvenilmeyen bir bilgisayarda ilkini kapatın ve uzaklaştığınızda cüzdanı kilitleyin.</p>
+<h3 id="unlocking-with-a-passkey">Bir passkey ile kilidi açma</h3>
+<p>Cihazınızda parmak izi okuyucu, Face ID, Windows Hello veya bir güvenlik anahtarı varsa, PIN'i yazmak yerine<br />bununla kilidi açabilirsiniz.</p>
+<p>Bunu <strong>Settings → 🔑 Security → Passkey Unlock → Enable passkey unlock</strong> altında açın. Cihazınız<br />sizden kayıt yapmanızı ister — <strong>iki kez</strong> isteyebilir: biri passkey'i oluşturmak, biri de onu kullanmak için.<br />Kilit açma ekranı daha sonra PIN kutusunun üzerinde <strong>👆 Unlock with passkey</strong> seçeneğini sunar.</p>
+<p>Bilmekte fayda var:</p>
+<ul>
+<li><strong>PIN hâlâ vardır ve hâlâ önemlidir.</strong> Passkey cüzdanı açar; PIN'in yerini almaz.<br />Anahtar dışa aktarma, kurtarma ifadesini gösterme, PIN değiştirme ve yeni hesap türetmenin tümü hâlâ PIN ister.<br />PIN'inizi saklayın — onu kaybetmek bir passkey'e sahip olmakla çözülmez.</li>
+<li><strong>Bu cihaza ve bu tarayıcıya bağlıdır.</strong> Passkey'ler cüzdan verilerinizle birlikte taşınmaz.<br />Başka bir cihazda PIN ile kilidi açın ve isterseniz orada bir passkey kaydedin.</li>
+<li><strong>Parmak iziniz asla cüzdana ulaşmaz.</strong> Cihaz sizi yerel olarak doğrular ve sayfaya passkey'den<br />türetilmiş bir sır iletir; cüzdanı açan şey bu sırdır.</li>
+<li><strong>Kullanılabilirlik cihazınıza ve tarayıcınıza bağlıdır.</strong> Sizinki bunun gerektirdiklerini yapamıyorsa,<br />Güvenlik paneli bunu söyler ve seçenek kapalı kalır — PIN eskisi gibi çalışmaya devam eder.</li>
+<li><strong>Passkey kilidini kapatın</strong> seçeneği de aynı paneldedir. Bu, saklanan kopyayı hemen siler;<br />passkey'i cihazınızdan silmez — onu işletim sistemi veya tarayıcı ayarlarınızdan kaldırabilirsiniz.</li>
+</ul>
+<p>Bir passkey cüzdanı açmayı bırakırsa — döndürülmüş veya yeniden kaydedilmiş bir kimlik bilgisi ya da<br />geri yüklenmiş bir cihaz — cüzdan bunu söyler, bayat kopyayı atar ve PIN ister. Hiçbir şey<br />kaybolmaz; ardından yeni bir passkey kaydedebilirsiniz.</p>
+<p>Bir salt-izleme hesabı etkinken passkey kilidi kaydedilemez — hesap anahtar içermediğinden passkey'in mühürleyeceği<br />bir şey yoktur. Güvenlik paneli bunu düğmenin yerinde söyler.</p>
+<hr />
+<h2 id="session-expiry">Oturum süre sonu</h2>
+<p>Aynı zaman pencereleri dApp bağlantılarını da yönetir; bunlar otomatik olarak süresi dolar:</p>
+<ul>
+<li><strong>Boşta kalma zaman aşımı:</strong> 30 dakikalık hareketsizlik</li>
+<li><strong>Mutlak zaman aşımı:</strong> bağlantı anından itibaren 8 saat</li>
+</ul>
+<p>Bir oturumun süresi dolduğunda cüzdan bağlantıyı kapatır ve dApp bilgilendirilir.<br />dApp daha sonra sizden yeniden bağlanmanızı istemelidir.</p>
+<h3 id="what-happens-when-your-session-expires">Oturumunuzun süresi dolduğunda ne olur</h3>
+<ol>
+<li>Cüzdan, dApp'e bir <code>sessionExpired</code> olayı gönderir.</li>
+<li>dApp süresi dolan oturumu algılar ve bir "Reconnect" istemi gösterir.</li>
+<li>Cüzdan popup'ını yeniden açmak için <strong>Connect</strong> seçeneğine tıklarsınız.</li>
+<li>Cüzdan oturumunuzu geri yükler ve dApp kaldığı yerden devam eder.</li>
+</ol>
+<h3 id="if-a-dapp-doesnt-reconnect-automatically">Bir dApp otomatik olarak yeniden bağlanmazsa</h3>
+<ul>
+<li>dApp'teki <strong>Connect</strong> düğmesine tıklayın.</li>
+<li>Cüzdan popup'ı açılır — bağlantıyı onaylayın.</li>
+<li>Önceki oturum verileriniz korunur; cüzdanınızı yeniden içe aktarmanız gerekmez.</li>
+</ul>
+<hr />
+<h2 id="network-settings">Ağ ayarları</h2>
+<p><strong>Settings → ⚙️ General</strong>, cüzdanın konuştuğu RPC URL'sini, bağlantı verdiği explorer'ı<br />ve isteğe bağlı bir proxy'yi tutar. Cüzdanı farklı bir düğüme yönlendirmek için RPC URL'sini değiştirin<br />ve <strong>Save URLs</strong> seçeneğini seçin.</p>
+<h3 id="adding-your-own-network">Kendi ağınızı ekleme</h3>
+<p>Devnet ve Mainnet cüzdanla birlikte gelir. Başka bir tane eklemek için — kendi düğümünüz, bir devnet çatalı,<br />ücretli bir RPC — aynı panelde <strong>Custom Networks</strong> bölümüne ilerleyin ve şunları doldurun:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Alan</th><th>Gerekli</th><th>Notlar</th></tr></thead>
+<tbody>
+<tr><td>Ağ adı</td><td>evet</td><td>Ağın göründüğü her yerde, dApp'lere de dahil olmak üzere gösterilir</td></tr>
+<tr><td>RPC URL</td><td>evet</td><td><code>http://</code> veya <code>https://</code></td></tr>
+<tr><td>Explorer URL</td><td>hayır</td><td>Varsayılan olarak RPC URL'sini kullanır</td></tr>
+<tr><td>Relayer URL</td><td>hayır</td><td>Yalnızca stealth transferleri için gerekir</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Add network</strong> seçeneğini seçin; ağ listeye katılır. O andan itibaren normal bir seçimdir:</p>
+<ul>
+<li>üst çubuktaki <strong>ağ hapı</strong> diğer hazır ağlar gibi ona geçer,</li>
+<li>bir site bağlanmak istediğinde <strong>bağlantı popup'ı</strong> onu (<em>custom</em>) olarak işaretlenmiş biçimde listeler,</li>
+<li>ve bağlı bir dApp, doğru etiketleyebilmek için ağın adını ve explorer'ını okuyabilir.</li>
+</ul>
+<p>Ağ değiştirmek üç uç noktayı birden günceller — RPC, explorer ve relayer — böylece cüzdan<br />asla bir ağı okurken başka bir ağa bağlantı vermez.</p>
+<p>Yanındaki ✕ ile bir ağı kaldırabilirsiniz. Şu anda üzerinde olduğunuz ağı silerseniz,<br />cüzdan hazır ağlardan birine geri döner.</p>
+<p><strong>Bir dApp'in gördüğü şey.</strong> Bağlandığınız siteler özel bir ağın adını, simgesini, explorer URL'sini<br />ve onu sizin eklediğinizi okuyabilir. RPC veya relayer URL'sini <strong>okuyamazlar</strong> — bir ev düğümünün adresi<br />veya bir sağlayıcı anahtarı cüzdanda kalır. Ad görünür olduğundan, bir ağı kişisel bir şeye göre adlandırmaktan kaçının.</p>
+<h3 id="nodes-without-https">HTTPS'siz düğümler</h3>
+<p>Bir <code>https://</code> düğümü özel bir işlem gerektirmez. Yalnızca düz <code>http://</code> üzerinden erişilebilen bir düğüm<br />farklı bir konudur, çünkü cüzdanın ona sorduğu her şey — her bakiye ve geçmiş sorgusu,<br />gönderdiği her işlem — açıkta seyahat eder; ağ yolundaki herkes onu okuyabilir <em>ve yanıtları değiştirebilir</em>.<br />Bu yüzden cüzdan önce sorar.</p>
+<ul>
+<li><strong>Geri döngü (loopback) izin gerektirmez.</strong> <code>localhost</code>, <code>127.0.0.1</code>, <code>[::1]</code> ve benzerleri makinenizden asla<br />çıkmaz; yerel bir düğüm kutudan çıktığı gibi çalışır.</li>
+<li><strong>Diğer herhangi bir <code>http://</code> adresine açıkça güvenilmelidir.</strong> URL'yi yapıştırın ve panel, yanındaki<br /><strong>Trust <code>http://…</code></strong> düğmesiyle neyin tehlikede olduğunu açıklar. Güven, origin başına (şema, ana bilgisayar ve<br />bağlantı noktası) saklanır; bir düğüme güvenmek diğerine güvenmez ve aynı ana bilgisayardaki farklı bir bağlantı noktası ayrı bir karardır.</li>
+<li><strong>Güvenilen düz metin uç noktaları</strong>, güvendiğiniz şeyleri listeler ve geri almak için <strong>Remove</strong> seçeneğini sunar.</li>
+</ul>
+<p>İki sınır bizim kaldırabileceğimiz türden değildir ve panel hangisi engel teşkil ediyorsa onu adlandırır:</p>
+<ul>
+<li><strong><code>https://</code> üzerinden sunulan bir cüzdan <code>http://</code> adresini hiç getiremez.</strong> Tarayıcılar bunu engeller<br />(buna karışık içerik denir) ve origin'e güvenmek bunu değiştirmez. Düğümü TLS arkasına alın, bir proxy kullanın<br />veya cüzdanı düz-http ya da localhost derlemesinden açın.</li>
+<li><strong>Dağıtılan derleme yalnızca <code>https://</code> ve loopback'e izin verir.</strong> Güvenlik ilkesi derleme zamanında<br />sabittir ve çalışırken genişletilemez. Düz http'ye ihtiyaç duyan kendi kendine barındıranlar<br /><code>VITE_ALLOW_HTTP_ENDPOINTS=1</code> ile derleyebilir; yukarıdaki güven listesi yine de bunun üzerinde geçerlidir.</li>
+</ul>
+<p>Explorer URL'si tüm bunlardan muaftır — o yalnızca tıkladığınız bir bağlantıdır,<br />cüzdanın getirdiği bir şey değildir.</p>
+<h3 id="rpc-proxy">RPC proxy</h3>
+<p><strong>RPC proxy (isteğe bağlı)</strong> çağrıları seçtiğiniz bir URL üzerinden yönlendirir: RPC URL'si ona eklenir,<br />yüzde kodlanır ve tarayıcı yalnızca proxy'ye bağlanır. TLS'si veya CORS başlıkları olmayan bir düğüm için<br />pratik çözümdür ve yukarıdaki kuralları karşılar, çünkü tarayıcının kurduğu bağlantı proxy'yedir.</p>
+<p>Proxy, cüzdanın yaptığı her isteği görür; bu yüzden <strong>kendi proxy'nizi çalıştırın</strong>. Hiçbir şeyi imzalayamaz<br />veya anahtarlarınıza ulaşamaz, ama izleyebilir ve yalan söyleyebilir.</p>
+<h3 id="when-something-is-off">Bir şey ters olduğunda</h3>
+<p>RPC uç noktası yapılandırıldığı gibi kullanılamıyorsa, başlıkta <strong>⚠️ Insecure RPC</strong> görünür;<br />doğrudan ayara atlamak için onu seçin. Ağ hataları da nedeni taşır; böylece yalın bir<br />"Failed to fetch" size neyi düzelteceğinizi söyler.</p>
+<hr />
+<h2 id="backup-and-recovery">Yedekleme ve kurtarma</h2>
+<h3 id="exporting">Dışa aktarma</h3>
+<p><strong>Settings → Backup → Export</strong>, şifrelenmiş bir <code>.oct</code> dosyası indirir. Dosya PIN'inizle korunur,<br />ama yine de onu hassas kabul edin.</p>
+<h3 id="restoring">Geri yükleme</h3>
+<p><strong>Import → Wallet file</strong> seçeneğini kullanın ve dosyanın dışa aktarıldığı sırada geçerli olan PIN'i girin.</p>
+<h3 id="multiple-accounts">Birden çok hesap</h3>
+<p><strong>Settings → Accounts</strong>, aynı kurtarma ifadesinden ek hesaplar türetir. Tek bir ifade hepsini geri yükler.</p>
+<p>İfadenin geri yüklemediği iki şey vardır, çünkü onlar hiçbir zaman ifadeden türetilmedi:</p>
+<ul>
+<li><strong>Salt-izleme hesapları</strong> — bunlar yalnızca cüzdandan izlemesini istediğiniz adreslerdir. Yeniden kurulumdan<br />sonra onları geri istiyorsanız ayrıca not edin.</li>
+<li><strong>Kişiler</strong> — önemliyse Settings → Contacts altındaki <strong>⤓</strong> ile dışa aktarın.</li>
+</ul>
+<p>İkisi de fon tutmaz; bu yüzden onları kaybetmek size paraya değil, yalnızca kolaylığa mal olur.</p>
+<hr />
+<h2 id="troubleshooting">Sorun giderme</h2>
+<h3 id="the-page-is-blank-or-stuck-loading">Sayfa boş veya yüklemede takılı kalmış</h3>
+<p>Yeniden yükleyin. Sürerse, içinde <strong>Retry</strong> düğmesi olan bir hata kartı görünmelidir.<br />Orada gösterilen mesajı bildirin.</p>
+<h3 id="encrypted-balance-is-unavailable">Şifrelenmiş bakiye kullanılamıyor</h3>
+<p>Settings → PVAC aşağıdakilerden birini gösterir:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Mesaj</th><th>Anlamı</th><th>Çözüm</th></tr></thead>
+<tbody>
+<tr><td><em>The WASM module has not been compiled</em></td><td><code>pvac.js</code> sunulmuyor</td><td><code>npm run build:wasm</code> çalıştırın</td></tr>
+<tr><td><em>Content-Security-Policy is blocking WebAssembly</em></td><td>CSP, <code>'wasm-unsafe-eval'</code> içermiyor</td><td><code>index.html</code> içindeki <code>script-src</code> bölümüne ekleyin</td></tr>
+<tr><td><em>The compiled module is out of date</em></td><td>Derleme, gerekli işlevlerden önceye ait</td><td><code>npm run build:wasm</code> ile yeniden derleyin</td></tr>
+<tr><td><em>FHE key generation failed</em></td><td>Modül yüklendi ama anahtarlama başarısız oldu</td><td>Tarayıcı konsolunu kontrol edip bildirin</td></tr>
+</tbody>
+</table>
+</div>
+<p>Bir düzeltme uyguladıktan sonra <strong>↻ Reload PVAC</strong> düğmesine basın — yeniden başlatma gerekmez.</p>
+<h3 id="failed-to-load-history-network-errors">"Failed to load history" / ağ hataları</h3>
+<p>Genellikle RPC düğümü erişilemez veya CORS'u engelliyordur. RPC URL'sini<br /><strong>Settings</strong> altında doğrulayın ve <a href="../README.html#cors">CORS notlarına</a> bakın. Hata bir neden belirtiyorsa —<br />düz metin, karışık içerik veya bir derleme kısıtlaması — bkz.<br /><a href="#network-settings">Ağ ayarları</a>; bir <strong>RPC proxy</strong> CORS durumunu çözer.</p>
+<h3 id="the-header-shows-insecure-rpc">Başlık "⚠️ Insecure RPC" gösteriyor</h3>
+<p>Yapılandırılan RPC uç noktası düz <code>http://</code> ve olduğu gibi kullanılamaz durumda. Rozeti seçip ayarı açın;<br />kesin neden ve çözüm orada yazılıdır. Bkz.<br /><a href="#network-settings">Ağ ayarları</a>.</p>
+<h3 id="the-camera-wont-open-when-i-select-scan">📷 Scan seçtiğimde kamera açılmıyor</h3>
+<ul>
+<li>Tarayıcı istediğinde kamera iznini verin; reddettiyseniz site izinlerinden yeniden izin verin ve tekrar deneyin.</li>
+<li>Kamera erişimi güvenli bir sayfa gerektirir. <code>https://</code> ve <code>localhost</code> üzerinde çalışır, ama başka bir ana<br />bilgisayardaki düz-<code>http://</code> bir sayfada çalışmaz.</li>
+<li>Kamerayı başka bir uygulama tutuyorsa önce onu kapatın. Adresi her zaman yapıştırabilirsiniz.</li>
+</ul>
+<h3 id="unlock-with-passkey-isnt-offered">"Unlock with passkey" sunulmuyor</h3>
+<p>Ya bu tarayıcıda kayıtlı bir passkey yoktur ya da cihaz, passkey kilidinin gerektirdiklerini yapamıyordur.<br /><strong>Settings → 🔑 Security → Passkey Unlock</strong> hangisi olduğunu söyler. Passkey'ler cihaz ve tarayıcı başınadır;<br />başka yerde kaydedilmiş bir passkey burada görünmez. PIN her zaman çalışır.</p>
+<h3 id="i-forgot-my-pin">PIN'imi unuttum</h3>
+<p>Cüzdanı kurtarma ifadenizi kullanarak yeniden kurun ve yeni bir PIN belirleyin. İfade olmadan<br />fonlar kurtarılamaz — hiç kimse tarafından.</p>
+<h3 id="could-not-read-your-saved-wallets-could-not-read-your-accounts">"Could not read your saved wallets" / "Could not read your accounts"</h3>
+<p>Cüzdan yerel veritabanını açamadı. Hiçbir şey silinmedi — bu neredeyse her zaman veritabanını hâlâ açık tutan<br />başka bir Orion sekmesinin veya artık bir <strong>Connect</strong> popup'ının eseridir.<br />Bir güncellemeden sonra, daha eski bir sekme hâlâ veritabanına bağlıyken tarayıcı veritabanını yükseltmez.</p>
+<p>Diğer Orion sekmelerini ve popup'larını kapatın, ardından <strong>↻ Try again</strong> seçeneğini seçin. Mesaj kalırsa,<br />tüm Orion sekmelerini kapatın ve cüzdanı tek bir sekmede yeniden açın.</p>
+<p>Kilit açma ekranı iki durumu bilerek ayırır: <em>No stored wallet found</em>, veritabanının gerçekten boş olduğu;<br /><em>Could not read your saved wallets</em> ise hesaplarınızın orada olduğu ama geçici olarak erişilemediği anlamına gelir.<br />İkinci mesajı görürken <strong>yeni bir cüzdan oluşturmayın</strong>.</p>
+<h3 id="my-wallet-vanished-after-an-update">Cüzdanım bir güncellemeden sonra kayboldu</h3>
+<p>Veriler, ilk açılışta eski derlemelerden otomatik olarak taşınır. Hesaplarınız yoksa,<br /><strong>yeni bir cüzdan oluşturmayın</strong> — bu eski verilerin üzerine yazabilir. Sorunu bildirin<br />ve bu sırada kurtarma ifadenizden geri yükleyin.</p>
+<h3 id="dapp-says-session-expired">dApp "Session expired" diyor</h3>
+<p>Bu, cüzdan oturumunun zaman aşımına uğradığı anlamına gelir (30 dk boşta / 8 sa mutlak). dApp'te<br /><strong>Connect</strong> seçeneğine tıklayarak yeniden bağlanın. Cüzdan verileriniz korunur — yalnızca<br />bağlantıyı yeniden onaylamanız gerekir.</p>
+<hr />
+<h2 id="keeping-your-funds-safe">Fonlarınızı güvende tutma</h2>
+<p><strong>Yapın</strong></p>
+<ul>
+<li>Kurtarma ifadenizi çevrimdışı, kâğıt üzerinde, ideal olarak birden fazla yerde saklayın</li>
+<li>Göndermeden önce alıcı adreslerini doğrulayın</li>
+<li>dApp bağlantı istemlerinde gösterilen origin'i doğrulayın</li>
+<li>Yeni bir adrese gönderirken küçük bir test işlemiyle başlayın</li>
+<li>Alacaklıları kişi olarak kaydedin ve adı kontrol edin — tanıdığınız bir ad, base58 okumaktan daha iyidir</li>
+<li>Gerçek hesabın kilidini açmak yerine soğuk depolamayı izlemek için bir salt-izleme hesabı kullanın</li>
+</ul>
+<p><strong>Asla</strong></p>
+<ul>
+<li>Kurtarma ifadenizi herhangi bir web sitesine girmeyin. Orion Wallet kurulumdan sonra onu asla istemez</li>
+<li>İfadeyi bir ekran görüntüsünde, parola yöneticisi notunda, bulut sürücüsünde veya sohbette saklamayın</li>
+<li>Özel anahtarınızı veya <code>.oct</code> dosyanızı paylaşmayın</li>
+<li>Gerçek fon tutan bir cüzdanı paylaşılan veya güvenilmeyen bir bilgisayarda kullanmayın</li>
+</ul>
+<p>Orion Wallet <strong>bağımsız olarak denetlenmemiştir</strong>. Önemli değerler saklamadan önce lütfen<br /><a href="SECURITY.html">Güvenlik belgesini</a> gözden geçirin.</p>
+</body>
+</html>

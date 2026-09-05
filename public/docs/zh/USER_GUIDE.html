@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>用户指南 — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="orion-wallet-user-guide">Orion Wallet — 用户指南</h1>
+<p>Orion Wallet 完全运行在您的浏览器中。您的密钥在本地生成，使用您的 PIN 码<br />加密，并且只存储在您自己的设备上。任何数据都不会发送到服务器。</p>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — 源代码、问题反馈与版本发布。</blockquote>
+<hr />
+<h2 id="contents">目录</h2>
+<ul>
+<li><a href="#getting-started">快速开始</a></li>
+<li><a href="#creating-a-wallet">创建钱包</a></li>
+<li><a href="#importing-an-existing-wallet">导入现有钱包</a></li>
+<li><a href="#everyday-use">日常使用</a></li>
+<li><a href="#contacts-address-book">联系人（地址簿）</a></li>
+<li><a href="#watch-only-accounts">仅观察账户</a></li>
+<li><a href="#encrypted-balance-fhe">加密余额（FHE）</a></li>
+<li><a href="#stealth-transfers">隐身转账</a></li>
+<li><a href="#connecting-to-a-dapp">连接到 dApp</a></li>
+<li><a href="#locking-and-unlocking">锁定与解锁</a></li>
+<li><a href="#session-expiry">会话过期</a></li>
+<li><a href="#network-settings">网络设置</a></li>
+<li><a href="#backup-and-recovery">备份与恢复</a></li>
+<li><a href="#troubleshooting">故障排查</a></li>
+<li><a href="#keeping-your-funds-safe">保护您的资金安全</a></li>
+</ul>
+<hr />
+<h2 id="getting-started">快速开始</h2>
+<h3 id="requirements">系统要求</h3>
+<ul>
+<li>较新版本的 Chrome、Edge、Firefox 或 Safari</li>
+<li>已启用 JavaScript</li>
+<li>如果您打算使用加密余额功能，约需 4 GB 内存</li>
+</ul>
+<h3 id="running-it">运行方式</h3>
+<p>可使用已托管的部署，或在本地运行：</p>
+<pre><code class="language-bash">npm install --legacy-peer-deps
+npm run dev</code></pre>
+<p>然后打开 &lt;http://localhost:5173&gt;。</p>
+<hr />
+<h2 id="creating-a-wallet">创建钱包</h2>
+<ol>
+<li>选择 <strong>Create New Wallet</strong>，为账户命名，并设置一个 PIN 码。该 PIN 码会在本设备上加密钱包。</li>
+<li><strong>抄写下您的恢复助记词。</strong>系统会显示 12 个单词。请按照给出的确切顺序将它们抄写到纸上。</li>
+<li>选择 <strong>I've Written It Down</strong>。随后钱包会要求您重新输入随机抽取的<strong>其中 3 个单词</strong>，以证明助记词确实离开过屏幕。如果需要再看一次，<strong>Show Phrase Again</strong><br />可将其重新显示；答错也只是让您重试而已。</li>
+<li>单词核对无误后，钱包便会打开。</li>
+</ol>
+<blockquote><strong>创建钱包本身并不会打开它——通过单词核对才会。</strong>在此之前您<br />仍可随时离开，不会丢失任何东西，因为此时还没有真正依赖该助记词。</blockquote>
+<blockquote><strong>您的恢复助记词是恢复钱包的唯一方式。</strong>任何持有它的人<br />都能掌控您的资金。请离线保存。切勿拍照、切勿输入到任何网站，<br />也不要粘贴到聊天或邮件中。</blockquote>
+<h3 id="pin-versus-recovery-phrase">PIN 码与恢复助记词的对比</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>恢复助记词</th><th>PIN 码</th></tr></thead>
+<tbody>
+<tr><td>用途</td><td>可在任何地方恢复您的钱包</td><td>仅在本设备上解锁钱包</td></tr>
+<tr><td>若丢失</td><td>资金无法找回</td><td>可通过恢复助记词重新恢复</td></tr>
+<tr><td>存储位置</td><td>由您离线保管</td><td>从不存储——只有您自己知道</td></tr>
+</tbody>
+</table>
+</div>
+<hr />
+<h2 id="importing-an-existing-wallet">导入现有钱包</h2>
+<p>选择 <strong>Import</strong>，然后从以下方式中选择一种：</p>
+<ul>
+<li><strong>恢复助记词</strong> — 输入您的 12/24 个单词</li>
+<li><strong>私钥</strong> — 粘贴一个 base64 编码的私钥</li>
+<li><strong>钱包文件</strong> — 上传一个加密的 <code>.oct</code> 文件并输入其 PIN 码</li>
+</ul>
+<hr />
+<h2 id="everyday-use">日常使用</h2>
+<h3 id="checking-your-balance">查看余额</h3>
+<p><strong>Balance</strong> 标签页会显示您的公开余额；如果已启用 PVAC，还会显示您的加密余额。</p>
+<h3 id="receiving">收款</h3>
+<p>打开 <strong>Receive</strong> 即可显示您的地址和一个二维码。您的地址是公开的，<br />可以安全地分享。</p>
+<p>您也可以<strong>请求指定金额</strong>。此时二维码会在地址之外一并携带该金额<br />（形如 <code>octra:&lt;address&gt;?amount=&lt;OCT&gt;</code>），因此扫描它的钱包会同时预填两者。<br />若未请求金额，二维码则只是一个纯地址，任何扫描器都能读取。</p>
+<h3 id="sending">发送</h3>
+<ol>
+<li>打开 <strong>Send</strong>。</li>
+<li>以任意适合您的方式指定收款人：
+<ul>
+<li>粘贴地址（以 <code>oct</code> 开头）。</li>
+<li>从 <strong>📇 Contacts…</strong> 中选取一个已保存的名称。</li>
+<li>选择 <strong>📷 Scan</strong>，用您的摄像头读取二维码。浏览器首次会请求摄像头权限；图像会在页面内处理，绝不会上传。若扫描的二维码带有金额，也会一并填入金额。</li>
+</ul>
+</li>
+<li>输入金额。</li>
+<li>核对手续费与 nonce，然后用您的 PIN 码确认。</li>
+</ol>
+<p>当地址与某个已保存的联系人匹配时，表单会在其旁边显示名称——比起一串 base58，<br />您认得的名称是好得多的核对方式。对于新地址，<strong>＋ Save to<br />contacts</strong> 会把它保存在您所选的标签下，这样下次付款只需选择，而无需粘贴。</p>
+<p>确认前，请务必核对收款地址的开头和结尾字符。<br />交易一经发出便无法撤销。</p>
+<h3 id="history">历史记录</h3>
+<p><strong>History</strong> 会列出近期的交易。当网络无法访问时，会显示已缓存的条目<br />并标记为 <code>⚠ Cached</code>。</p>
+<p><strong>⤓</strong> 可将表格导出为 CSV 文件（时间、哈希、类型、发送方、接收方、方向、金额、手续费、<br />状态），供电子表格或您自己的记录使用。它导出的是<strong>当前已加载的行</strong>——<br />所见即所得——因此若想导出更长的范围，请先使用 <strong>Load more</strong>。该文件<br />会由您的浏览器写入下载文件夹；不会向任何地方发送任何内容。</p>
+<hr />
+<h2 id="contacts-address-book">联系人（地址簿）</h2>
+<p><strong>Settings → 📇 Contacts</strong> 会以您所选的名称保存一份地址列表。每个条目都有<br />一个地址、一个名称，以及一条可选的备注——很适合记录"需要 memo"，或某个存款地址<br />属于哪家交易所。</p>
+<p>为何值得这样做：读不懂的地址就是无法核对的地址。一旦保存了某个收款人，<br />发送表单便会以名称提供该收款人，并在您粘贴回其地址时为其标注名称，这样<br />被调换或被截断的地址便会显眼地暴露出来，而不会混杂其中。</p>
+<ul>
+<li>在此处 <strong>Add</strong> 添加一个条目，或直接在发送表单中使用 <strong>＋ Save to contacts</strong>。</li>
+<li><strong>✎</strong> 可重命名条目，<strong>🗑</strong> 可将其删除。删除联系人不会对链上产生任何影响。</li>
+<li><strong>⤓</strong> 可将列表导出为 CSV，以便与您的其他记录一起保存，或迁移到另一个浏览器。</li>
+</ul>
+<p>联系人仅保存在本浏览器中，与您其余的钱包数据存放在一起。它们不会被上传，<br />并且在您清除钱包时会与其他一切一并被抹除。</p>
+<hr />
+<h2 id="watch-only-accounts">仅观察账户</h2>
+<p>仅观察账户用于追踪一个您<strong>并不</strong>持有其密钥的地址——冷存储、<br />硬件钱包、交易所存款地址，或您留意的他人地址。</p>
+<p>在 <strong>Settings → 👥 Accounts → 👁 Watch Address</strong> 下添加：粘贴地址、为其<br />命名，它便会加入您的账户列表。</p>
+<p>它能做什么：显示余额、列出历史记录、导出 CSV，并且无需 PIN 码即可切换到它<br />——没有需要解密的密钥库，因此也没有什么需要解锁。</p>
+<p>它不能做什么：<strong>无法进行任何签名。</strong>发送、加密/解密、隐身转账、合约<br />调用以及 dApp 签名请求都会被拒绝，而且发送表单会在您填写之前而非之后就说明这一点。<br />仅观察账户在账户列表和顶栏中都标记为 👁，因此您始终清楚自己正在查看的是哪一种。</p>
+<p>要把仅观察账户变为真正的账户，请为该地址导入恢复助记词或私钥。<br />添加密钥是唯一的方式，没有捷径。</p>
+<hr />
+<h2 id="encrypted-balance-fhe">加密余额（FHE）</h2>
+<p>Orion Wallet 可以使用全同态加密将您的部分余额以加密形式持有，<br />因此该金额不会在链上公开可见。</p>
+<p>这是可选功能。无论是否启用它，其余一切都能正常工作。</p>
+<h3 id="enabling-it">启用方法</h3>
+<p>前往 <strong>Settings → PVAC</strong>。以下两个指示器必须都为绿色：</p>
+<ul>
+<li><strong>WASM Module</strong> — 加密模块已加载</li>
+<li><strong>Bridge Initialized</strong> — 它已由您的钱包种子完成密钥初始化</li>
+</ul>
+<p>如果其中任一项尚未就绪，面板会说明确切的原因和解决办法。</p>
+<h3 id="encrypting-and-decrypting">加密与解密</h3>
+<p>使用 <strong>Encrypt</strong> 在您的公开余额与加密余额之间转移资金。这些<br />操作计算量很大，可能需要几秒钟；进度对话框会<br />逐一显示每个阶段。</p>
+<hr />
+<h2 id="stealth-transfers">隐身转账</h2>
+<p>隐身转账会将资金发送到一个由收款人公钥派生出的一次性地址，<br />因此这笔付款不会在公开层面与其主地址关联起来。</p>
+<p>打开 <strong>Stealth</strong>，输入收款人和金额，然后确认。收款人可从自己的 Stealth<br />标签页中领取这笔资金。</p>
+<hr />
+<h2 id="connecting-to-a-dapp">连接到 dApp</h2>
+<p>当某个网站请求连接时，会弹出一个窗口，显示发起请求的来源（origin）。</p>
+<p>批准之前：</p>
+<ul>
+<li><strong>仔细核对来源。</strong>确认该域名正是您想要访问的站点。</li>
+<li>只批准您预期的权限。</li>
+<li>"Trust this site" 会在今后跳过对只读请求的提示——请谨慎使用。</li>
+<li>查看弹窗中的<strong>网络</strong>选择器。它会列出您拥有的每一个网络，包括您自己添加的那些，因此您无需离开弹窗即可在正确的网络上连接。</li>
+</ul>
+<p>您可以随时在 <strong>Settings → Connected Sites</strong> 下查看并撤销连接。</p>
+<hr />
+<h2 id="locking-and-unlocking">锁定与解锁</h2>
+<p>您的 PIN 码用于解密钱包。解密后的密钥会在解锁会话持续期间一直保持可用<br />——在会话结束之前，不会再次要求您输入 PIN 码。</p>
+<ul>
+<li><strong>刷新页面不会让您退出解锁状态。</strong>密钥会为您所在的浏览器标签页重新封装，因此重新加载会重新接上该会话，而不会把您退回到 PIN 码输入界面。发生这一切时，您会短暂看到"Restoring your session…"。</li>
+<li><strong>关闭标签页会结束会话。</strong>封装后的副本仅限于该标签页，会随它一起消失，因此新的标签页或窗口在启动时都处于锁定状态。</li>
+<li><strong>顶栏中的 🔒 会立即锁定</strong>并销毁封装副本——锁定后重新加载会要求输入 PIN 码，这正是应有的行为。</li>
+<li><strong>不活动会锁定钱包</strong>，默认在 30 分钟后触发；而且无论是否有活动，单次解锁的有效期都绝不会超过 8 小时。</li>
+</ul>
+<p>封装后的会话，两半单独拿出来都毫无用处：加密后的密钥由标签页持有，<br />而打开它们的密钥则由浏览器以一种任何页面——<br />包括本页面——都无法读回的形式保管。</p>
+<p>在 <strong>Settings → Security → Session &amp; Auto-Lock</strong> 下：</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>设置项</th><th>默认值</th><th>作用</th></tr></thead>
+<tbody>
+<tr><td>刷新页面后保持解锁</td><td>开启</td><td>关闭后，每次重新加载都需要输入 PIN 码</td></tr>
+<tr><td>不活动后自动锁定</td><td>30 分钟</td><td>5 / 15 / 30 / 60 分钟，或永不（直到标签页关闭）</td></tr>
+</tbody>
+</table>
+</div>
+<p>两者会同时生效，也包括您当前已打开的会话。在共用或<br />不受信任的电脑上，请关闭第一项，并在离开时锁定钱包。</p>
+<h3 id="unlocking-with-a-passkey">使用通行密钥解锁</h3>
+<p>如果您的设备配有指纹识别器、Face ID、Windows Hello 或安全密钥，您就可以<br />用它来解锁，而无需输入 PIN 码。</p>
+<p>在 <strong>Settings → 🔑 Security → Passkey Unlock → Enable passkey unlock</strong> 下开启。您的<br />设备会提示您进行注册——它可能会提示<strong>两次</strong>，一次用于创建通行密钥，<br />一次用于使用它。之后解锁界面会在 PIN 码输入框上方提供 <strong>👆 Unlock with passkey</strong>。</p>
+<p>值得了解的几点：</p>
+<ul>
+<li><strong>PIN 码依然存在，也依然重要。</strong>通行密钥用于打开钱包，它并不取代 PIN 码。导出密钥、显示恢复助记词、更改 PIN 码以及派生新账户，都仍然需要它。请保留好 PIN 码——丢失它并不能靠拥有通行密钥来弥补。</li>
+<li><strong>它与本设备和本浏览器绑定。</strong>通行密钥不会随您的钱包数据一起迁移。在另一台设备上，请用 PIN 码解锁；如有需要，可在那里再注册一个通行密钥。</li>
+<li><strong>您的指纹绝不会传到钱包。</strong>设备会在本地验证您的身份，并把一个由通行密钥派生出的秘密交给页面；正是这个秘密打开了钱包。</li>
+<li><strong>可用性取决于您的设备和浏览器。</strong>如果您的设备无法满足这项功能的需要，安全面板会予以说明，并让该选项保持关闭——PIN 码会像以前一样继续正常工作。</li>
+<li><strong>关闭通行密钥解锁</strong>也在同一面板中进行。这会立即删除所存储的副本；但不会从您的设备上删除该通行密钥，您可以在操作系统或浏览器设置中将其移除。</li>
+</ul>
+<p>如果某个通行密钥有朝一日无法再打开钱包——凭据被轮换或重新注册，或设备被恢复——<br />钱包会予以说明，丢弃已失效的副本，并要求输入 PIN 码。不会丢失任何东西；<br />之后您可以重新注册一个新的通行密钥。</p>
+<p>当仅观察账户处于活动状态时，无法注册通行密钥解锁——它不持有任何密钥，<br />因此没有东西可供通行密钥封装。安全面板会在按钮的位置说明这一点。</p>
+<hr />
+<h2 id="session-expiry">会话过期</h2>
+<p>同样的时限也适用于 dApp 连接，它们会自动过期：</p>
+<ul>
+<li><strong>空闲超时：</strong>不活动 30 分钟</li>
+<li><strong>绝对超时：</strong>自连接起 8 小时</li>
+</ul>
+<p>当会话过期时，钱包会关闭该连接，并通知 dApp。<br />随后 dApp 应提示您重新连接。</p>
+<h3 id="what-happens-when-your-session-expires">会话过期时会发生什么</h3>
+<ol>
+<li>钱包向 dApp 发出一个 <code>sessionExpired</code> 事件。</li>
+<li>dApp 检测到会话已过期，并显示一个"Reconnect"提示。</li>
+<li>您点击 <strong>Connect</strong> 以再次打开钱包弹窗。</li>
+<li>钱包恢复您的会话，dApp 随之继续运行。</li>
+</ol>
+<h3 id="if-a-dapp-doesnt-reconnect-automatically">如果 dApp 没有自动重新连接</h3>
+<ul>
+<li>点击 dApp 中的 <strong>Connect</strong> 按钮。</li>
+<li>钱包弹窗打开——批准该连接。</li>
+<li>您之前的会话数据会被保留，因此您无需重新导入钱包。</li>
+</ul>
+<hr />
+<h2 id="network-settings">网络设置</h2>
+<p><strong>Settings → ⚙️ General</strong> 中保存着钱包所连接的 RPC URL、它向外链接的<br />区块浏览器，以及一个可选的代理。更改 RPC URL 并选择 <strong>Save URLs</strong>，即可将钱包<br />指向另一个节点。</p>
+<h3 id="adding-your-own-network">添加您自己的网络</h3>
+<p>钱包内置了 Devnet 和 Mainnet。要添加其他网络——您自己的节点、一个 devnet 分叉、<br />一个付费 RPC——请在同一面板中滚动到 <strong>Custom Networks</strong> 并填写：</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>字段</th><th>是否必填</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>网络名称</td><td>是</td><td>会显示在该网络出现的所有位置，包括面向 dApp</td></tr>
+<tr><td>RPC URL</td><td>是</td><td><code>http://</code> 或 <code>https://</code></td></tr>
+<tr><td>Explorer URL</td><td>否</td><td>默认与 RPC URL 相同</td></tr>
+<tr><td>Relayer URL</td><td>否</td><td>仅隐身转账时需要</td></tr>
+</tbody>
+</table>
+</div>
+<p>选择 <strong>Add network</strong>，它便会加入列表。此后它就是一个普通的选项：</p>
+<ul>
+<li>顶栏中的<strong>网络标签（network pill）</strong>会像切换任何预设一样切换到它，</li>
+<li>当某个站点请求连接时，<strong>连接弹窗</strong>会将其列出，并标记为 <em>(custom)</em>，</li>
+<li>已连接的 dApp 可以读取它的名称和区块浏览器，从而正确地进行标注。</li>
+</ul>
+<p>切换网络会同时更新全部三个端点——RPC、区块浏览器和 relayer——因此钱包<br />绝不会出现读取一个网络却链接到另一个网络的情况。</p>
+<p>用旁边的 ✕ 删除某个网络。如果您删除的是当前正在使用的网络，<br />钱包会回退到某个预设。</p>
+<p><strong>dApp 能看到什么。</strong>您连接的站点可以读取自定义网络的名称、图标、区块浏览器<br />URL，以及您添加了它这一事实。它们<strong>无法</strong>读取其 RPC 或 relayer URL——家用<br />节点的地址或提供商密钥都留在钱包中。由于名称是可见的，请避免<br />用带有个人信息的名称来命名网络。</p>
+<h3 id="nodes-without-https">没有 HTTPS 的节点</h3>
+<p><code>https://</code> 节点无需特殊处理。而只能通过纯 <code>http://</code> 访问的节点则是<br />另一回事，因为钱包向它发出的一切——每一次余额和历史记录查询、<br />它提交的每一笔交易——都以明文传输，网络路径上的任何人都能读取，<br /><em>并篡改返回的结果</em>。因此钱包会先征询您的许可。</p>
+<ul>
+<li><strong>环回地址无需授权。</strong><code>localhost</code>、<code>127.0.0.1</code>、<code>[::1]</code> 等永远不会离开您的机器，因此本地节点开箱即用。</li>
+<li><strong>任何其他 <code>http://</code> 地址都必须显式信任。</strong>粘贴该 URL，面板会通过旁边的一个 <strong>Trust <code>http://…</code></strong> 按钮说明其中的利害关系。信任是按来源（scheme、主机和端口）存储的，因此信任一个节点并不会信任另一个，而同一主机上的不同端口是一个单独的决定。</li>
+<li><strong>Trusted plaintext endpoints</strong> 会列出您已信任的项，并可通过 <strong>Remove</strong> 将其收回。</li>
+</ul>
+<p>有两项限制不是我们所能解除的，面板会指出当前挡在路上的是哪一项：</p>
+<ul>
+<li><strong>通过 <code>https://</code> 提供的钱包根本无法获取 <code>http://</code>。</strong>浏览器会拦截这种情况（这被称为混合内容），信任该来源也无法改变它。请把节点置于 TLS 之后、使用代理，或从纯 http 或 localhost 构建版本打开钱包。</li>
+<li><strong>发行的构建版本只允许 <code>https://</code> 和环回地址。</strong>它的安全策略在构建时就已固定，无法在运行时放宽。需要纯 http 的自托管用户可以使用 <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code> 进行构建；上面的信任列表仍会在此之上生效。</li>
+</ul>
+<p>区块浏览器 URL 不受上述所有这些限制——它始终只是您点击的一个链接，<br />而不是钱包会去获取的东西。</p>
+<h3 id="rpc-proxy">RPC 代理</h3>
+<p><strong>RPC proxy (optional)</strong> 会将调用通过您选择的一个 URL 进行路由：RPC URL 会经<br />百分号编码后追加到它后面，浏览器始终只连接到该代理。对于没有 TLS 或没有 CORS<br />头的节点，这是切实可行的解决办法，而且它满足上述规则，<br />因为浏览器所建立的连接是指向代理的。</p>
+<p>代理能看到钱包发出的每一个请求，因此请<strong>运行您自己的代理</strong>。它无法签署任何东西，<br />也无法接触您的密钥，但它可以监视，也可以撒谎。</p>
+<h3 id="when-something-is-off">出现异常时</h3>
+<p>如果 RPC 端点无法按当前配置使用，顶栏会出现 <strong>⚠️ Insecure RPC</strong>；<br />选中它即可直接跳转到相应设置。网络错误也会附带原因，因此一句干巴巴的<br />"Failed to fetch" 就能告诉您该修什么。</p>
+<hr />
+<h2 id="backup-and-recovery">备份与恢复</h2>
+<h3 id="exporting">导出</h3>
+<p><strong>Settings → Backup → Export</strong> 会下载一个加密的 <code>.oct</code> 文件。它受<br />您的 PIN 码保护，但请将其视为敏感文件。</p>
+<h3 id="restoring">恢复</h3>
+<p>使用 <strong>Import → Wallet file</strong>，并提供导出该文件时所用的 PIN 码。</p>
+<h3 id="multiple-accounts">多个账户</h3>
+<p><strong>Settings → Accounts</strong> 会从同一个恢复助记词派生出更多账户。一个<br />助记词即可恢复它们全部。</p>
+<p>有两样东西是助记词<strong>无法</strong>恢复的，因为它们从来就不是由它派生出来的：</p>
+<ul>
+<li><strong>仅观察账户</strong> — 它们只是您让钱包追踪的一些地址。如果您希望在重装后仍能找回它们，请另行单独记录。</li>
+<li><strong>联系人</strong> — 如果它们对您很重要，请在 Settings → Contacts 下用 <strong>⤓</strong> 导出。</li>
+</ul>
+<p>两者都不持有资金，因此丢失它们损失的是便利，而不是钱。</p>
+<hr />
+<h2 id="troubleshooting">故障排查</h2>
+<h3 id="the-page-is-blank-or-stuck-loading">页面空白或卡在加载中</h3>
+<p>重新加载。如果问题依旧，应会出现一张带 <strong>Retry</strong> 按钮的错误卡片。请报告<br />其中显示的信息。</p>
+<h3 id="encrypted-balance-is-unavailable">加密余额不可用</h3>
+<p>Settings → PVAC 会显示以下之一：</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>信息</th><th>含义</th><th>解决办法</th></tr></thead>
+<tbody>
+<tr><td><em>The WASM module has not been compiled</em></td><td><code>pvac.js</code> 未被提供</td><td>运行 <code>npm run build:wasm</code></td></tr>
+<tr><td><em>Content-Security-Policy is blocking WebAssembly</em></td><td>CSP 缺少 <code>'wasm-unsafe-eval'</code></td><td>将其添加到 <code>index.html</code> 中的 <code>script-src</code></td></tr>
+<tr><td><em>The compiled module is out of date</em></td><td>该构建版本早于所需的函数</td><td>用 <code>npm run build:wasm</code> 重新构建</td></tr>
+<tr><td><em>FHE key generation failed</em></td><td>模块已加载，但密钥初始化失败</td><td>检查浏览器控制台并予以报告</td></tr>
+</tbody>
+</table>
+</div>
+<p>应用修复后，请按 <strong>↻ Reload PVAC</strong>——无需重启。</p>
+<h3 id="failed-to-load-history-network-errors">"Failed to load history" / 网络错误</h3>
+<p>通常是 RPC 节点无法访问或在拦截 CORS。请在 <strong>Settings</strong> 下核对 RPC URL，<br />并参阅 <a href="../README.md#cors">CORS 说明</a>。如果错误指明了原因——<br />明文、混合内容或构建限制——请参阅<br /><a href="#network-settings">网络设置</a>；<strong>RPC 代理</strong>可解决 CORS 这种情况。</p>
+<h3 id="the-header-shows-insecure-rpc">顶栏显示"⚠️ Insecure RPC"</h3>
+<p>所配置的 RPC 端点是纯 <code>http://</code>，按当前状态不可用。选中该<br />徽标即可打开相应设置，其中会详细说明确切原因和解决办法。请参阅<br /><a href="#network-settings">网络设置</a>。</p>
+<h3 id="the-camera-wont-open-when-i-select-scan">当我选择 📷 Scan 时摄像头打不开</h3>
+<ul>
+<li>当浏览器询问时，请授予摄像头权限；如果您之前忽略了它，请在站点权限中重新允许，然后再试一次。</li>
+<li>摄像头访问需要安全页面。它在 <code>https://</code> 和 <code>localhost</code> 上可用，但在另一主机上的纯 <code>http://</code> 页面上不可用。</li>
+<li>如果有其他应用占用了摄像头，请先将其关闭。您也随时可以改为粘贴地址。</li>
+</ul>
+<h3 id="unlock-with-passkey-isnt-offered">未提供"Unlock with passkey"</h3>
+<p>要么本浏览器中没有注册任何通行密钥，要么设备无法满足通行密钥解锁<br />所需的条件。<strong>Settings → 🔑 Security → Passkey Unlock</strong> 会说明是哪一种。通行密钥是按设备<br />和按浏览器区分的，因此在别处注册的通行密钥不会出现在这里。PIN 码始终有效。</p>
+<h3 id="i-forgot-my-pin">我忘记了 PIN 码</h3>
+<p>使用您的恢复助记词重新安装钱包，并设置一个新的 PIN 码。没有该助记词，<br />资金就无法被找回——任何人都不能。</p>
+<h3 id="could-not-read-your-saved-wallets-could-not-read-your-accounts">"Could not read your saved wallets" / "Could not read your accounts"</h3>
+<p>钱包无法打开它的本地数据库。没有任何东西被删除——这几乎<br />总是因为另一个 Orion 标签页，或一个残留的 <strong>Connect</strong> 弹窗仍占用着该数据库。<br />在更新之后，只要还有较旧的标签页连接着数据库，浏览器就不会升级它。</p>
+<p>关闭其他的 Orion 标签页和弹窗，然后选择 <strong>↻ Try again</strong>。如果该信息仍然存在，<br />请关闭每一个 Orion 标签页，并在单个标签页中重新打开钱包。</p>
+<p>解锁界面特意区分了这两种状态：<em>No stored wallet found</em> 表示数据库<br />确实是空的，而 <em>Could not read your saved wallets</em> 表示您的账户<br />确实存在，只是暂时无法访问。当您看到第二条信息时，<strong>请勿创建新钱包</strong>。</p>
+<h3 id="my-wallet-vanished-after-an-update">更新后我的钱包不见了</h3>
+<p>首次启动时，数据会自动从较旧的构建版本迁移过来。如果您的账户<br />不见了，<strong>请勿创建新钱包</strong>——那可能会覆盖旧数据。请报告该<br />问题，同时先用您的恢复助记词进行恢复。</p>
+<h3 id="dapp-says-session-expired">dApp 提示"Session expired"</h3>
+<p>这表示钱包会话已超时（空闲 30 分钟 / 绝对 8 小时）。请在 dApp 中<br />点击 <strong>Connect</strong> 重新连接。您的钱包数据会被保留——您只需<br />重新批准该连接。</p>
+<hr />
+<h2 id="keeping-your-funds-safe">保护您的资金安全</h2>
+<p><strong>应当</strong></p>
+<ul>
+<li>将恢复助记词离线保存在纸上，最好存放在不止一个地点</li>
+<li>发送前核对收款地址</li>
+<li>核对 dApp 连接提示中显示的来源</li>
+<li>向新地址发送时，先从一笔小额测试交易开始</li>
+<li>将收款人保存为联系人，并核对名称——您认得的名称胜过去读 base58</li>
+<li>使用仅观察账户来留意冷存储，而不是解锁真正的账户</li>
+</ul>
+<p><strong>切勿</strong></p>
+<ul>
+<li>在任何网站上输入您的恢复助记词。Orion Wallet 在设置之后绝不会索要它</li>
+<li>将助记词保存在截图、密码管理器备注、云盘或聊天中</li>
+<li>分享您的私钥或 <code>.oct</code> 文件</li>
+<li>在共用或不受信任的电脑上使用持有真实资金的钱包</li>
+</ul>
+<p>Orion Wallet <strong>尚未经过独立审计</strong>。在存储大额价值之前，请查阅<br /><a href="SECURITY.html">《安全说明》</a>。</p>
+</body>
+</html>

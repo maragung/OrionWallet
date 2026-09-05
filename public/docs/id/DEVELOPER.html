@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panduan Pengembang — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="orion-wallet-developer-guide">Orion Wallet — Panduan Pengembang</h1>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Kode sumber, isu, dan rilis.</blockquote>
+<h2 id="contents">Daftar isi</h2>
+<ul>
+<li><a href="#setup">Penyiapan</a></li>
+<li><a href="#project-layout">Tata letak proyek</a></li>
+<li><a href="#architecture">Arsitektur</a></li>
+<li><a href="#build-system">Sistem build</a></li>
+<li><a href="#the-pvac-wasm-pipeline">Pipeline WASM PVAC</a></li>
+<li><a href="#state-management">Manajemen state</a></li>
+<li><a href="#error-handling">Penanganan error</a></li>
+<li><a href="#loading-states">Status pemuatan</a></li>
+<li><a href="#storage-and-migrations">Penyimpanan dan migrasi</a></li>
+<li><a href="#wallet-sdk">Wallet SDK</a></li>
+<li><a href="#dapp-integration">Integrasi dApp</a></li>
+<li><a href="#session-management">Manajemen sesi</a></li>
+<li><a href="#testing">Pengujian</a></li>
+<li><a href="#release-checklist">Daftar periksa rilis</a></li>
+<li><a href="#known-issues">Masalah yang diketahui</a></li>
+</ul>
+<hr />
+<h2 id="setup">Penyiapan</h2>
+<pre><code class="language-bash">npm install --legacy-peer-deps
+npm run dev</code></pre>
+<p><code>--legacy-peer-deps</code> bersifat wajib: ESLint 9 dan <code>@eslint/js</code> 10 mendeklarasikan rentang peer<br />yang saling bertentangan. <code>vercel.json</code> memakai flag yang sama, sehingga instalasi di CI dan lokal cocok.</p>
+<p>Node 20+ direkomendasikan.</p>
+<hr />
+<h2 id="project-layout">Tata letak proyek</h2>
+<pre><code class="language-">src/
+├── api/          High-level operations (wallet-api, send, encrypt)
+├── components/   React components, one panel per tab
+├── connect/      dApp approval popup (/connect route)
+├── crypto/       Primitives: ed25519, x25519, sha256, aes, bip39, hd, base58/64
+├── hooks/        useTheme, usePanelLoading
+├── i18n/         Translations and the provider
+├── pvac/         FHE bridge: stub + WASM implementation
+├── rpc/          JSON-RPC client
+├── sdk/          Provider injected into dApps + transport
+├── stealth/      Stealth address derivation
+├── store/        Zustand store
+├── tx/           Canonical JSON, signing, ABI helpers
+├── utils/        Clipboard, progress reporting, CSV export
+└── wallet/       Keystore, IndexedDB storage, PIN, passkey unlock, watch-only
+                  guard, endpoint policy, payment URIs, mnemonic backup check
+
+public/
+  demo/           Standalone dApp integration demo (dapp.html)
+  docs/           Static HTML documentation pages
+  wasm/           Compiled PVAC module (pvac.js + pvac.wasm)
+
+tests/unit/       Vitest
+tests/e2e/        Playwright
+docs/             This documentation</code></pre>
+<hr />
+<h2 id="architecture">Arsitektur</h2>
+<p>Sepenuhnya sisi klien; tidak ada backend. Data mengalir dalam satu arah:</p>
+<pre><code class="language-">React components  (src/components/)
+       │  read state, dispatch actions
+       ▼
+Zustand store  (src/store/wallet-store.ts)
+       │
+       ▼
+API layer  (src/api/)          ← orchestrates crypto + RPC
+       │
+       ├──► Crypto core  (src/crypto/)   WebCrypto, tweetnacl, @noble
+       ├──► PVAC FHE     (src/pvac/)     WebAssembly
+       ├──► Transaction  (src/tx/)       canonical JSON + signing
+       └──► RPC client   (src/rpc/)      fetch
+                                           │ HTTPS
+                                           ▼
+                                    Octra RPC node</code></pre>
+<h3 id="design-constraints">Batasan desain</h3>
+<p><strong>Canonical JSON harus persis byte demi byte.</strong> <code>src/tx/canonical-json.ts</code> mereproduksi<br />urutan kunci dan pemformatan <code>nlohmann::json</code> secara persis. Tanda tangan dihitung atas byte-byte ini,<br />sehingga penyimpangan apa pun menghasilkan tanda tangan yang ditolak jaringan. Jangan "merapikan"<br />serializer ini.</p>
+<p><strong>Penamaan: produk versus protokol.</strong> "Orion Wallet" adalah produknya. Metode RPC <code>octra_*</code>,<br />prefiks alamat <code>oct</code>, ticker <code>OCT</code>, dan "Octra Network" adalah pengidentifikasi protokol<br />dan tidak boleh pernah diganti namanya.</p>
+<hr />
+<h2 id="build-system">Sistem build</h2>
+<p>File konfigurasi TypeScript adalah <strong>satu-satunya sumber kebenaran</strong>:</p>
+<ul>
+<li><code>vite.config.ts</code></li>
+<li><code>vitest.config.ts</code></li>
+<li><code>playwright.config.ts</code></li>
+</ul>
+<blockquote><strong>Jangan menambahkan padanan <code>.js</code> untuk file-file ini.</strong> Vite me-resolve <code>vite.config.js</code> mendahului<br /><code>vite.config.ts</code>, sehingga salinan hasil transpilasi yang basi diam-diam membayangi konfigurasi asli dan penyuntingan<br />pada file <code>.ts</code> tidak berpengaruh apa pun. Ketiga nama file itu ada di <code>.gitignore</code>.<br /><code>eslint.config.js</code> adalah flat config asli dan sengaja dipertahankan.</blockquote>
+<p>Mengabaikannya saja tidak cukup, karena tidak ada yang mencegahnya <em>dibuat</em>:<br /><code>tsconfig.node.json</code> adalah proyek <code>composite</code>, yang memaksa emit deklarasi, dan tanpa<br /><code>outDir</code> setiap <code>tsc -b</code> menulis <code>vite.config.js</code> langsung di samping sumber. Ini terjadi dua kali.<br />Emit untuk proyek itu kini diarahkan ke <code>node_modules/.tmp/tsconfig-node/</code>, tempat ia tidak bisa membayangi<br />apa pun. Bila Anda menambahkan file konfigurasi ke proyek itu, biarkan <code>outDir</code> apa adanya.</p>
+<h3 id="environment-flags">Flag lingkungan</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Flag</th><th>Efek</th></tr></thead>
+<tbody>
+<tr><td><code>VITE_ALLOW_HTTP_ENDPOINTS=1</code></td><td>Menambahkan <code>http:</code> ke direktif CSP <code>connect-src</code> saat build, sehingga build yang di-host sendiri bisa menjangkau node RPC http polos. Persetujuan pengguna per origin tetap berlaku — lihat <code>src/wallet/endpoint-policy.ts</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Hanya ditetapkan saat build. Ia dibaca di <code>vite.config.ts</code> oleh plugin <code>allowHttpEndpointsCsp</code><br />dan menulis ulang <code>index.html</code>; ia tidak berpengaruh saat runtime, karena CSP berbasis meta-tag tidak bisa dilonggarkan<br />setelah dokumen selesai diurai.</p>
+<h3 id="headers">Header</h3>
+<p>COOP/COEP disetel ke <code>same-origin</code> / <code>require-corp</code> (dicadangkan untuk threading WASM di masa depan),<br />dengan penggantian <code>unsafe-none</code> pada <code>/connect</code> agar transfer <code>postMessage</code> + MessagePort<br />milik popup berfungsi. Header dev berada di <code>vite.config.ts</code>; header produksi di <code>vercel.json</code>.<br /><strong>Jaga keduanya tetap sinkron.</strong></p>
+<h3 id="content-security-policy">Content-Security-Policy</h3>
+<p>Didefinisikan di <code>index.html</code>. <code>script-src</code> harus menyertakan <code>'wasm-unsafe-eval'</code> — Chromium menolak<br /><code>WebAssembly.instantiate()</code> tanpanya, yang persis membuat modul PVAC gagal dimuat secara diam-diam. Direktif itu hanya mengizinkan kompilasi WebAssembly; ia tidak mengaktifkan kembali<br /><code>eval()</code> JavaScript.</p>
+<p><code>connect-src</code> adalah <code>'self' https:</code> ditambah loopback (<code>http://localhost:*</code>, <code>http://127.0.0.1:*</code>,<br /><code>http://[::1]:*</code>) sehingga node yang dijalankan lokal berfungsi tanpa membuka plaintext secara umum. Selain itu,<br />apa pun melalui <code>http://</code> dikendalikan oleh <code>src/wallet/endpoint-policy.ts</code>, satu-satunya tempat yang<br />memutuskan — fungsi murni dari URL ditambah konteks eksplisit, sehingga store, UI Settings,<br />dan pengujian tidak bisa saling bertentangan. Jangan menambahkan pemeriksaan URL dadakan di tempat lain. Tiga<br />penghalang independen berlaku (mixed content → CSP → persetujuan pengguna) dan putusannya melaporkan yang paling<br />fundamental lebih dulu, sehingga pengguna tidak pernah disuruh memperbaiki allowlist padahal browser-lah yang<br />menolak.</p>
+<hr />
+<h2 id="the-pvac-wasm-pipeline">Pipeline WASM PVAC</h2>
+<h3 id="building">Membangun</h3>
+<pre><code class="language-bash">git clone https://github.com/emscripten-core/emsdk.git /tmp/emsdk
+cd /tmp/emsdk &amp;&amp; ./emsdk install latest &amp;&amp; ./emsdk activate latest
+source /tmp/emsdk/emsdk_env.sh
+
+git clone https://github.com/octra-labs/webcli ../webcli-source
+python3 scripts/patch-pvac-aes.py ../webcli-source/pvac   # software AES fallback
+npm run build:wasm</code></pre>
+<p><code>patch-pvac-aes.py</code> diperlukan karena PVAC memicu <code>#error</code> keras tanpa AES perangkat keras (AES-NI atau<br />ekstensi kripto ARM), yang tidak disediakan WebAssembly. Patch ini menambahkan implementasi perangkat lunak<br />yang portabel yang identik bit demi bit tetapi kira-kira 5–10× lebih lambat. Sifatnya aditif: jalur<br />perangkat keras tidak disentuh, dan backup <code>.hpp.bak</code> ditulis.</p>
+<h3 id="loading">Pemuatan</h3>
+<p><code>src/pvac/wasm-bridge.ts</code> memuat modul dalam tiga langkah:</p>
+<ol>
+<li><strong>Probe</strong> — <code>HEAD</code> pada URL glue, sehingga "not built" (404) dapat dibedakan dari "blocked by CSP". Tanpa ini keduanya muncul sebagai kegagalan impor buram yang identik.</li>
+<li><strong>Import</strong> — <code>import()</code> dinamis atas URL absolut dengan <code>/* @vite-ignore */</code>. Harus absolut: specifier telanjang gagal di-resolve, dan <code>./wasm/pvac.js</code> di-resolve terhadap <code>/assets/</code> lalu menghasilkan 404.</li>
+<li><strong>Verify</strong> — pastikan seluruh 13 ekspor <code>_pvac_*</code> yang diperlukan ada sebelum menukar bridge. Build terdahulu melewatkan fungsi serialisasi, yang merusak enkripsi/dekripsi dengan cara yang hanya dilaporkan node sebagai "malformed transaction".</li>
+</ol>
+<p>Kegagalan diklasifikasikan sebagai <code>PvacFailureReason</code>: <code>not-built</code>, <code>csp-blocked</code>,<br /><code>missing-exports</code>, <code>init-failed</code>, <code>unknown</code>. Masing-masing dipetakan ke solusi konkret yang ditampilkan di<br />Settings. Promise singleton di-reset saat gagal sehingga <strong>↻ Reload PVAC</strong> bisa mencoba lagi alih-alih<br />memutar ulang penolakan yang di-cache.</p>
+<h3 id="memory-rules">Aturan memori</h3>
+<p>C API bersifat memori manual. Setiap <code>_malloc</code> membutuhkan <code>_free</code>; setiap <code>serialize_*</code> mengembalikan<br />buffer yang harus dilepaskan dengan <code>_pvac_free_bytes</code>. Handle dari <code>keygen</code>/<code>enc_*</code> membutuhkan<br /><code>_pvac_free_*</code> yang bersesuaian. Gunakan <code>try/finally</code> — lihat <code>WasmPvacBridge</code> untuk polanya.</p>
+<hr />
+<h2 id="state-management">Manajemen state</h2>
+<p>Zustand, di <code>src/store/wallet-store.ts</code>. Ia memiliki wallet, klien RPC, pengaturan, status PVAC,<br />toast, dan flag loading global.</p>
+<p>Flag loading global (<code>isLoading</code>) menggerakkan overlay blur layar penuh dan dicadangkan untuk<br /><strong>transisi seluruh aplikasi saja</strong>, seperti membuka kunci wallet. Pekerjaan per panel harus memakai<br /><code>usePanelLoading</code> — lihat di bawah.</p>
+<hr />
+<h2 id="error-handling">Penanganan error</h2>
+<p><code>src/components/ErrorBoundary.tsx</code> membungkus setiap panel di <code>Layout.tsx</code>, dikunci berdasarkan tab<br />yang aktif sehingga boundary yang terpicu di-reset saat navigasi, ditambah satu boundary di root pada <code>main.tsx</code>.</p>
+<p>Ini lebih penting daripada kelihatannya. <code>index.html</code> berisi:</p>
+<pre><code class="language-css">#root:empty::before { content: 'Loading Orion Wallet…'; }</code></pre>
+<p>Tanpa boundary, throw apa pun saat render membuat React 18 melepas seluruh pohon, <code>#root</code><br />menjadi kosong, dan fallback itu dirender — menghasilkan halaman putih kosong yang tampak macet<br />memuat selamanya. Boundary menjaga shell tetap hidup dan menampilkan kartu error yang bisa dicoba ulang.</p>
+<p><strong>Konsekuensi:</strong> fungsi yang dipanggil saat render tidak boleh throw pada input yang tidak sesuai bentuk.<br /><code>formatAmount</code> di <code>src/tx/builder.ts</code> menerima <code>unknown</code> dan menurunkan diri menjadi placeholder,<br />karena baik respons RPC maupun cache tx lokal tidak divalidasi skemanya. Normalisasikan<br />baris yang tidak tepercaya sebelum merendernya — <code>HistoryView</code> menunjukkan polanya.</p>
+<hr />
+<h2 id="loading-states">Status pemuatan</h2>
+<p>Gunakan <code>usePanelLoading</code> (<code>src/hooks/usePanelLoading.ts</code>) untuk pekerjaan bercakupan panel:</p>
+<pre><code class="language-typescript">const panelLoading = usePanelLoading();
+
+await panelLoading.run('Loading history', async () =&gt; {
+  const data = await fetchSomething();
+  if (!panelLoading.isMounted()) return;   // guard late setState
+  setData(data);
+}, 'Fetching from the network…');</code></pre>
+<p>Lalu render <code>&lt;ProcessingModal open={panelLoading.loading} … dismissible onClose={panelLoading.hide} /&gt;</code>.</p>
+<p>Dua properti penting: modal bersifat <strong>dismissible</strong> (pekerjaan berlanjut di latar belakang, sehingga<br />jaringan yang lambat tidak pernah menjebak pengguna), dan penulisan state dijaga oleh <code>isMounted()</code> sehingga<br />berpindah halaman di tengah proses tidak bisa meninggalkan modal macet di layar.</p>
+<hr />
+<h2 id="storage-and-migrations">Penyimpanan dan migrasi</h2>
+<p>IndexedDB melalui <code>idb</code>, database <code>orion-wallet</code>, versi 6. Store dideklarasikan satu kali di<br />array <code>OBJECT_STORES</code> di <code>src/wallet/storage.ts</code>; tambahkan yang baru di sana agar pembuatan dan<br />migrasi tetap konsisten — array itu juga menggerakkan <code>wipeEverything()</code>, sehingga store yang ditambahkan<br />di tempat lain akan lolos dari penghapusan menyeluruh.</p>
+<p>Migrasi bersifat <strong>aditif saja</strong>: naikkan <code>DB_VERSION</code>, tambahkan ke array, dan catat<br />versinya dalam komentar di samping entri baru. Store yang ada tidak pernah diganti nama atau dibuang.<br />Versi sejauh ini: v2 store SDK, v3 token OCS01, v4 bookmark <code>oct://</code>, v5<br /><code>unlock-session-keys</code>, v6 <code>contacts</code> + <code>passkey-unlock</code>.</p>
+<h3 id="the-rebrand-migration">Migrasi rebrand</h3>
+<p>Mengganti nama database dari <code>webcli-react</code> akan membuat setiap wallet yang ada menjadi terlantar, karena<br />IndexedDB mencakup data berdasarkan nama database. <code>migrateLegacyDatabase</code> menyalin semua store maju pada<br />peluncuran pertama. Ia bersifat:</p>
+<ul>
+<li><strong>idempoten</strong> — dilewati begitu target memiliki wallet apa pun</li>
+<li><strong>non-destruktif</strong> — database lama dibiarkan utuh untuk rollback</li>
+<li><strong>non-fatal</strong> — kegagalan dicatat, tidak pernah di-throw; bug migrasi tidak boleh menghalangi startup</li>
+</ul>
+<p>Ingat bahwa <code>clearIndexedDB</code> di helper E2E harus menghapus <strong>kedua</strong> database, atau<br />migrasi menyalin kembali data lama begitu saja dan "clean state" menjadi tidak bersih.</p>
+<hr />
+<h2 id="wallet-sdk">Wallet SDK</h2>
+<p><code>src/sdk/</code> adalah provider yang menghadap dApp; <code>src/connect/</code> adalah popup persetujuan yang<br />dilayani di <code>/connect</code>.</p>
+<h3 id="method-namespaces">Namespace metode</h3>
+<p>Wallet menanggapi dua namespace yang setara:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Generik</th><th>Bermerek Orion</th><th>Operasi</th></tr></thead>
+<tbody>
+<tr><td><code>wallet_connect</code></td><td><code>orion_wallet_connect</code></td><td>Memulai koneksi</td></tr>
+<tr><td><code>wallet_signMessage</code></td><td><code>orion_wallet_signMessage</code></td><td>Menandatangani pesan biasa</td></tr>
+<tr><td><code>wallet_signTypedData</code></td><td><code>orion_wallet_signTypedData</code></td><td>Menandatangani data terstruktur</td></tr>
+<tr><td><code>wallet_approveContract</code></td><td><code>orion_wallet_approveContract</code></td><td>Menyetujui pemanggilan kontrak lebih dulu</td></tr>
+<tr><td><code>wallet_signContract</code></td><td><code>orion_wallet_signContract</code></td><td>Menandatangani transaksi kontrak</td></tr>
+<tr><td><code>wallet_getAccounts</code></td><td><code>orion_wallet_getAccounts</code></td><td>Mendaftar akun</td></tr>
+<tr><td><code>wallet_getBalance</code></td><td><code>orion_wallet_getBalance</code></td><td>Membaca saldo</td></tr>
+<tr><td><code>wallet_getNetworkInfo</code></td><td><code>orion_wallet_getNetworkInfo</code></td><td>Membaca jaringan aktif sebagai record</td></tr>
+<tr><td><code>wallet_getNetworks</code></td><td><code>orion_wallet_getNetworks</code></td><td>Mendaftar setiap jaringan yang ditawarkan wallet</td></tr>
+<tr><td>…</td><td>…</td><td>…</td></tr>
+</tbody>
+</table>
+</div>
+<p>Keduanya diterima dan dieksekusi secara identik. Nama <code>orion_wallet_*</code> ada untuk dApp yang<br />ingin menyasar Orion Wallet secara eksplisit; nama generik <code>wallet_*</code> tetap didukung sehingga<br />integrasi yang sudah ada terus berfungsi.</p>
+<p><code>canonicalizeMethod</code> di <code>src/sdk/protocol.ts</code> menyederhanakan setiap nama metode ke bentuk kanonik<br /><code>wallet_*</code>-nya sebelum dispatch, sehingga kedua namespace tidak akan pernah bergeser tak sinkron.</p>
+<h3 id="connection-lifecycle">Siklus hidup koneksi</h3>
+<p><strong>Handshake (sekali per sesi):</strong></p>
+<ol>
+<li>dApp memanggil <code>provider.connect()</code> → <code>PopupTransport</code> membuka <code>/connect?v=1&amp;rid=…&amp;origin=…</code></li>
+<li>Wallet merender <code>ConnectApp</code>, pengguna membuka kunci bila diperlukan</li>
+<li>Wallet mengirim <code>hello</code> + MessagePort melalui <code>window.postMessage</code>, origin-nya divalidasi</li>
+<li>dApp menggemakan <code>challenge</code> melalui port (anti-replay)</li>
+<li><code>ConnectHandler</code> memverifikasi ack, melayani RPC <code>CONNECT</code> → mengembalikan alamat, akun, jaringan</li>
+</ol>
+<p><strong>Setelah connect:</strong></p>
+<ul>
+<li><strong>Popup boleh menutup</strong>, tetapi MessagePort tetap terbuka — ia independen dari jendela</li>
+<li>Sesi disimpan di IndexedDB (<code>sdk-sessions</code>) dengan TTL idle + absolut</li>
+<li>Metode baca (<code>getBalance</code>, <code>getAccounts</code>) bersifat session-silent</li>
+<li>Metode penandatanganan <strong>selalu</strong> membuka prompt persetujuan baru</li>
+</ul>
+<p><strong>Perbaikan untuk "connect berhasil, selebihnya tidak":</strong></p>
+<p>Semula <code>PopupTransport.isConnected()</code> memeriksa <code>popup.closed</code>, sehingga setiap panggilan setelah<br />jendela persetujuan ditutup gagal dengan "Transport is not connected". Kini ia hanya memeriksa<br />port, yang berumur lebih panjang daripada popup. Wallet menutup popup setelah persetujuan, tetapi<br />koneksinya tetap hidup.</p>
+<h3 id="permission-model">Model izin</h3>
+<p><strong>Saat connect:</strong> Hanya scope baca-saja (<code>viewAccounts</code>, <code>viewBalance</code>, <code>viewNetwork</code>).</p>
+<p><strong>Scope penandatanganan</strong> (<code>signMessage</code>, <code>signContract</code>, dll.) <strong>diberikan secara lazy</strong> pada<br />persetujuan sukses pertama. Sebelum perbaikan, scope-scope itu tidak ada di <code>DEFAULT_PERMISSIONS</code> dan<br />dispatcher menolak setiap panggilan penandatanganan dengan <code>UNAUTHORIZED</code> sebelum prompt sempat muncul —<br />akar penyebab kedua dari gejala tersebut.</p>
+<p>Sekarang:</p>
+<ul>
+<li>Pemeriksaan izin membiarkan scope penandatanganan yang belum diberikan lanjut ke prompt persetujuan</li>
+<li>Saat disetujui, <code>grantPermission</code> menyimpan scope itu ke sesi</li>
+<li>Panggilan berikutnya melewati pemeriksaan izin tetapi <strong>tetap memerlukan persetujuan</strong> — memberikan sebuah scope hanya mencatat bahwa pengguna setuju dApp boleh meminta</li>
+</ul>
+<p>Pencabutan bersifat eksplisit: <code>revokePermission</code> menghapus scope dari <code>permissions</code> dan mencatatnya<br />di <code>deniedPermissions</code>, yang ditolak dispatcher secara langsung.</p>
+<h3 id="security-invariants">Invarian keamanan</h3>
+<p>Jangan melemahkan hal-hal berikut:</p>
+<ul>
+<li><strong>Validasi origin</strong> pada setiap <code>postMessage</code> masuk (<code>PopupTransport.ts</code>, <code>rpc-handler.ts</code>)</li>
+<li><strong>Anti-replay:</strong> challenge CSPRNG + nonce dApp + nonce monoton per sesi. <code>makeId</code> hanya untuk korelasi pesan dan tidak boleh pernah dipakai sebagai nilai keamanan</li>
+<li><strong>Izin</strong> bersifat per origin, disimpan di <code>sdk-sessions</code>, dan diberikan/dicabut secara eksplisit</li>
+<li><strong>Independensi MessagePort:</strong> Port berumur lebih panjang daripada popup. Setelah ditransfer, wallet bisa menutup jendela persetujuan tanpa memutus koneksi</li>
+<li><strong>Metode yang dilarang</strong> ditolak baik di sisi klien (<code>WalletProvider</code>) maupun di sisi wallet (<code>rpc-handler</code>), sehingga eksekusi transaksi tidak akan pernah bisa lolos ke SDK bahkan melalui escape hatch tingkat rendah <code>request()</code></li>
+<li><strong><code>localStorage</code></strong> hanya menyimpan petunjuk pemulihan sesi (alamat, jaringan) — tidak pernah rahasia</li>
+</ul>
+<hr />
+<h2 id="dapp-integration">Integrasi dApp</h2>
+<h3 id="quick-start">Mulai cepat</h3>
+<pre><code class="language-javascript">import { WalletProvider } from '@orion-wallet/sdk';
+
+const provider = new WalletProvider({
+  walletUrl: 'https://orionwallet.example/connect',
+  capabilities: [
+    'signMessage',
+    'signTypedData',
+    'approveContract',
+    'signContract',
+    'multiAccount',
+    'events',
+    'sessionRestore',
+    'customNetworks',
+  ],
+});
+
+const result = await provider.connect();</code></pre>
+<h3 id="session-management">Manajemen sesi</h3>
+<p>Sesi Orion kedaluwarsa setelah <strong>idle 30 menit</strong> atau <strong>8 jam absolut</strong>. SDK menyediakan<br />pemeriksaan kesehatan sesi bawaan dan penyambungan ulang otomatis:</p>
+<pre><code class="language-javascript">// Check session health before every signing operation
+if (!provider.isSessionAlive()) {
+  await provider.refreshSession();
+}
+
+// Listen for session expiry events
+provider.on('sessionExpired', () =&gt; {
+  setConnected(false);
+});</code></pre>
+<h3 id="networks-including-the-users-own">Jaringan, termasuk milik pengguna sendiri</h3>
+<p>Pengguna bisa menambahkan jaringannya sendiri di Settings → Network (node mereka sendiri, fork devnet, atau<br />RPC berbayar). Jaringan tersebut bersifat first-class: mereka muncul di pemilih pada popup connect<br />bersama preset, dan dApp yang terhubung bisa melihatnya.</p>
+<pre><code class="language-javascript">// Which network am I on? A record, not just an id string.
+const active = await provider.getNetworkInfo();
+// { id: 'home-node', name: 'Home node', explorerUrl: 'https://octrascan.io',
+//   icon: '🏠', custom: true }
+
+// Everything the wallet offers — presets first, user-added ones after.
+const all = await provider.getNetworks();
+const userAdded = all.filter((n) =&gt; n.custom);
+
+// Cached from the connect reply, no round-trip; null before connect.
+provider.networkInfo();
+
+provider.on('networkChanged', ({ network, chainId, networkInfo }) =&gt; {
+  // networkInfo is present on wallets that granted `customNetworks`.
+  setChain(networkInfo?.name ?? network);
+});</code></pre>
+<p>Lakukan feature-detect pada kapabilitas <strong><code>customNetworks</code></strong> sebelum mengandalkan apa pun dari ini — build<br />wallet yang lebih lama hanya menjawab <code>wallet_getNetwork</code> polos, yang mengembalikan string id.</p>
+<p><strong><code>NetworkInfo</code> sengaja tidak membawa <code>rpcUrl</code> maupun <code>relayerUrl</code>.</strong> Jaringan yang<br />ditambahkan pengguna sering kali merupakan endpoint privat — alamat LAN, sebuah tunnel, URL penyedia dengan<br />API key di query string — dan menyerahkannya ke setiap situs yang dihubungi pengguna akan<br />membocorkan infrastruktur mereka. dApp tidak membutuhkannya: setiap pembacaan berjalan melalui wallet<br />(<code>wallet_getBalance</code> dan kawan-kawan) dan eksekusi tidak pernah keluar dari UI wallet. Yang melintasi<br />jaringan adalah apa yang memang sah dibutuhkan dApp — jaringan mana yang sedang diajak bicara, apakah<br />pemiliknya menambahkannya secara manual (<code>custom</code>), dan ke mana menautkan sebuah transaksi (<code>explorerUrl</code>).</p>
+<p>Tidak ada <strong><code>wallet_switchNetwork</code></strong>. Pergantian tetap berada di UI wallet sendiri — pemilih di<br />popup atau pill jaringan di jendela utama — konsisten dengan aturan bahwa perubahan state tidak pernah<br />berasal dari dApp. dApp yang membutuhkan jaringan lain meminta pengguna untuk berganti, lalu menunggu<br /><code>networkChanged</code>.</p>
+<p><code>networkChanged</code> dipancarkan dari <strong>kedua</strong> tempat pergantian bisa terjadi: popup connect dan<br />jendela utama. Sesi diserahkan ke jendela utama saat popup ditutup, sehingga pada saat kebanyakan<br />pengguna menyentuh pill jaringan, popup sudah lama hilang — <code>Layout.tsx</code> memancarkan ke handler yang<br />telah diadopsi sehingga dApp yang terhubung tidak dibiarkan menampilkan jaringan yang basi.</p>
+<p>Dua kelas independen mengimplementasikan <code>WalletHost</code> — <code>src/connect/host.ts</code> (jendela utama) dan<br />host inline di <code>src/connect/ConnectApp.tsx</code> (popup). Apa pun yang ditambahkan ke antarmuka harus<br />diimplementasikan di keduanya, ditambah fixture di <code>tests/unit/connect-handler.test.ts</code>.</p>
+<h3 id="connection-flow-diagram">Diagram alur koneksi</h3>
+<pre><code class="language-">dApp                          Orion Wallet
+  │                              │
+  │  provider.connect()          │
+  │  ──────────────────────────► │
+  │  │  opens popup ───────────► │  User approves
+  │  │  hello + MessagePort ◄── │  ──────────────────►
+  │  │  challenge echo ────────► │
+  │  │  CONNECT RPC ──────────► │  Returns address
+  │  │  ◄────────────────────── │
+  │  ◄────────────────────────── │
+  │                              │
+  │  provider.signContract()     │
+  │  ──────────────────────────► │  Opens approval prompt
+  │  │  signContract RPC ──────► │  User approves
+  │  │  ◄────────────────────── │  Returns signed tx
+  │  ◄────────────────────────── │
+  │                              │
+  │  (session expires after      │
+  │   30 min idle / 8h absolute) │
+  │                              │
+  │  provider.isSessionAlive()   │  Returns false
+  │  ──────────────────────────► │
+  │                              │
+  │  provider.refreshSession()   │
+  │  ──────────────────────────► │  Reopens popup
+  │  │  (reconnects) ◄───────── │
+  │  ◄────────────────────────── │</code></pre>
+<h3 id="prohibited-methods">Metode yang dilarang</h3>
+<p>SDK memblokir metode-metode ini secara lokal sebelum mencapai transport. Wallet juga memeriksa ulang di sisi<br />server, sehingga eksekusi transaksi tidak akan pernah bisa lolos:</p>
+<ul>
+<li><code>wallet_sendTransaction</code> / <code>sendTransaction</code></li>
+<li><code>wallet_broadcastTransaction</code> / <code>broadcastTransaction</code></li>
+<li><code>wallet_transfer</code> / <code>transfer</code></li>
+<li><code>wallet_swap</code> / <code>swap</code></li>
+<li><code>wallet_bridge</code> / <code>bridge</code></li>
+</ul>
+<hr />
+<h2 id="session-management-1">Manajemen sesi</h2>
+<p>Sesi Orion Wallet dikelola secara otomatis oleh SDK. Sesi kedaluwarsa setelah:</p>
+<ul>
+<li><strong>Batas idle:</strong> 30 menit tanpa aktivitas</li>
+<li><strong>Batas absolut:</strong> 8 jam sejak koneksi</li>
+</ul>
+<p>dApp bisa memeriksa kesehatan sesi kapan saja:</p>
+<pre><code class="language-javascript">if (!provider.isSessionAlive()) {
+  await provider.refreshSession();
+}</code></pre>
+<p>Saat sesi kedaluwarsa, wallet memancarkan event <code>sessionExpired</code>. dApp seharusnya<br />mendengarkan event ini dan meminta pengguna menyambung ulang:</p>
+<pre><code class="language-javascript">provider.on('sessionExpired', () =&gt; {
+  // Prompt user to reconnect
+  setConnected(false);
+});</code></pre>
+<p>Pemulihan sesi ditangani secara otomatis — wallet menyimpan petunjuk sesi di<br />IndexedDB, sehingga menyambung ulang setelah kedaluwarsa tidak mengharuskan pengguna mengimpor ulang wallet-nya.</p>
+<hr />
+<h2 id="testing">Pengujian</h2>
+<pre><code class="language-bash">npm test                 # 676 unit tests, 56 files
+npm run test:coverage    # V8 coverage, 60% threshold
+npm run test:e2e         # 7 Playwright specs (needs npm run build first)
+npm run autofix          # typecheck → format → lint --fix → test → build
+npm run check            # same, read-only (CI)</code></pre>
+<p>Pengujian unit berjalan di bawah jsdom dengan <code>fake-indexeddb</code>. Pengujian komponen memakai<br /><code>renderToStaticMarkup</code> alih-alih pustaka pengujian DOM — lihat<br /><code>tests/unit/processing-modal.test.tsx</code>.</p>
+<p>WebAuthn tidak memiliki implementasi jsdom, sehingga <code>tests/unit/passkey.test.ts</code> memasang<br /><code>FakeAuthenticator</code> yang memodelkan ekstensi PRF (termasuk authenticator yang tidak memilikinya,<br />prompt yang ditutup, dan secret yang dirotasi). Ia menegaskan apa yang <em>tidak</em> boleh dikandung<br />record tersimpan, yang merupakan properti yang benar-benar penting.</p>
+<p>Catatan E2E: sebelum memercayai deretan kegagalan Playwright, periksa mesinnya, bukan diff-nya.<br />Dua batasan lingkungan menghasilkan kegagalan yang persis seperti regresi sungguhan:</p>
+<ul>
+<li><strong>Ruang temp.</strong> Chromium menempatkan setiap profil browser di bawah <code>TMPDIR</code> (<code>/tmp</code> secara bawaan). Bila filesystem itu penuh — mudah terjadi ketika <code>/tmp</code> adalah tmpfs kecil yang dibagi dengan proses lain — konteks mati saat diluncurkan dan pengujian yang tidak terkait gagal dalam hitungan milidetik, atau menggantung sampai timeout 30 dtk. <code>df -h /tmp</code> lebih dulu; jalankan ulang dengan <code>TMPDIR=$HOME/.cache/e2e-tmp</code> di filesystem yang lapang dan spec yang sama berubah dari timeout menjadi lulus dalam ~4 dtk.</li>
+<li><strong>Memori.</strong> Kira-kira 2 GB memori bebas per worker. Saat habis, Chromium dimatikan di tengah pengujian dan Playwright melaporkan <code>Target crashed</code>; jalankan ulang dengan <code>--workers=1</code>.</li>
+</ul>
+<p><code>playwright.config.ts</code> menyetel <code>reuseExistingServer: !isCI</code>, sehingga sisa <code>npm run preview</code> pada<br />port 4173 diam-diam dipakai ulang — termasuk yang dijalankan dari checkout <em>berbeda</em>. Saat<br />membandingkan dua tree, matikan listener di antara run (<code>ss -lptn | grep 4173</code>) atau run kedua<br />menguji build milik yang pertama.</p>
+<p>Saat memperbaiki bug, tambahkan pengujian yang mendokumentasikan mode kegagalannya, bukan sekadar perbaikannya.<br /><code>tests/unit/history-view.test.ts</code> dan <code>error-boundary.test.tsx</code> mengikuti ini: masing-masing menyebutkan<br />gejala yang dicegahnya agar tidak terulang.</p>
+<hr />
+<h2 id="release-checklist">Daftar periksa rilis</h2>
+<ol>
+<li><code>npm run autofix</code> — harus sepenuhnya hijau</li>
+<li><code>npm run test:e2e</code> terhadap <code>npm run build</code> yang segar</li>
+<li><code>npm audit --omit=dev</code> — produksi harus melaporkan nol kerentanan</li>
+<li>Verifikasi PVAC dimuat di preview produksi (<code>npm run preview</code>), bukan hanya dev</li>
+<li>Uji jalur migrasi dari build pra-rebrand dengan data wallet yang sudah ada</li>
+<li>Pastikan header server <code>vite.config.ts</code> masih cocok dengan <code>vercel.json</code></li>
+</ol>
+<hr />
+<h2 id="known-issues">Masalah yang diketahui</h2>
+<p><strong>Advisory dependency dev.</strong> <code>npm audit</code> melaporkan kerentanan pada vitest, vite, esbuild,<br />dan paket terkait. Setiap perbaikan yang tersisa membutuhkan upgrade mayor (vite 5→8, vitest 2→4).<br />Ini hanya build-tooling dan tidak dikirim ke pengguna; audit produksi bersih. Lihat<br /><a href="SECURITY.html#dependency-status">SECURITY.md</a>.</p>
+<p><strong>Peringatan chunking <code>storage.ts</code>.</strong> Build memperingatkan bahwa <code>storage.ts</code> diimpor baik secara statis maupun<br />dinamis, sehingga ia tidak bisa dipecah menjadi chunk-nya sendiri. Tidak berbahaya, tetapi berarti<br />impor dinamis di <code>HistoryView</code> dan <code>WalletExportImport</code> tidak memberi manfaat code-splitting.</p>
+<p><strong>Performa AES perangkat lunak.</strong> Fallback AES WASM 5–10× lebih lambat daripada native. Operasi PVAC<br />yang berat memblokir main thread; memindahkannya ke Web Worker adalah langkah logis berikutnya.</p>
+</body>
+</html>

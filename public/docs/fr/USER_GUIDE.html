@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guide de l'utilisateur — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="orion-wallet-user-guide">Orion Wallet — Guide de l'utilisateur</h1>
+<p>Orion Wallet fonctionne entièrement dans votre navigateur. Vos clés sont générées localement, chiffrées<br />avec votre code PIN, et stockées uniquement sur votre propre appareil. Rien n'est envoyé à un serveur.</p>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Code source, signalements et versions.</blockquote>
+<hr />
+<h2 id="contents">Sommaire</h2>
+<ul>
+<li><a href="#getting-started">Pour commencer</a></li>
+<li><a href="#creating-a-wallet">Créer un portefeuille</a></li>
+<li><a href="#importing-an-existing-wallet">Importer un portefeuille existant</a></li>
+<li><a href="#everyday-use">Utilisation courante</a></li>
+<li><a href="#contacts-address-book">Contacts (carnet d'adresses)</a></li>
+<li><a href="#watch-only-accounts">Comptes watch-only</a></li>
+<li><a href="#encrypted-balance-fhe">Solde chiffré (FHE)</a></li>
+<li><a href="#stealth-transfers">Transferts furtifs (stealth)</a></li>
+<li><a href="#connecting-to-a-dapp">Se connecter à une dApp</a></li>
+<li><a href="#locking-and-unlocking">Verrouillage et déverrouillage</a></li>
+<li><a href="#session-expiry">Expiration de session</a></li>
+<li><a href="#network-settings">Paramètres réseau</a></li>
+<li><a href="#backup-and-recovery">Sauvegarde et récupération</a></li>
+<li><a href="#troubleshooting">Dépannage</a></li>
+<li><a href="#keeping-your-funds-safe">Protéger vos fonds</a></li>
+</ul>
+<hr />
+<h2 id="getting-started">Pour commencer</h2>
+<h3 id="requirements">Prérequis</h3>
+<ul>
+<li>Une version récente de Chrome, Edge, Firefox ou Safari</li>
+<li>JavaScript activé</li>
+<li>Environ 4 Go de RAM si vous prévoyez d'utiliser les fonctions de solde chiffré</li>
+</ul>
+<h3 id="running-it">L'exécuter</h3>
+<p>Utilisez un déploiement hébergé, ou exécutez-le localement :</p>
+<pre><code class="language-bash">npm install --legacy-peer-deps
+npm run dev</code></pre>
+<p>Ouvrez ensuite &lt;http://localhost:5173&gt;.</p>
+<hr />
+<h2 id="creating-a-wallet">Créer un portefeuille</h2>
+<ol>
+<li>Sélectionnez <strong>Create New Wallet</strong>, nommez le compte et choisissez un code PIN. Le code PIN chiffre le portefeuille sur cet appareil.</li>
+<li><strong>Notez votre phrase de récupération.</strong> On vous affiche 12 mots. Recopiez-les sur papier dans l'ordre exact indiqué.</li>
+<li>Sélectionnez <strong>I've Written It Down</strong>. Le portefeuille vous demande alors de ressaisir <strong>3 des mots</strong>, choisis au hasard, pour prouver que la phrase a réellement quitté l'écran. <strong>Show Phrase Again</strong><br />la réaffiche si vous avez besoin d'un autre coup d'œil ; une réponse erronée vous laisse simplement réessayer.</li>
+<li>Une fois les mots validés, le portefeuille s'ouvre.</li>
+</ol>
+<blockquote><strong>Créer le portefeuille ne l'ouvre pas — c'est la réussite du test des mots qui l'ouvre.</strong> Jusque-là, vous<br />pouvez encore quitter l'écran sans rien perdre, car la phrase n'a pas encore été utilisée.</blockquote>
+<blockquote><strong>Votre phrase de récupération est le seul moyen de restaurer votre portefeuille.</strong> Quiconque la détient<br />contrôle vos fonds. Conservez-la hors ligne. Ne la photographiez jamais, ne la saisissez jamais sur un site web<br />et ne la collez jamais dans un chat ou un e-mail.</blockquote>
+<h3 id="pin-versus-recovery-phrase">Code PIN ou phrase de récupération</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>Phrase de récupération</th><th>Code PIN</th></tr></thead>
+<tbody>
+<tr><td>Rôle</td><td>Restaure votre portefeuille où que vous soyez</td><td>Le déverrouille uniquement sur cet appareil</td></tr>
+<tr><td>En cas de perte</td><td>Les fonds sont irrécupérables</td><td>Restaurez-le depuis la phrase de récupération</td></tr>
+<tr><td>Lieu de stockage</td><td>Hors ligne, par vous</td><td>Jamais stocké — vous seul le connaissez</td></tr>
+</tbody>
+</table>
+</div>
+<hr />
+<h2 id="importing-an-existing-wallet">Importer un portefeuille existant</h2>
+<p>Choisissez <strong>Import</strong> puis sélectionnez l'une des options suivantes :</p>
+<ul>
+<li><strong>Recovery phrase</strong> — saisissez vos 12/24 mots</li>
+<li><strong>Private key</strong> — collez une clé privée base64</li>
+<li><strong>Wallet file</strong> — importez un fichier <code>.oct</code> chiffré et saisissez son code PIN</li>
+</ul>
+<hr />
+<h2 id="everyday-use">Utilisation courante</h2>
+<h3 id="checking-your-balance">Consulter votre solde</h3>
+<p>L'onglet <strong>Balance</strong> affiche votre solde public et, si PVAC est activé, votre solde chiffré.</p>
+<h3 id="receiving">Recevoir</h3>
+<p>Ouvrez <strong>Receive</strong> pour afficher votre adresse et un code QR. Votre adresse est publique et peut être<br />partagée sans risque.</p>
+<p>Vous pouvez aussi <strong>demander un montant précis</strong>. Le code QR porte alors le montant en plus de l'adresse (au<br />format <code>octra:&lt;address&gt;?amount=&lt;OCT&gt;</code>), si bien qu'un portefeuille qui le scanne préremplit les deux.<br />Sans montant demandé, le code reste une simple adresse, que n'importe quel lecteur peut lire.</p>
+<h3 id="sending">Envoyer</h3>
+<ol>
+<li>Ouvrez <strong>Send</strong>.</li>
+<li>Indiquez le destinataire de la manière qui vous convient :</li>
+</ol>
+<ul>
+<li>Collez l'adresse (elle commence par <code>oct</code>).</li>
+<li>Choisissez un nom enregistré dans <strong>📇 Contacts…</strong>.</li>
+<li>Sélectionnez <strong>📷 Scan</strong> pour lire un code QR avec votre caméra. Le navigateur demande l'autorisation<br />d'accès à la caméra la première fois ; l'image est traitée dans la page et jamais téléversée. Le scan<br />d'un code qui contient un montant remplit aussi ce montant.</li>
+</ul>
+<ol>
+<li>Saisissez un montant.</li>
+<li>Vérifiez les frais et le nonce, puis confirmez avec votre code PIN.</li>
+</ol>
+<p>Lorsque l'adresse correspond à un contact enregistré, le formulaire affiche le nom à côté d'elle — un nom que vous<br />reconnaissez est un bien meilleur contrôle qu'une chaîne de caractères base58. Pour une nouvelle adresse, <strong>＋ Save to<br />contacts</strong> l'enregistre sous un libellé de votre choix, pour que le prochain paiement soit une sélection, non un collage.</p>
+<p>Vérifiez toujours le premier et le dernier caractère de l'adresse du destinataire avant de confirmer.<br />Les transactions sont irréversibles.</p>
+<h3 id="history">Historique</h3>
+<p><strong>History</strong> répertorie les transactions récentes. Lorsque le réseau est injoignable, les entrées en cache<br />sont affichées et marquées <code>⚠ Cached</code>.</p>
+<p><strong>⤓</strong> exporte le tableau vers un fichier CSV (heure, hash, type, de, à, sens, montant, frais,<br />statut) pour un tableur ou vos propres archives. Il exporte <strong>les lignes actuellement chargées</strong> —<br />ce que vous voyez est ce que vous obtenez — utilisez donc <strong>Load more</strong> d'abord si vous voulez une plage plus étendue. Le<br />fichier est écrit par votre navigateur dans votre dossier de téléchargements ; rien n'est envoyé où que ce soit.</p>
+<hr />
+<h2 id="contacts-address-book">Contacts (carnet d'adresses)</h2>
+<p><strong>Settings → 📇 Contacts</strong> conserve une liste d'adresses sous des noms que vous choisissez. Chaque entrée a<br />une adresse, un nom et une note facultative — un bon endroit pour noter « memo required » ou à quelle<br />plateforme d'échange appartient une adresse de dépôt.</p>
+<p>Pourquoi s'en soucier : une adresse que vous ne pouvez pas lire est une adresse que vous ne pouvez pas vérifier. Dès qu'un<br />bénéficiaire est enregistré, le formulaire d'envoi le propose par son nom et étiquette l'adresse quand vous la recollez, si<br />bien qu'une adresse modifiée ou tronquée ressort au lieu de passer inaperçue.</p>
+<ul>
+<li><strong>Add</strong> une entrée ici, ou utilisez <strong>＋ Save to contacts</strong> directement depuis le formulaire d'envoi.</li>
+<li><strong>✎</strong> renomme une entrée, <strong>🗑</strong> la supprime. Supprimer un contact n'a aucun effet on-chain.</li>
+<li><strong>⤓</strong> exporte la liste au format CSV, pour la conserver avec vos autres archives ou la déplacer vers un autre navigateur.</li>
+</ul>
+<p>Les contacts vivent uniquement dans ce navigateur, avec le reste des données de votre portefeuille. Ils ne sont pas<br />téléversés, et ils sont effacés avec tout le reste si vous effacez le portefeuille.</p>
+<hr />
+<h2 id="watch-only-accounts">Comptes watch-only</h2>
+<p>Un compte watch-only suit une adresse dont vous ne détenez <strong>pas</strong> les clés — un stockage à froid, un<br />portefeuille matériel, une adresse de dépôt d'une plateforme d'échange, ou l'adresse d'une autre personne que vous surveillez.</p>
+<p>Ajoutez-en un sous <strong>Settings → 👥 Accounts → 👁 Watch Address</strong> : collez l'adresse, donnez-lui un<br />nom, et elle rejoint votre liste de comptes.</p>
+<p>Ce qu'il peut faire : afficher le solde, lister l'historique, exporter en CSV, et être activé sans<br />code PIN — il n'y a pas de keystore à déchiffrer, donc rien à déverrouiller.</p>
+<p>Ce qu'il ne peut pas faire : <strong>signer quoi que ce soit.</strong> L'envoi, le chiffrement/déchiffrement, les transferts furtifs, les appels de<br />contrat et les demandes de signature d'une dApp sont tous refusés, et le formulaire d'envoi le précise avant que vous le remplissiez,<br />plutôt qu'après. Les comptes watch-only sont marqués 👁 dans la liste des comptes et dans l'en-tête,<br />afin que vous sachiez toujours de quel type il s'agit.</p>
+<p>Pour transformer un compte watch-only en véritable compte, importez la phrase de récupération ou la clé privée de<br />cette adresse. Ajouter les clés est le seul moyen ; il n'y a pas de raccourci.</p>
+<hr />
+<h2 id="encrypted-balance-fhe">Solde chiffré (FHE)</h2>
+<p>Orion Wallet peut conserver une partie de votre solde chiffrée à l'aide d'un chiffrement totalement homomorphe,<br />de sorte que le montant n'est pas visible publiquement sur la chaîne.</p>
+<p>C'est facultatif. Tout le reste fonctionne, que ce soit activé ou non.</p>
+<h3 id="enabling-it">L'activer</h3>
+<p>Allez dans <strong>Settings → PVAC</strong>. Deux indicateurs doivent être tous deux verts :</p>
+<ul>
+<li><strong>WASM Module</strong> — le module cryptographique est chargé</li>
+<li><strong>Bridge Initialized</strong> — il a été initialisé avec une clé dérivée de la graine (seed) de votre portefeuille</li>
+</ul>
+<p>Si l'un des deux n'est pas prêt, le panneau explique la cause exacte et la solution.</p>
+<h3 id="encrypting-and-decrypting">Chiffrer et déchiffrer</h3>
+<p>Utilisez <strong>Encrypt</strong> pour déplacer des fonds entre vos soldes public et chiffré. Ces<br />opérations sont coûteuses en calcul et peuvent prendre plusieurs secondes ; une fenêtre de progression<br />affiche chaque étape.</p>
+<hr />
+<h2 id="stealth-transfers">Transferts furtifs (stealth)</h2>
+<p>Les transferts furtifs envoient des fonds vers une adresse à usage unique dérivée de la clé publique du<br />destinataire, de sorte que le paiement n'est pas publiquement associable à son adresse principale.</p>
+<p>Ouvrez <strong>Stealth</strong>, saisissez le destinataire et le montant, puis confirmez. Le destinataire récupère les<br />fonds depuis son propre onglet Stealth.</p>
+<hr />
+<h2 id="connecting-to-a-dapp">Se connecter à une dApp</h2>
+<p>Lorsqu'un site web demande une connexion, une fenêtre contextuelle apparaît et affiche l'origine de la requête.</p>
+<p>Avant d'approuver :</p>
+<ul>
+<li><strong>Vérifiez soigneusement l'origine.</strong> Confirmez que le domaine est exactement le site que vous visiez.</li>
+<li>N'approuvez que les autorisations que vous attendez.</li>
+<li>« Trust this site » ignore les futures demandes de lecture seule — utilisez-le avec parcimonie.</li>
+<li>Vérifiez le sélecteur de <strong>réseau</strong> dans la fenêtre contextuelle. Il liste tous les réseaux que vous avez,<br />y compris ceux que vous avez ajoutés vous-même, pour que vous puissiez vous connecter au bon réseau sans quitter la fenêtre.</li>
+</ul>
+<p>Vous pouvez consulter et révoquer les connexions à tout moment sous <strong>Settings → Connected Sites</strong>.</p>
+<hr />
+<h2 id="locking-and-unlocking">Verrouillage et déverrouillage</h2>
+<p>Votre code PIN déchiffre le portefeuille. Les clés déchiffrées restent ensuite disponibles pendant toute la durée<br />de la session de déverrouillage — on ne vous redemande pas le code PIN avant sa fin.</p>
+<ul>
+<li><strong>Actualiser la page vous laisse déverrouillé.</strong> Les clés sont de nouveau scellées pour l'onglet du navigateur<br />dans lequel vous vous trouvez, si bien qu'un rechargement reprend la session au lieu de vous ramener à l'écran du code PIN.<br />Vous verrez brièvement « Restoring your session… » pendant ce temps.</li>
+</ul>
+<ul>
+<li><strong>Fermer l'onglet met fin à la session.</strong> La copie scellée est limitée à cet onglet unique et<br />disparaît avec lui, si bien qu'un nouvel onglet ou une nouvelle fenêtre démarre verrouillé.</li>
+</ul>
+<ul>
+<li><strong>🔒 dans l'en-tête verrouille immédiatement</strong> et détruit la copie scellée — un rechargement après<br />le verrouillage demande le code PIN, comme il se doit.</li>
+</ul>
+<ul>
+<li><strong>L'inactivité verrouille le portefeuille</strong> après 30 minutes par défaut, et un déverrouillage n'est<br />jamais conservé plus de 8 heures, quelle que soit l'activité.</li>
+</ul>
+<p>Aucune des deux moitiés de la session scellée n'est utile seule : les clés chiffrées sont détenues par l'onglet,<br />tandis que la clé qui les ouvre est conservée par le navigateur sous une forme qu'aucune page —<br />y compris celle-ci — ne peut relire.</p>
+<p>Sous <strong>Settings → Security → Session &amp; Auto-Lock</strong> :</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Réglage</th><th>Défaut</th><th>Effet</th></tr></thead>
+<tbody>
+<tr><td>Rester déverrouillé après une actualisation de la page</td><td>Activé</td><td>Désactivez-le pour exiger le code PIN à chaque rechargement</td></tr>
+<tr><td>Verrouillage automatique après inactivité</td><td>30 minutes</td><td>5 / 15 / 30 / 60 minutes, ou jamais (jusqu'à la fermeture de l'onglet)</td></tr>
+</tbody>
+</table>
+</div>
+<p>Les deux s'appliquent à la fois, y compris à la session déjà ouverte. Sur un ordinateur partagé ou non fiable,<br />désactivez le premier et verrouillez le portefeuille lorsque vous vous éloignez.</p>
+<h3 id="unlocking-with-a-passkey">Déverrouiller avec une passkey</h3>
+<p>Si votre appareil dispose d'un lecteur d'empreintes, de Face ID, de Windows Hello ou d'une clé de sécurité, vous pouvez<br />déverrouiller avec celui-ci au lieu de saisir le code PIN.</p>
+<p>Activez-le sous <strong>Settings → 🔑 Security → Passkey Unlock → Enable passkey unlock</strong>. Votre<br />appareil vous invite à vous enregistrer — il peut vous inviter <strong>deux fois</strong>, une fois pour créer la passkey et<br />une fois pour l'utiliser. L'écran de déverrouillage propose alors <strong>👆 Unlock with passkey</strong> au-dessus du champ du code PIN.</p>
+<p>À savoir :</p>
+<ul>
+<li><strong>Le code PIN existe toujours et compte toujours.</strong> La passkey ouvre le portefeuille ; elle ne<br />remplace pas le code PIN. L'exportation des clés, l'affichage de la phrase de récupération, le changement de code PIN et la<br />dérivation de nouveaux comptes exigent toujours celui-ci. Conservez votre code PIN — le perdre n'est pas réparé par le fait d'avoir une passkey.</li>
+<li><strong>Elle est liée à cet appareil et à ce navigateur.</strong> Les passkeys ne voyagent pas avec les données de votre<br />portefeuille. Sur un autre appareil, déverrouillez avec le code PIN et enregistrez-y une passkey si vous en voulez une.</li>
+<li><strong>Votre empreinte n'atteint jamais le portefeuille.</strong> L'appareil vous vérifie localement et remet<br />à la page un secret dérivé de la passkey ; c'est ce secret qui ouvre le portefeuille.</li>
+<li><strong>La disponibilité dépend de votre appareil et de votre navigateur.</strong> Si le vôtre ne peut pas faire ce que cela exige,<br />le panneau de sécurité le dit et l'option reste désactivée — le code PIN continue de fonctionner exactement comme avant.</li>
+<li><strong>Désactivez le déverrouillage par passkey</strong> dans le même panneau. Cela supprime immédiatement la copie stockée ;<br />cela ne supprime pas la passkey de votre appareil, que vous pouvez retirer dans les réglages de votre système<br />d'exploitation ou de votre navigateur.</li>
+</ul>
+<p>Si une passkey cesse un jour d'ouvrir le portefeuille — un identifiant modifié ou ré-enregistré, ou un appareil<br />restauré — le portefeuille le dit, écarte la copie obsolète et demande le code PIN. Rien n'est perdu ;<br />vous pouvez enregistrer une nouvelle passkey ensuite.</p>
+<p>Le déverrouillage par passkey ne peut pas être enregistré pendant qu'un compte watch-only est actif — il ne détient<br />aucune clé, donc il n'y a rien à sceller pour une passkey. Le panneau de sécurité le dit à la place du bouton.</p>
+<hr />
+<h2 id="session-expiry">Expiration de session</h2>
+<p>Les mêmes fenêtres régissent les connexions aux dApps, qui expirent automatiquement :</p>
+<ul>
+<li><strong>Délai d'inactivité :</strong> 30 minutes sans activité</li>
+<li><strong>Délai absolu :</strong> 8 heures à partir de la connexion</li>
+</ul>
+<p>Lorsqu'une session expire, le portefeuille ferme la connexion et la dApp en est informée.<br />La dApp devrait alors vous inviter à vous reconnecter.</p>
+<h3 id="what-happens-when-your-session-expires">Ce qui se passe à l'expiration de votre session</h3>
+<ol>
+<li>Le portefeuille émet un événement <code>sessionExpired</code> vers la dApp.</li>
+<li>La dApp détecte la session expirée et affiche une invite « Reconnect ».</li>
+<li>Vous cliquez sur <strong>Connect</strong> pour rouvrir la fenêtre du portefeuille.</li>
+<li>Le portefeuille restaure votre session et la dApp reprend.</li>
+</ol>
+<h3 id="if-a-dapp-doesnt-reconnect-automatically">Si une dApp ne se reconnecte pas automatiquement</h3>
+<ul>
+<li>Cliquez sur le bouton <strong>Connect</strong> dans la dApp.</li>
+<li>La fenêtre du portefeuille s'ouvre — approuvez la connexion.</li>
+<li>Les données de votre session précédente sont conservées, vous n'avez donc pas besoin de réimporter votre portefeuille.</li>
+</ul>
+<hr />
+<h2 id="network-settings">Paramètres réseau</h2>
+<p><strong>Settings → ⚙️ General</strong> contient l'URL RPC à laquelle le portefeuille parle, l'explorateur vers lequel il crée des liens,<br />et un proxy facultatif. Modifiez l'URL RPC puis sélectionnez <strong>Save URLs</strong> pour pointer le portefeuille<br />vers un autre nœud.</p>
+<h3 id="adding-your-own-network">Ajouter votre propre réseau</h3>
+<p>Devnet et Mainnet sont fournis avec le portefeuille. Pour en ajouter un autre — votre propre nœud, un fork de devnet,<br />un RPC payant — faites défiler jusqu'à <strong>Custom Networks</strong> dans le même panneau et remplissez :</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Champ</th><th>Requis</th><th>Remarques</th></tr></thead>
+<tbody>
+<tr><td>Nom du réseau</td><td>oui</td><td>Affiché partout où le réseau apparaît, y compris aux dApps</td></tr>
+<tr><td>URL RPC</td><td>oui</td><td><code>http://</code> ou <code>https://</code></td></tr>
+<tr><td>URL de l'explorateur</td><td>non</td><td>Par défaut, l'URL RPC</td></tr>
+<tr><td>URL du relayer</td><td>non</td><td>Nécessaire uniquement pour les transferts furtifs</td></tr>
+</tbody>
+</table>
+</div>
+<p>Sélectionnez <strong>Add network</strong> et il rejoint la liste. Dès lors, c'est un choix ordinaire :</p>
+<ul>
+<li>la <strong>pastille de réseau</strong> dans la barre supérieure permet de basculer vers lui comme n'importe quel préréglage,</li>
+<li>la <strong>fenêtre de connexion</strong> le liste lorsqu'un site demande à se connecter, marqué <em>(custom)</em>,</li>
+<li>et une dApp connectée peut lire son nom et son explorateur pour libeller correctement les choses.</li>
+</ul>
+<p>Changer de réseau met à jour les trois points d'accès ensemble — RPC, explorateur et relayer — afin que le<br />portefeuille ne se retrouve jamais à lire un réseau tout en créant des liens vers un autre.</p>
+<p>Retirez un réseau avec le ✕ qui se trouve à côté. Si vous supprimez celui sur lequel vous êtes actuellement, le<br />portefeuille revient à un préréglage.</p>
+<p><strong>Ce qu'une dApp voit.</strong> Les sites auxquels vous vous connectez peuvent lire le nom, l'icône, l'URL de l'explorateur<br />d'un réseau personnalisé, ainsi que le fait que vous l'avez ajouté. Ils <strong>ne peuvent pas</strong> lire son URL RPC ou de relayer —<br />l'adresse d'un nœud personnel ou une clé de fournisseur reste dans le portefeuille. Comme le nom est visible, évitez de<br />nommer un réseau d'après quelque chose de personnel.</p>
+<h3 id="nodes-without-https">Nœuds sans HTTPS</h3>
+<p>Un nœud <code>https://</code> ne demande aucun traitement particulier. Un nœud accessible uniquement en <code>http://</code> simple<br />est une autre affaire, car tout ce que le portefeuille lui demande — chaque consultation de solde et d'historique, chaque<br />transaction soumise — circule en clair, là où n'importe qui sur le chemin réseau peut le lire <em>et modifier les réponses</em>.<br />Le portefeuille demande donc d'abord votre accord.</p>
+<ul>
+<li><strong>La boucle locale ne demande aucune autorisation.</strong> <code>localhost</code>, <code>127.0.0.1</code>, <code>[::1]</code> et autres<br />ne quittent jamais votre machine, donc un nœud local fonctionne immédiatement.</li>
+<li><strong>Toute autre adresse <code>http://</code> doit être explicitement approuvée.</strong> Collez l'URL et le panneau<br />explique ce qui est en jeu avec un bouton <strong>Trust <code>http://…</code></strong> à côté. La confiance est stockée<br />par origine (schéma, hôte et port), donc approuver un nœud n'en approuve pas un autre, et un port différent<br />sur le même hôte est une décision distincte.</li>
+<li><strong>Points d'accès en clair approuvés</strong> liste ce que vous avez approuvé, avec <strong>Remove</strong> pour retirer votre confiance.</li>
+</ul>
+<p>Deux limites ne dépendent pas de nous, et le panneau nomme celle qui fait obstacle :</p>
+<ul>
+<li><strong>Un portefeuille servi en <code>https://</code> ne peut pas du tout aller chercher du <code>http://</code>.</strong> Les navigateurs bloquent cela<br />(c'est ce qu'on appelle le contenu mixte), et approuver l'origine n'y changera rien. Mettez le nœud<br />derrière TLS, utilisez un proxy, ou ouvrez le portefeuille depuis une version en http simple ou en localhost.</li>
+<li><strong>La version distribuée n'autorise que <code>https://</code> et la boucle locale.</strong> Sa politique de sécurité est figée<br />au moment de la compilation et ne peut pas être élargie à l'exécution. Les auto-hébergeurs qui ont besoin de http simple peuvent<br />compiler avec <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code> ; la liste de confiance ci-dessus s'applique en plus.</li>
+</ul>
+<p>L'URL de l'explorateur est exempte de tout cela — c'est seulement un lien sur lequel vous cliquez, pas<br />quelque chose que le portefeuille va chercher.</p>
+<h3 id="rpc-proxy">Proxy RPC</h3>
+<p><strong>RPC proxy (optional)</strong> achemine les appels à travers une URL de votre choix : l'URL RPC y est ajoutée,<br />encodée en pourcentage, et le navigateur ne se connecte qu'au proxy. C'est la solution pratique pour un nœud sans TLS<br />ou sans en-têtes CORS, et cela satisfait les règles ci-dessus parce que la connexion que le navigateur établit va au proxy.</p>
+<p>Le proxy voit chaque requête du portefeuille, donc <strong>faites tourner le vôtre</strong>. Il ne peut rien signer<br />ni atteindre vos clés, mais il peut observer et il peut mentir.</p>
+<h3 id="when-something-is-off">Quand quelque chose ne va pas</h3>
+<p>Si le point d'accès RPC ne peut pas être utilisé tel qu'il est configuré, <strong>⚠️ Insecure RPC</strong> apparaît dans l'en-tête ;<br />sélectionnez-le pour accéder directement au réglage. Les erreurs réseau portent aussi la raison, donc un simple<br />« Failed to fetch » vous indique quoi corriger.</p>
+<hr />
+<h2 id="backup-and-recovery">Sauvegarde et récupération</h2>
+<h3 id="exporting">Exporter</h3>
+<p><strong>Settings → Backup → Export</strong> télécharge un fichier <code>.oct</code> chiffré. Il est protégé par<br />votre code PIN, mais traitez-le comme sensible.</p>
+<h3 id="restoring">Restaurer</h3>
+<p>Utilisez <strong>Import → Wallet file</strong> et fournissez le code PIN en vigueur au moment de l'exportation du fichier.</p>
+<h3 id="multiple-accounts">Plusieurs comptes</h3>
+<p><strong>Settings → Accounts</strong> dérive des comptes supplémentaires de la même phrase de récupération. Une seule<br />phrase les restaure tous.</p>
+<p>Deux choses que la phrase ne restaure <strong>pas</strong>, car elles n'en ont jamais été dérivées :</p>
+<ul>
+<li><strong>Les comptes watch-only</strong> — ce sont simplement des adresses que vous avez demandé au portefeuille de suivre.<br />Notez-les séparément si vous voulez les retrouver après une réinstallation.</li>
+<li><strong>Les contacts</strong> — exportez-les avec <strong>⤓</strong> sous Settings → Contacts s'ils comptent pour vous.</li>
+</ul>
+<p>Ni l'un ni l'autre ne détient de fonds, donc les perdre vous coûte du confort, pas de l'argent.</p>
+<hr />
+<h2 id="troubleshooting">Dépannage</h2>
+<h3 id="the-page-is-blank-or-stuck-loading">La page est vide ou reste bloquée au chargement</h3>
+<p>Rechargez. Si cela persiste, une carte d'erreur avec un bouton <strong>Retry</strong> devrait apparaître. Signalez le<br />message qui y est affiché.</p>
+<h3 id="encrypted-balance-is-unavailable">Le solde chiffré est indisponible</h3>
+<p>Settings → PVAC affiche l'un des messages suivants :</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Message</th><th>Signification</th><th>Correctif</th></tr></thead>
+<tbody>
+<tr><td><em>The WASM module has not been compiled</em></td><td><code>pvac.js</code> n'est pas servi</td><td>Exécutez <code>npm run build:wasm</code></td></tr>
+<tr><td><em>Content-Security-Policy is blocking WebAssembly</em></td><td>La CSP ne contient pas <code>'wasm-unsafe-eval'</code></td><td>Ajoutez-le à <code>script-src</code> dans <code>index.html</code></td></tr>
+<tr><td><em>The compiled module is out of date</em></td><td>La version compilée est antérieure aux fonctions requises</td><td>Recompilez avec <code>npm run build:wasm</code></td></tr>
+<tr><td><em>FHE key generation failed</em></td><td>Le module s'est chargé mais l'initialisation de la clé a échoué</td><td>Consultez la console du navigateur et signalez-le</td></tr>
+</tbody>
+</table>
+</div>
+<p>Appuyez sur <strong>↻ Reload PVAC</strong> après avoir appliqué un correctif — pas besoin de redémarrer.</p>
+<h3 id="failed-to-load-history-network-errors">« Failed to load history » / erreurs réseau</h3>
+<p>C'est généralement le nœud RPC qui est injoignable ou qui bloque CORS. Vérifiez l'URL RPC sous<br /><strong>Settings</strong>, et consultez les <a href="../README.md#cors">notes sur CORS</a>. Si l'erreur nomme une raison —<br />texte en clair, contenu mixte ou restriction de compilation — voir<br /><a href="#network-settings">Paramètres réseau</a> ; un <strong>RPC proxy</strong> corrige le cas CORS.</p>
+<h3 id="the-header-shows-insecure-rpc">L'en-tête affiche « ⚠️ Insecure RPC »</h3>
+<p>Le point d'accès RPC configuré est en <code>http://</code> simple et n'est pas utilisable en l'état. Sélectionnez le<br />badge pour ouvrir le réglage, où la cause exacte et le correctif sont détaillés. Voir<br /><a href="#network-settings">Paramètres réseau</a>.</p>
+<h3 id="the-camera-wont-open-when-i-select-scan">La caméra ne s'ouvre pas quand je sélectionne 📷 Scan</h3>
+<ul>
+<li>Accordez l'autorisation d'accès à la caméra quand le navigateur la demande ; si vous l'avez ignorée,<br />réautorisez-la dans les permissions du site et réessayez.</li>
+<li>L'accès à la caméra nécessite une page sécurisée. Cela fonctionne sur <code>https://</code> et sur <code>localhost</code>, mais pas sur<br />une page en <code>http://</code> simple sur un autre hôte.</li>
+<li>Si une autre application tient la caméra, fermez-la d'abord. Vous pouvez toujours coller l'adresse à la place.</li>
+</ul>
+<h3 id="unlock-with-passkey-isnt-offered">« Unlock with passkey » n'est pas proposé</h3>
+<p>Soit aucune passkey n'est enregistrée dans ce navigateur, soit l'appareil ne peut pas faire ce que le déverrouillage<br />par passkey exige. <strong>Settings → 🔑 Security → Passkey Unlock</strong> le précise. Les passkeys sont propres<br />à chaque appareil et à chaque navigateur, donc celle enregistrée ailleurs n'apparaît pas ici. Le code PIN fonctionne toujours.</p>
+<h3 id="i-forgot-my-pin">J'ai oublié mon code PIN</h3>
+<p>Réinstallez le portefeuille avec votre phrase de récupération et définissez un nouveau code PIN. Sans la phrase,<br />les fonds ne peuvent pas être récupérés — par personne.</p>
+<h3 id="could-not-read-your-saved-wallets-could-not-read-your-accounts">« Could not read your saved wallets » / « Could not read your accounts »</h3>
+<p>Le portefeuille n'a pas pu ouvrir sa base de données locale. Rien n'a été supprimé — c'est presque<br />toujours un autre onglet Orion, ou une fenêtre <strong>Connect</strong> restée ouverte, qui maintient la base de données ouverte.<br />Après une mise à jour, le navigateur ne mettra pas à niveau la base de données tant qu'un ancien onglet y est<br />encore rattaché.</p>
+<p>Fermez les autres onglets et fenêtres Orion, puis sélectionnez <strong>↻ Try again</strong>. Si le message persiste,<br />fermez tous les onglets Orion et rouvrez le portefeuille dans un seul onglet.</p>
+<p>L'écran de déverrouillage distingue les deux états à dessein : <em>No stored wallet found</em> signifie que la base<br />de données est réellement vide, tandis que <em>Could not read your saved wallets</em> signifie que vos comptes sont là mais<br />temporairement inaccessibles. <strong>Ne créez pas un nouveau portefeuille</strong> pendant que vous voyez le second message.</p>
+<h3 id="my-wallet-vanished-after-an-update">Mon portefeuille a disparu après une mise à jour</h3>
+<p>Les données sont migrées automatiquement depuis les anciennes versions au premier lancement. Si vos comptes ont<br />disparu, <strong>ne créez pas un nouveau portefeuille</strong> — cela pourrait écraser les anciennes données. Signalez le<br />problème et restaurez depuis votre phrase de récupération en attendant.</p>
+<h3 id="dapp-says-session-expired">La dApp dit « Session expired »</h3>
+<p>Cela signifie que la session du portefeuille a expiré (30 min d'inactivité / 8 h au maximum). Reconnectez-vous en<br />cliquant sur <strong>Connect</strong> dans la dApp. Les données de votre portefeuille sont conservées — vous devez seulement<br />réapprouver la connexion.</p>
+<hr />
+<h2 id="keeping-your-funds-safe">Protéger vos fonds</h2>
+<p><strong>À faire</strong></p>
+<ul>
+<li>Conservez votre phrase de récupération hors ligne, sur papier, idéalement à plusieurs endroits</li>
+<li>Vérifiez les adresses des destinataires avant d'envoyer</li>
+<li>Vérifiez l'origine affichée dans les invites de connexion des dApps</li>
+<li>Commencez par une petite transaction de test lors d'un premier envoi vers une nouvelle adresse</li>
+<li>Enregistrez les bénéficiaires comme contacts et vérifiez le nom — un nom que vous reconnaissez vaut mieux que de lire du base58</li>
+<li>Utilisez un compte watch-only pour surveiller un stockage à froid, au lieu de déverrouiller le vrai compte</li>
+</ul>
+<p><strong>À ne jamais faire</strong></p>
+<ul>
+<li>Saisir votre phrase de récupération sur un site web. Orion Wallet ne vous la demandera jamais après la configuration</li>
+<li>Stocker la phrase dans une capture d'écran, une note d'un gestionnaire de mots de passe, un disque cloud ou un chat</li>
+<li>Partager votre clé privée ou votre fichier <code>.oct</code></li>
+<li>Utiliser un portefeuille contenant de vrais fonds sur un ordinateur partagé ou non fiable</li>
+</ul>
+<p>Orion Wallet <strong>n'a pas fait l'objet d'un audit indépendant</strong>. Veuillez consulter le<br /><a href="SECURITY.html">document de sécurité</a> avant d'y conserver des valeurs importantes.</p>
+</body>
+</html>

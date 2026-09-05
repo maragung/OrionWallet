@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hướng dẫn người dùng — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="orion-wallet-user-guide">Orion Wallet — Hướng dẫn người dùng</h1>
+<p>Orion Wallet chạy hoàn toàn trong trình duyệt của bạn. Các khóa của bạn được tạo cục bộ, mã hóa<br />bằng mã PIN của bạn và chỉ được lưu trên chính thiết bị của bạn. Không có gì được gửi đến máy chủ.</p>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Mã nguồn, vấn đề (issues) và các bản phát hành.</blockquote>
+<hr />
+<h2 id="contents">Mục lục</h2>
+<ul>
+<li><a href="#getting-started">Bắt đầu</a></li>
+<li><a href="#creating-a-wallet">Tạo một ví</a></li>
+<li><a href="#importing-an-existing-wallet">Nhập một ví hiện có</a></li>
+<li><a href="#everyday-use">Sử dụng hằng ngày</a></li>
+<li><a href="#contacts-address-book">Danh bạ (sổ địa chỉ)</a></li>
+<li><a href="#watch-only-accounts">Tài khoản chỉ xem (watch-only)</a></li>
+<li><a href="#encrypted-balance-fhe">Số dư được mã hóa (FHE)</a></li>
+<li><a href="#stealth-transfers">Chuyển tiền stealth</a></li>
+<li><a href="#connecting-to-a-dapp">Kết nối với một dApp</a></li>
+<li><a href="#locking-and-unlocking">Khóa và mở khóa</a></li>
+<li><a href="#session-expiry">Hết hạn phiên</a></li>
+<li><a href="#network-settings">Cài đặt mạng</a></li>
+<li><a href="#backup-and-recovery">Sao lưu và khôi phục</a></li>
+<li><a href="#troubleshooting">Xử lý sự cố</a></li>
+<li><a href="#keeping-your-funds-safe">Giữ an toàn cho tiền của bạn</a></li>
+</ul>
+<hr />
+<h2 id="getting-started">Bắt đầu</h2>
+<h3 id="requirements">Yêu cầu hệ thống</h3>
+<ul>
+<li>Phiên bản hiện tại của Chrome, Edge, Firefox hoặc Safari</li>
+<li>JavaScript được bật</li>
+<li>Khoảng 4 GB RAM nếu bạn định dùng các tính năng số dư được mã hóa</li>
+</ul>
+<h3 id="running-it">Chạy ví</h3>
+<p>Dùng một bản triển khai được lưu trữ sẵn (hosted), hoặc chạy cục bộ:</p>
+<pre><code class="language-bash">npm install --legacy-peer-deps
+npm run dev</code></pre>
+<p>Sau đó mở &lt;http://localhost:5173&gt;.</p>
+<hr />
+<h2 id="creating-a-wallet">Tạo một ví</h2>
+<ol>
+<li>Chọn <strong>Create New Wallet</strong>, đặt tên cho tài khoản và chọn một mã PIN. Mã PIN dùng để mã hóa ví trên thiết bị này.</li>
+<li><strong>Hãy ghi lại cụm từ khôi phục của bạn.</strong> Bạn sẽ được hiển thị 12 từ. Hãy chép chúng ra giấy theo đúng thứ tự đã cho.</li>
+<li>Chọn <strong>I've Written It Down</strong>. Ví sẽ yêu cầu bạn gõ lại <strong>3 từ</strong>, được chọn ngẫu nhiên, để chứng minh rằng cụm từ đã thực sự rời khỏi màn hình. <strong>Show Phrase Again</strong><br />sẽ hiện lại cụm từ nếu bạn cần xem lại; trả lời sai chỉ khiến bạn thử lại.</li>
+<li>Khi các từ được xác minh khớp, ví sẽ mở ra.</li>
+</ol>
+<blockquote><strong>Việc tạo ví không tự mở ví — vượt qua bài kiểm tra từ mới mở ví.</strong> Cho đến lúc đó bạn<br />vẫn có thể rời đi mà không mất gì, vì cụm từ vẫn chưa được dựa vào.</blockquote>
+<blockquote><strong>Cụm từ khôi phục là cách duy nhất để khôi phục ví của bạn.</strong> Bất kỳ ai có được nó<br />đều kiểm soát tiền của bạn. Hãy lưu trữ nó ngoại tuyến. Không bao giờ chụp ảnh nó, gõ nó vào<br />một trang web hoặc dán nó vào cuộc trò chuyện hay email.</blockquote>
+<h3 id="pin-versus-recovery-phrase">Mã PIN so với cụm từ khôi phục</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>Cụm từ khôi phục</th><th>Mã PIN</th></tr></thead>
+<tbody>
+<tr><td>Mục đích</td><td>Khôi phục ví của bạn ở bất kỳ đâu</td><td>Chỉ mở khóa ví trên thiết bị này</td></tr>
+<tr><td>Nếu bị mất</td><td>Tiền không thể khôi phục</td><td>Khôi phục từ cụm từ khôi phục</td></tr>
+<tr><td>Nơi lưu trữ</td><td>Ngoại tuyến, do bạn giữ</td><td>Không bao giờ được lưu — chỉ mình bạn biết</td></tr>
+</tbody>
+</table>
+</div>
+<hr />
+<h2 id="importing-an-existing-wallet">Nhập một ví hiện có</h2>
+<p>Chọn <strong>Import</strong> và chọn một trong các tùy chọn sau:</p>
+<ul>
+<li><strong>Recovery phrase</strong> — nhập 12/24 từ của bạn</li>
+<li><strong>Private key</strong> — dán một khóa riêng tư dạng base64</li>
+<li><strong>Wallet file</strong> — tải lên một tệp <code>.oct</code> đã mã hóa và nhập mã PIN của tệp đó</li>
+</ul>
+<hr />
+<h2 id="everyday-use">Sử dụng hằng ngày</h2>
+<h3 id="checking-your-balance">Kiểm tra số dư</h3>
+<p>Tab <strong>Balance</strong> hiển thị số dư công khai của bạn và, nếu PVAC được bật, cả số dư được mã hóa của bạn.</p>
+<h3 id="receiving">Nhận tiền</h3>
+<p>Mở <strong>Receive</strong> để hiển thị địa chỉ và mã QR của bạn. Địa chỉ của bạn là công khai và an toàn<br />khi chia sẻ.</p>
+<p>Bạn cũng có thể <strong>yêu cầu một số tiền cụ thể</strong>. Mã QR khi đó mang theo số tiền cùng với<br />địa chỉ (dưới dạng <code>octra:&lt;address&gt;?amount=&lt;OCT&gt;</code>), nên một ví quét mã sẽ điền sẵn cả hai.<br />Nếu không yêu cầu số tiền, mã chỉ còn là một địa chỉ trần mà bất kỳ máy quét nào cũng đọc được.</p>
+<h3 id="sending">Gửi tiền</h3>
+<ol>
+<li>Mở <strong>Send</strong>.</li>
+<li>Chọn cách cung cấp người nhận mà bạn thấy phù hợp:
+<ul>
+<li>Dán địa chỉ (địa chỉ bắt đầu bằng <code>oct</code>).</li>
+<li>Chọn một tên đã lưu từ <strong>📇 Contacts…</strong>.</li>
+<li>Chọn <strong>📷 Scan</strong> để đọc mã QR bằng camera của bạn. Lần đầu tiên trình duyệt sẽ xin phép truy cập camera; hình ảnh được xử lý ngay trong trang và không bao giờ được tải lên.<br />Quét một mã có kèm số tiền cũng sẽ tự động điền số tiền đó.</li>
+</ul>
+</li>
+<li>Nhập số tiền.</li>
+<li>Xem lại phí và nonce, sau đó xác nhận bằng mã PIN của bạn.</li>
+</ol>
+<p>Khi địa chỉ khớp với một danh bạ đã lưu, biểu mẫu hiển thị tên bên cạnh nó — một cái tên bạn nhận ra là cách kiểm tra tốt hơn nhiều so với một chuỗi base58. Với một địa chỉ mới, <strong>＋ Save to contacts</strong> sẽ lưu nó dưới một nhãn bạn chọn, để lần thanh toán tiếp theo chỉ là một cú chọn chứ không phải một lần dán.</p>
+<p>Luôn kiểm tra ký tự đầu tiên và cuối cùng của địa chỉ người nhận trước khi xác nhận.<br />Các giao dịch không thể bị hoàn tác.</p>
+<h3 id="history">Lịch sử giao dịch</h3>
+<p><strong>History</strong> liệt kê các giao dịch gần đây. Khi mạng không truy cập được, các mục trong bộ nhớ đệm được hiển thị và được đánh dấu <code>⚠ Cached</code>.</p>
+<p><strong>⤓</strong> xuất bảng sang một tệp CSV (thời gian, hash, loại, từ, đến, hướng, số tiền, phí, trạng thái) để dùng trong bảng tính hoặc cho hồ sơ riêng của bạn. Nó xuất <strong>các hàng hiện đang được tải</strong> — thấy gì được nấy — nên hãy dùng <strong>Load more</strong> trước nếu bạn muốn phạm vi dài hơn. Tệp được trình duyệt của bạn ghi vào thư mục tải xuống; không có gì được gửi đi bất kỳ đâu.</p>
+<hr />
+<h2 id="contacts-address-book">Danh bạ (sổ địa chỉ)</h2>
+<p><strong>Settings → 📇 Contacts</strong> lưu giữ một danh sách các địa chỉ dưới những cái tên bạn chọn. Mỗi mục có một địa chỉ, một cái tên và một ghi chú tùy chọn — một nơi tốt để ghi "memo required" hoặc sàn giao dịch mà một địa chỉ nhận tiền thuộc về.</p>
+<p>Tại sao nên dùng: một địa chỉ bạn không đọc được là một địa chỉ bạn không kiểm tra được. Một khi người nhận được lưu, biểu mẫu Send sẽ đề xuất họ theo tên và gắn nhãn địa chỉ khi bạn dán lại, nên một địa chỉ bị đổi hoặc bị cắt xén sẽ nổi bật thay vì trà trộn.</p>
+<ul>
+<li><strong>Add</strong> một mục ở đây, hoặc dùng <strong>＋ Save to contacts</strong> ngay từ biểu mẫu Send.</li>
+<li><strong>✎</strong> đổi tên một mục, <strong>🗑</strong> xóa mục đó. Xóa một danh bạ không ảnh hưởng gì đến on-chain.</li>
+<li><strong>⤓</strong> xuất danh sách dưới dạng CSV để lưu cùng các hồ sơ khác của bạn hoặc chuyển sang một trình duyệt khác.</li>
+</ul>
+<p>Danh bạ chỉ tồn tại trong trình duyệt này, cùng với phần còn lại của dữ liệu ví của bạn. Chúng không được tải lên và sẽ bị xóa cùng mọi thứ khác nếu bạn xóa ví.</p>
+<hr />
+<h2 id="watch-only-accounts">Tài khoản chỉ xem (watch-only)</h2>
+<p>Tài khoản chỉ xem theo dõi một địa chỉ mà bạn <strong>không</strong> nắm giữ khóa — kho lạnh, một ví phần cứng, một địa chỉ nhận tiền của sàn giao dịch, hay địa chỉ của người khác mà bạn để mắt tới.</p>
+<p>Thêm một tài khoản tại <strong>Settings → 👥 Accounts → 👁 Watch Address</strong>: dán địa chỉ, đặt tên cho nó, và nó sẽ tham gia danh sách tài khoản của bạn.</p>
+<p>Những gì nó làm được: hiển thị số dư, liệt kê lịch sử, xuất CSV và được chuyển tới mà không cần mã PIN — không có kho khóa nào để giải mã, nên không có gì để mở khóa.</p>
+<p>Những gì nó không làm được: <strong>không ký được bất cứ thứ gì.</strong> Send, mã hóa/giải mã, chuyển tiền stealth, gọi hợp đồng và các yêu cầu ký từ dApp đều từ chối, và biểu mẫu Send nói rõ điều đó trước khi bạn điền vào chứ không phải sau đó. Các tài khoản chỉ xem được đánh dấu 👁 trong danh sách tài khoản và trên thanh tiêu đề, để bạn luôn biết mình đang nhìn vào loại nào.</p>
+<p>Để biến một tài khoản chỉ xem thành một tài khoản thật, hãy nhập cụm từ khôi phục hoặc khóa riêng tư cho địa chỉ đó. Thêm khóa là cách duy nhất; không có đường tắt.</p>
+<hr />
+<h2 id="encrypted-balance-fhe">Số dư được mã hóa (FHE)</h2>
+<p>Orion Wallet có thể giữ một phần số dư của bạn được mã hóa bằng mã hóa đồng cấu hoàn toàn (fully homomorphic encryption), để số tiền không hiển thị công khai trên chuỗi.</p>
+<p>Đây là tùy chọn. Mọi thứ khác vẫn hoạt động dù tính năng này có được bật hay không.</p>
+<h3 id="enabling-it">Bật tính năng</h3>
+<p>Đi tới <strong>Settings → PVAC</strong>. Cả hai chỉ báo phải cùng xanh:</p>
+<ul>
+<li><strong>WASM Module</strong> — mô-đun mật mã đã được tải</li>
+<li><strong>Bridge Initialized</strong> — nó đã được tạo khóa từ seed ví của bạn</li>
+</ul>
+<p>Nếu một trong hai chưa sẵn sàng, bảng điều khiển sẽ giải thích chính xác nguyên nhân và cách khắc phục.</p>
+<h3 id="encrypting-and-decrypting">Mã hóa và giải mã</h3>
+<p>Dùng <strong>Encrypt</strong> để di chuyển tiền giữa số dư công khai và số dư được mã hóa của bạn. Các thao tác này nặng về tính toán và có thể mất vài giây; một hộp thoại tiến trình sẽ hiển thị từng giai đoạn.</p>
+<hr />
+<h2 id="stealth-transfers">Chuyển tiền stealth</h2>
+<p>Chuyển tiền stealth gửi tiền tới một địa chỉ dùng một lần được dẫn xuất từ khóa công khai của người nhận, nên khoản thanh toán không thể bị liên kết công khai với địa chỉ chính của họ.</p>
+<p>Mở <strong>Stealth</strong>, nhập người nhận và số tiền, rồi xác nhận. Người nhận sẽ nhận tiền từ tab Stealth của chính họ.</p>
+<hr />
+<h2 id="connecting-to-a-dapp">Kết nối với một dApp</h2>
+<p>Khi một trang web yêu cầu kết nối, một popup xuất hiện hiển thị origin đang yêu cầu.</p>
+<p>Trước khi phê duyệt:</p>
+<ul>
+<li><strong>Hãy kiểm tra origin thật kỹ càng.</strong> Xác nhận tên miền đúng là trang bạn định truy cập.</li>
+<li>Chỉ phê duyệt những quyền bạn mong đợi.</li>
+<li>"Trust this site" bỏ qua các lời nhắc trong tương lai cho những yêu cầu chỉ đọc — hãy dùng nó một cách hạn chế.</li>
+<li>Kiểm tra bộ chọn <strong>network</strong> trong popup. Nó liệt kê mọi mạng bạn có, kể cả những mạng bạn tự thêm, để bạn có thể kết nối đúng mạng mà không cần rời khỏi popup.</li>
+</ul>
+<p>Xem lại và thu hồi các kết nối bất cứ lúc nào tại <strong>Settings → Connected Sites</strong>.</p>
+<hr />
+<h2 id="locking-and-unlocking">Khóa và mở khóa</h2>
+<p>Mã PIN của bạn giải mã ví. Các khóa đã giải mã sau đó vẫn sẵn sàng cho đến khi phiên mở khóa kết thúc — bạn không bị hỏi lại mã PIN cho đến lúc đó.</p>
+<ul>
+<li><strong>Làm mới trang giúp bạn vẫn ở trạng thái mở khóa.</strong> Các khóa được niêm phong lại cho tab trình duyệt bạn đang ở, nên một lần tải lại sẽ nối lại phiên thay vì đưa bạn trở về màn hình PIN. Bạn sẽ thấy thoáng qua dòng chữ "Restoring your session…" trong lúc đó.</li>
+<li><strong>Đóng tab sẽ kết thúc phiên.</strong> Bản sao được niêm phong chỉ gắn với một tab đó và biến mất cùng với nó, nên một tab hoặc cửa sổ mới sẽ bắt đầu ở trạng thái khóa.</li>
+<li><strong>🔒 trên thanh tiêu đề khóa ngay lập tức</strong> và hủy bản sao được niêm phong — tải lại sau khi khóa sẽ yêu cầu mã PIN, đúng như mong đợi.</li>
+<li><strong>Không hoạt động sẽ khóa ví</strong> sau 30 phút theo mặc định, và một lần mở khóa không bao giờ được duy trì quá 8 giờ bất kể có hoạt động hay không.</li>
+</ul>
+<p>Không phần nào của phiên được niêm phong tự nó dùng được một mình: các khóa đã mã hóa do tab giữ, còn khóa mở chúng được trình duyệt giữ dưới một dạng mà không trang nào — kể cả trang này — có thể đọc ngược ra được.</p>
+<p>Tại <strong>Settings → Security → Session &amp; Auto-Lock</strong>:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Cài đặt</th><th>Mặc định</th><th>Tác dụng</th></tr></thead>
+<tbody>
+<tr><td>Stay unlocked after a page refresh</td><td>On</td><td>Tắt đi để yêu cầu mã PIN ở mỗi lần tải lại</td></tr>
+<tr><td>Auto-lock after inactivity</td><td>30 minutes</td><td>5 / 15 / 30 / 60 phút, hoặc không bao giờ (cho đến khi tab đóng)</td></tr>
+</tbody>
+</table>
+</div>
+<p>Cả hai đều áp dụng cùng lúc, kể cả với phiên bạn đang mở. Trên một máy tính dùng chung hoặc không đáng tin cậy, hãy tắt tùy chọn đầu tiên và khóa ví khi bạn rời khỏi máy.</p>
+<h3 id="unlocking-with-a-passkey">Mở khóa bằng passkey</h3>
+<p>Nếu thiết bị của bạn có đầu đọc vân tay, Face ID, Windows Hello hoặc một khóa bảo mật, bạn có thể mở khóa bằng thứ đó thay vì gõ mã PIN.</p>
+<p>Bật tính năng này tại <strong>Settings → 🔑 Security → Passkey Unlock → Enable passkey unlock</strong>. Thiết bị của bạn sẽ nhắc bạn đăng ký — nó có thể nhắc <strong>hai lần</strong>, một lần để tạo passkey và một lần để dùng nó. Màn hình mở khóa sau đó đưa ra tùy chọn <strong>👆 Unlock with passkey</strong> phía trên ô nhập PIN.</p>
+<p>Điều đáng biết:</p>
+<ul>
+<li><strong>Mã PIN vẫn tồn tại và vẫn quan trọng.</strong> Passkey mở ví; nó không thay thế mã PIN. Xuất khóa, tiết lộ cụm từ khôi phục, đổi mã PIN và dẫn xuất các tài khoản mới đều vẫn yêu cầu mã PIN. Hãy giữ mã PIN — mất mã PIN không thể được khắc phục bằng việc có một passkey.</li>
+<li><strong>Nó gắn với thiết bị này và trình duyệt này.</strong> Passkey không đi cùng dữ liệu ví của bạn. Trên một thiết bị khác, hãy mở khóa bằng mã PIN và đăng ký một passkey ở đó nếu bạn muốn.</li>
+<li><strong>Vân tay của bạn không bao giờ đến được ví.</strong> Thiết bị xác minh bạn cục bộ và trao cho trang một bí mật được dẫn xuất từ passkey; bí mật đó là thứ mở ví.</li>
+<li><strong>Khả dụng tùy thuộc vào thiết bị và trình duyệt của bạn.</strong> Nếu thiết bị của bạn không làm được điều tính năng này cần, bảng Security sẽ nói rõ và tùy chọn vẫn ở trạng thái tắt — mã PIN vẫn hoạt động y như trước.</li>
+<li><strong>Tắt passkey unlock</strong> trong cùng bảng điều khiển đó. Thao tác này xóa bản sao đã lưu ngay lập tức; nó không xóa passkey khỏi thiết bị của bạn, thứ bạn có thể gỡ trong cài đặt hệ điều hành hoặc trình duyệt.</li>
+</ul>
+<p>Nếu một passkey không còn mở được ví nữa — một thông tin xác thực đã xoay vòng hoặc được đăng ký lại, hoặc một thiết bị được khôi phục — ví sẽ nói rõ, loại bỏ bản sao cũ và yêu cầu mã PIN. Không có gì bị mất; bạn có thể đăng ký một passkey mới sau đó.</p>
+<p>Không thể đăng ký passkey unlock khi đang có một tài khoản chỉ xem hoạt động — nó không nắm giữ khóa, nên không có gì để passkey niêm phong. Bảng Security nói rõ điều đó thay cho nút bấm.</p>
+<hr />
+<h2 id="session-expiry">Hết hạn phiên</h2>
+<p>Các khung thời gian tương tự chi phối các kết nối dApp, vốn tự động hết hạn:</p>
+<ul>
+<li><strong>Hết giờ không hoạt động:</strong> 30 phút không hoạt động</li>
+<li><strong>Hết giờ tuyệt đối:</strong> 8 giờ kể từ lúc kết nối</li>
+</ul>
+<p>Khi một phiên hết hạn, ví đóng kết nối và dApp được thông báo. dApp sau đó sẽ nhắc bạn kết nối lại.</p>
+<h3 id="what-happens-when-your-session-expires">Điều gì xảy ra khi phiên của bạn hết hạn</h3>
+<ol>
+<li>Ví phát ra một sự kiện <code>sessionExpired</code> tới dApp.</li>
+<li>dApp phát hiện phiên đã hết hạn và hiển thị lời nhắc "Reconnect".</li>
+<li>Bạn bấm <strong>Connect</strong> để mở lại popup của ví.</li>
+<li>Ví khôi phục phiên của bạn và dApp tiếp tục hoạt động.</li>
+</ol>
+<h3 id="if-a-dapp-doesnt-reconnect-automatically">Nếu một dApp không tự động kết nối lại</h3>
+<ul>
+<li>Bấm nút <strong>Connect</strong> trong dApp.</li>
+<li>Popup của ví mở ra — hãy phê duyệt kết nối.</li>
+<li>Dữ liệu phiên trước của bạn được giữ nguyên, nên bạn không cần nhập lại ví của mình.</li>
+</ul>
+<hr />
+<h2 id="network-settings">Cài đặt mạng</h2>
+<p><strong>Settings → ⚙️ General</strong> chứa RPC URL mà ví giao tiếp, explorer mà ví liên kết ra ngoài và một proxy tùy chọn. Thay đổi RPC URL và chọn <strong>Save URLs</strong> để trỏ ví tới một node khác.</p>
+<h3 id="adding-your-own-network">Thêm mạng của riêng bạn</h3>
+<p>Devnet và Mainnet được đóng sẵn trong ví. Để thêm một mạng khác — node của riêng bạn, một nhánh devnet, một dịch vụ RPC trả phí — hãy cuộn tới <strong>Custom Networks</strong> trong cùng bảng điều khiển và điền vào:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Trường</th><th>Bắt buộc</th><th>Ghi chú</th></tr></thead>
+<tbody>
+<tr><td>Network name</td><td>có</td><td>Hiển thị ở mọi nơi mạng xuất hiện, kể cả cho các dApp</td></tr>
+<tr><td>RPC URL</td><td>có</td><td><code>http://</code> hoặc <code>https://</code></td></tr>
+<tr><td>Explorer URL</td><td>không</td><td>Mặc định là RPC URL</td></tr>
+<tr><td>Relayer URL</td><td>không</td><td>Chỉ cần cho chuyển tiền stealth</td></tr>
+</tbody>
+</table>
+</div>
+<p>Chọn <strong>Add network</strong> và nó sẽ tham gia danh sách. Từ đó về sau, nó là một lựa chọn bình thường:</p>
+<ul>
+<li>viên mạng (<strong>network pill</strong>) trên thanh trên cùng sẽ chuyển sang nó như bất kỳ lựa chọn cài sẵn nào,</li>
+<li>popup kết nối liệt kê nó khi một trang web xin kết nối, được đánh dấu <em>(custom)</em>,</li>
+<li>và một dApp đã kết nối có thể đọc tên và explorer của nó để gắn nhãn mọi thứ cho đúng.</li>
+</ul>
+<p>Chuyển mạng sẽ cập nhật cả ba điểm cuối cùng lúc — RPC, explorer và relayer — nên ví không bao giờ rơi vào trạng thái đọc một mạng trong khi liên kết đến một mạng khác.</p>
+<p>Gỡ một mạng bằng nút ✕ bên cạnh nó. Nếu bạn xóa mạng đang dùng, ví sẽ quay về một mạng cài sẵn.</p>
+<p><strong>Những gì một dApp thấy được.</strong> Các trang web bạn kết nối có thể đọc được tên, biểu tượng, explorer URL của một mạng tùy chỉnh và việc bạn đã thêm nó. Chúng <strong>không thể</strong> đọc RPC hoặc relayer URL của mạng — địa chỉ node nhà hoặc khóa nhà cung cấp vẫn nằm trong ví. Vì tên có thể hiển thị được, hãy tránh đặt tên mạng theo một thứ gì đó mang tính cá nhân.</p>
+<h3 id="nodes-without-https">Node không có HTTPS</h3>
+<p>Một node <code>https://</code> không cần xử lý đặc biệt nào. Một node chỉ truy cập được qua <code>http://</code> trần lại là chuyện khác, vì mọi thứ ví hỏi nó — mỗi lần tra cứu số dư và lịch sử, mỗi giao dịch nó gửi đi — đều di chuyển ở dạng văn bản rõ, nơi bất kỳ ai trên đường truyền đều có thể đọc được <em>và thay đổi câu trả lời</em>. Vì vậy ví sẽ hỏi trước.</p>
+<ul>
+<li><strong>Loopback không cần xin phép.</strong> <code>localhost</code>, <code>127.0.0.1</code>, <code>[::1]</code> và những địa chỉ tương tự không bao giờ rời khỏi máy của bạn, nên một node cục bộ hoạt động ngay lập tức.</li>
+<li><strong>Bất kỳ địa chỉ <code>http://</code> nào khác phải được tin tưởng một cách tường minh.</strong> Dán URL vào và bảng điều khiển sẽ giải thích điều gì đang bị đặt cược, kèm một nút <strong>Trust <code>http://…</code></strong> bên cạnh. Sự tin tưởng được lưu theo từng origin (scheme, host và port), nên tin một node không đồng nghĩa với tin một node khác, và một port khác trên cùng một host là một quyết định riêng biệt.</li>
+<li><strong>Trusted plaintext endpoints</strong> liệt kê những gì bạn đã tin tưởng, kèm <strong>Remove</strong> để gỡ lại.</li>
+</ul>
+<p>Có hai giới hạn không nằm trong quyền gỡ bỏ của chúng tôi, và bảng điều khiển sẽ nêu tên giới hạn nào đang chặn đường:</p>
+<ul>
+<li><strong>Một ví được phục vụ qua <code>https://</code> hoàn toàn không thể tải <code>http://</code>.</strong> Trình duyệt chặn điều đó (gọi là mixed content), và tin tưởng origin sẽ không thay đổi được điều đó. Hãy đặt node sau TLS, dùng một proxy, hoặc mở ví từ một bản build plain-http hoặc localhost.</li>
+<li><strong>Bản build được phát hành chỉ cho phép <code>https://</code> và loopback.</strong> Chính sách bảo mật của nó được cố định tại thời điểm build và không thể nới rộng khi đang chạy. Những người tự lưu trữ cần plain http có thể build với <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code>; danh sách tin tưởng ở trên vẫn được áp dụng thêm lên trên.</li>
+</ul>
+<p>Explorer URL được miễn trừ khỏi tất cả những điều này — nó chỉ luôn là một liên kết bạn bấm, chứ không phải thứ ví tải về.</p>
+<h3 id="rpc-proxy">RPC proxy</h3>
+<p><strong>RPC proxy (optional)</strong> định tuyến các lời gọi qua một URL bạn chọn: RPC URL được nối thêm vào nó, mã hóa percent-encoded, và trình duyệt chỉ kết nối tới proxy. Đây là cách khắc phục thực tế cho một node không có TLS hoặc không có header CORS, và nó thỏa mãn các quy tắc ở trên vì kết nối mà trình duyệt tạo ra là tới proxy.</p>
+<p>Proxy nhìn thấy mọi yêu cầu ví thực hiện, nên hãy <strong>tự chạy proxy của riêng bạn</strong>. Nó không thể ký bất cứ thứ gì hoặc chạm tới khóa của bạn, nhưng nó có thể quan sát và nó có thể nói dối.</p>
+<h3 id="when-something-is-off">Khi có gì đó trục trặc</h3>
+<p>Nếu điểm cuối RPC không thể dùng được như đang cấu hình, <strong>⚠️ Insecure RPC</strong> sẽ xuất hiện trên thanh tiêu đề; chọn nó để nhảy thẳng tới cài đặt. Các lỗi mạng cũng mang theo lý do, nên một thông báo "Failed to fetch" trần trụi sẽ cho bạn biết cần sửa gì.</p>
+<hr />
+<h2 id="backup-and-recovery">Sao lưu và khôi phục</h2>
+<h3 id="exporting">Xuất dữ liệu</h3>
+<p><strong>Settings → Backup → Export</strong> tải về một tệp <code>.oct</code> đã mã hóa. Tệp này được bảo vệ bằng mã PIN của bạn, nhưng hãy coi nó là dữ liệu nhạy cảm.</p>
+<h3 id="restoring">Khôi phục</h3>
+<p>Dùng <strong>Import → Wallet file</strong> và cung cấp mã PIN đang dùng khi tệp được xuất ra.</p>
+<h3 id="multiple-accounts">Nhiều tài khoản</h3>
+<p><strong>Settings → Accounts</strong> dẫn xuất các tài khoản bổ sung từ cùng một cụm từ khôi phục. Một cụm từ khôi phục tất cả chúng.</p>
+<p>Có hai thứ mà cụm từ <strong>không</strong> khôi phục, vì chúng chưa bao giờ được dẫn xuất từ nó:</p>
+<ul>
+<li><strong>Các tài khoản chỉ xem (Watch-only)</strong> — chúng chỉ là những địa chỉ bạn nhờ ví theo dõi. Hãy ghi chú riêng nếu bạn muốn có chúng trở lại sau khi cài đặt lại.</li>
+<li><strong>Danh bạ (Contacts)</strong> — hãy xuất chúng bằng <strong>⤓</strong> trong Settings → Contacts nếu chúng quan trọng với bạn.</li>
+</ul>
+<p>Cả hai đều không giữ tiền, nên mất chúng chỉ khiến bạn mất sự tiện lợi, chứ không phải mất tiền.</p>
+<hr />
+<h2 id="troubleshooting">Xử lý sự cố</h2>
+<h3 id="the-page-is-blank-or-stuck-loading">Trang trắng hoặc bị kẹt khi tải</h3>
+<p>Hãy tải lại trang. Nếu vẫn tiếp diễn, một thẻ lỗi kèm nút <strong>Retry</strong> sẽ xuất hiện. Hãy báo cáo thông báo hiển thị ở đó.</p>
+<h3 id="encrypted-balance-is-unavailable">Số dư được mã hóa không khả dụng</h3>
+<p>Settings → PVAC hiển thị một trong các trạng thái sau:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Thông báo</th><th>Ý nghĩa</th><th>Cách khắc phục</th></tr></thead>
+<tbody>
+<tr><td><em>The WASM module has not been compiled</em></td><td><code>pvac.js</code> không được phục vụ</td><td>Chạy <code>npm run build:wasm</code></td></tr>
+<tr><td><em>Content-Security-Policy is blocking WebAssembly</em></td><td>CSP thiếu <code>'wasm-unsafe-eval'</code></td><td>Thêm nó vào <code>script-src</code> trong <code>index.html</code></td></tr>
+<tr><td><em>The compiled module is out of date</em></td><td>Bản build có trước các hàm được yêu cầu</td><td>Build lại bằng <code>npm run build:wasm</code></td></tr>
+<tr><td><em>FHE key generation failed</em></td><td>Mô-đun đã tải nhưng việc tạo khóa thất bại</td><td>Kiểm tra console của trình duyệt và báo cáo nó</td></tr>
+</tbody>
+</table>
+</div>
+<p>Nhấn <strong>↻ Reload PVAC</strong> sau khi áp dụng một bản sửa — không cần khởi động lại.</p>
+<h3 id="failed-to-load-history-network-errors">"Failed to load history" / lỗi mạng</h3>
+<p>Thường là node RPC không truy cập được hoặc đang chặn CORS. Hãy kiểm tra RPC URL trong <strong>Settings</strong>, và xem <a href="../README.html#cors">ghi chú CORS</a>. Nếu lỗi nêu ra một lý do — plaintext, mixed content hoặc một hạn chế của bản build — hãy xem <a href="#network-settings">Cài đặt mạng</a>; một <strong>RPC proxy</strong> sẽ khắc phục trường hợp CORS.</p>
+<h3 id="the-header-shows-insecure-rpc">Thanh tiêu đề hiển thị "⚠️ Insecure RPC"</h3>
+<p>Điểm cuối RPC đang cấu hình là <code>http://</code> trần và không dùng được như hiện tại. Chọn huy hiệu để mở cài đặt, nơi nguyên nhân chính xác và cách khắc phục được nêu rõ. Xem <a href="#network-settings">Cài đặt mạng</a>.</p>
+<h3 id="the-camera-wont-open-when-i-select-scan">Camera không mở khi tôi chọn 📷 Scan</h3>
+<ul>
+<li>Cấp quyền camera khi trình duyệt hỏi; nếu bạn đã bỏ qua lời nhắc, hãy cho phép lại trong phần quyền của trang web và thử lại.</li>
+<li>Truy cập camera cần một trang bảo mật. Nó hoạt động trên <code>https://</code> và trên <code>localhost</code>, nhưng không hoạt động trên một trang <code>http://</code> trần ở một host khác.</li>
+<li>Nếu một ứng dụng khác đang giữ camera, hãy đóng nó trước. Bạn luôn có thể dán địa chỉ vào để thay thế.</li>
+</ul>
+<h3 id="unlock-with-passkey-isnt-offered">"Unlock with passkey" không được đưa ra</h3>
+<p>Hoặc là chưa có passkey nào được đăng ký trong trình duyệt này, hoặc thiết bị không làm được điều mà passkey unlock yêu cầu. <strong>Settings → 🔑 Security → Passkey Unlock</strong> sẽ cho biết là trường hợp nào. Passkey thuộc về từng thiết bị và từng trình duyệt, nên một passkey đã đăng ký ở nơi khác sẽ không xuất hiện ở đây. Mã PIN luôn hoạt động.</p>
+<h3 id="i-forgot-my-pin">Tôi quên mã PIN</h3>
+<p>Cài đặt lại ví bằng cụm từ khôi phục của bạn và đặt một mã PIN mới. Không có cụm từ, số tiền không thể được khôi phục — bởi bất kỳ ai.</p>
+<h3 id="could-not-read-your-saved-wallets-could-not-read-your-accounts">"Could not read your saved wallets" / "Could not read your accounts"</h3>
+<p>Ví không thể mở cơ sở dữ liệu cục bộ của nó. Không có gì bị xóa — điều này gần như luôn do một tab Orion khác, hoặc một popup <strong>Connect</strong> còn sót lại, vẫn đang giữ cơ sở dữ liệu ở trạng thái mở. Sau một bản cập nhật, trình duyệt sẽ không nâng cấp cơ sở dữ liệu trong khi một tab cũ hơn vẫn còn gắn với nó.</p>
+<p>Hãy đóng các tab và popup Orion khác, sau đó chọn <strong>↻ Try again</strong>. Nếu thông báo vẫn còn, hãy đóng mọi tab Orion và mở lại ví trong một tab duy nhất.</p>
+<p>Màn hình mở khóa cố ý phân biệt hai trạng thái: <em>No stored wallet found</em> nghĩa là cơ sở dữ liệu thực sự trống, còn <em>Could not read your saved wallets</em> nghĩa là các tài khoản của bạn vẫn ở đó nhưng tạm thời không truy cập được. <strong>Đừng tạo một ví mới</strong> trong khi bạn đang thấy thông báo thứ hai.</p>
+<h3 id="my-wallet-vanished-after-an-update">Ví của tôi biến mất sau một bản cập nhật</h3>
+<p>Dữ liệu được di trú tự động từ các bản build cũ hơn ở lần khởi động đầu tiên. Nếu các tài khoản của bạn bị thiếu, <strong>đừng tạo một ví mới</strong> — điều đó có thể ghi đè dữ liệu cũ. Hãy báo cáo vấn đề và khôi phục từ cụm từ khôi phục của bạn trong lúc chờ đợi.</p>
+<h3 id="dapp-says-session-expired">dApp báo "Session expired"</h3>
+<p>Điều này nghĩa là phiên ví đã hết thời gian (30 phút không hoạt động / 8 giờ tuyệt đối). Kết nối lại bằng cách bấm <strong>Connect</strong> trong dApp. Dữ liệu ví của bạn được giữ nguyên — bạn chỉ cần phê duyệt lại kết nối.</p>
+<hr />
+<h2 id="keeping-your-funds-safe">Giữ an toàn cho tiền của bạn</h2>
+<p><strong>Nên</strong></p>
+<ul>
+<li>Giữ cụm từ khôi phục ngoại tuyến, trên giấy, lý tưởng là ở nhiều hơn một nơi</li>
+<li>Xác minh địa chỉ người nhận trước khi gửi</li>
+<li>Xác minh origin hiển thị trong các lời nhắc kết nối dApp</li>
+<li>Bắt đầu bằng một giao dịch thử nhỏ khi gửi tới một địa chỉ mới</li>
+<li>Lưu người nhận thành danh bạ và kiểm tra tên — một cái tên bạn nhận ra tốt hơn việc đọc base58</li>
+<li>Dùng một tài khoản chỉ xem để theo dõi kho lạnh, thay vì mở khóa tài khoản thật</li>
+</ul>
+<p><strong>Không bao giờ</strong></p>
+<ul>
+<li>Nhập cụm từ khôi phục của bạn trên bất kỳ trang web nào. Orion Wallet sẽ không bao giờ hỏi nó sau khi thiết lập</li>
+<li>Lưu cụm từ trong ảnh chụp màn hình, ghi chú của trình quản lý mật khẩu, ổ đám mây hoặc cuộc trò chuyện</li>
+<li>Chia sẻ khóa riêng tư hoặc tệp <code>.oct</code> của bạn</li>
+<li>Dùng một ví chứa tiền thật trên một máy tính dùng chung hoặc không đáng tin cậy</li>
+</ul>
+<p>Orion Wallet <strong>chưa được kiểm toán độc lập</strong>. Vui lòng xem <a href="SECURITY.html">tài liệu Bảo mật</a> trước khi lưu trữ giá trị lớn.</p>
+</body>
+</html>

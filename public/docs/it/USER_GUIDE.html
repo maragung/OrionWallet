@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guida per l'utente — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="orion-wallet-user-guide">Orion Wallet — Guida per l'utente</h1>
+<p>Orion Wallet funziona interamente nel tuo browser. Le tue chiavi vengono generate localmente, cifrate<br />con il tuo PIN e conservate solo sul tuo dispositivo. Nulla viene inviato a un server.</p>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Codice sorgente, issue e release.</blockquote>
+<hr />
+<h2 id="contents">Contenuti</h2>
+<ul>
+<li><a href="#getting-started">Per iniziare</a></li>
+<li><a href="#creating-a-wallet">Creare un wallet</a></li>
+<li><a href="#importing-an-existing-wallet">Importare un wallet esistente</a></li>
+<li><a href="#everyday-use">Uso quotidiano</a></li>
+<li><a href="#contacts-address-book">Contatti (rubrica)</a></li>
+<li><a href="#watch-only-accounts">Account watch-only</a></li>
+<li><a href="#encrypted-balance-fhe">Saldo cifrato (FHE)</a></li>
+<li><a href="#stealth-transfers">Trasferimenti stealth</a></li>
+<li><a href="#connecting-to-a-dapp">Collegamento a una dApp</a></li>
+<li><a href="#locking-and-unlocking">Blocco e sblocco</a></li>
+<li><a href="#session-expiry">Scadenza della sessione</a></li>
+<li><a href="#network-settings">Impostazioni di rete</a></li>
+<li><a href="#backup-and-recovery">Backup e ripristino</a></li>
+<li><a href="#troubleshooting">Risoluzione dei problemi</a></li>
+<li><a href="#keeping-your-funds-safe">Tenere al sicuro i tuoi fondi</a></li>
+</ul>
+<hr />
+<h2 id="getting-started">Per iniziare</h2>
+<h3 id="requirements">Requisiti</h3>
+<ul>
+<li>Una versione aggiornata di Chrome, Edge, Firefox o Safari</li>
+<li>JavaScript abilitato</li>
+<li>Circa 4 GB di RAM se prevedi di usare le funzioni del saldo cifrato</li>
+</ul>
+<h3 id="running-it">Avvio</h3>
+<p>Usa una distribuzione ospitata oppure eseguilo localmente:</p>
+<pre><code class="language-bash">npm install --legacy-peer-deps
+npm run dev</code></pre>
+<p>Poi apri &lt;http://localhost:5173&gt;.</p>
+<hr />
+<h2 id="creating-a-wallet">Creare un wallet</h2>
+<ol>
+<li>Seleziona <strong>Create New Wallet</strong>, dai un nome all'account e scegli un PIN. Il PIN cifra<br />il wallet su questo dispositivo.</li>
+<li><strong>Scrivi la tua frase di recupero.</strong> Ti vengono mostrate 12 parole. Trascrivile su carta<br />nell'ordine esatto in cui sono date.</li>
+<li>Seleziona <strong>I've Written It Down</strong>. Il wallet ti chiede quindi di riscrivere <strong>3 delle parole</strong>,<br />scelte a caso, per dimostrare che la frase ha davvero lasciato lo schermo. <strong>Show Phrase Again</strong><br />la richiama se ti serve un altro sguardo; una risposta sbagliata ti permette semplicemente di riprovare.</li>
+<li>Una volta verificate le parole, il wallet si apre.</li>
+</ol>
+<blockquote><strong>Creare il wallet non lo apre: è il superamento del controllo delle parole che lo apre.</strong> Fino ad allora puoi<br />ancora allontanarti e non si perde nulla, perché la frase non è ancora stata messa alla prova.</blockquote>
+<blockquote><strong>La tua frase di recupero è l'unico modo per ripristinare il wallet.</strong> Chiunque la possieda<br />controlla i tuoi fondi. Conservala offline. Non fotografarla mai, non digitarla su un sito web<br />e non incollarla in una chat o in un'e-mail.</blockquote>
+<h3 id="pin-versus-recovery-phrase">PIN rispetto alla frase di recupero</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>Frase di recupero</th><th>PIN</th></tr></thead>
+<tbody>
+<tr><td>Scopo</td><td>Ripristina il wallet ovunque</td><td>Lo sblocca solo su questo dispositivo</td></tr>
+<tr><td>In caso di smarrimento</td><td>I fondi sono irrecuperabili</td><td>Ripristino tramite la frase di recupero</td></tr>
+<tr><td>Dove è conservata</td><td>Offline, da te</td><td>Mai archiviata — solo tu la conosci</td></tr>
+</tbody>
+</table>
+</div>
+<hr />
+<h2 id="importing-an-existing-wallet">Importare un wallet esistente</h2>
+<p>Scegli <strong>Import</strong> e seleziona una delle opzioni:</p>
+<ul>
+<li><strong>Frase di recupero</strong> — inserisci le tue 12/24 parole</li>
+<li><strong>Chiave privata</strong> — incolla una chiave privata in base64</li>
+<li><strong>File del wallet</strong> — carica un file <code>.oct</code> cifrato e inserisci il suo PIN</li>
+</ul>
+<hr />
+<h2 id="everyday-use">Uso quotidiano</h2>
+<h3 id="checking-your-balance">Controllare il saldo</h3>
+<p>La scheda <strong>Balance</strong> mostra il tuo saldo pubblico e, se PVAC è abilitato, il tuo saldo cifrato.</p>
+<h3 id="receiving">Ricevere</h3>
+<p>Apri <strong>Receive</strong> per mostrare il tuo indirizzo e un codice QR. Il tuo indirizzo è pubblico e puoi<br />condividerlo in sicurezza.</p>
+<p>Puoi anche <strong>richiedere un importo specifico</strong>. Il codice QR contiene quindi l'importo insieme<br />all'indirizzo (come <code>octra:&lt;address&gt;?amount=&lt;OCT&gt;</code>), così un wallet che lo scansiona precompila entrambi.<br />Se non richiedi alcun importo, il codice resta un semplice indirizzo, che qualsiasi scanner può leggere.</p>
+<h3 id="sending">Inviare</h3>
+<ol>
+<li>Apri <strong>Send</strong>.</li>
+<li>Indica il destinatario nel modo che preferisci:</li>
+</ol>
+<ul>
+<li>Incolla l'indirizzo (inizia con <code>oct</code>).</li>
+<li>Scegli un nome salvato da <strong>📇 Contacts…</strong>.</li>
+<li>Seleziona <strong>📷 Scan</strong> per leggere un codice QR con la fotocamera. Al primo utilizzo il browser chiede<br />l'autorizzazione alla fotocamera; l'immagine viene elaborata nella pagina e non viene mai caricata.<br />Anche la scansione di un codice che contiene un importo compila anche l'importo.</li>
+</ul>
+<ol>
+<li>Inserisci un importo.</li>
+<li>Controlla la commissione e il nonce, poi conferma con il tuo PIN.</li>
+</ol>
+<p>Quando l'indirizzo corrisponde a un contatto salvato, il modulo mostra il nome accanto — un nome che<br />riconosci è un controllo molto migliore di una stringa di base58. Per un nuovo indirizzo, <strong>＋ Save to<br />contacts</strong> lo salva sotto un'etichetta che scegli tu, così il pagamento successivo è una selezione, non un incolla.</p>
+<p>Verifica sempre il primo e l'ultimo carattere dell'indirizzo del destinatario prima di confermare.<br />Le transazioni non possono essere annullate.</p>
+<h3 id="history">Cronologia</h3>
+<p><strong>History</strong> elenca le transazioni recenti. Quando la rete non è raggiungibile, vengono mostrate le voci<br />in cache contrassegnate con <code>⚠ Cached</code>.</p>
+<p><strong>⤓</strong> esporta la tabella in un file CSV (ora, hash, tipo, da, a, direzione, importo, commissione,<br />stato) per un foglio di calcolo o per i tuoi archivi. Esporta <strong>le righe attualmente caricate</strong> —<br />quello che vedi è quello che ottieni — quindi usa prima <strong>Load more</strong> se vuoi un intervallo più ampio. Il<br />file viene scritto dal tuo browser nella cartella dei download; nulla viene inviato da nessuna parte.</p>
+<hr />
+<h2 id="contacts-address-book">Contatti (rubrica)</h2>
+<p><strong>Settings → 📇 Contacts</strong> conserva un elenco di indirizzi sotto i nomi che scegli. Ogni voce ha<br />un indirizzo, un nome e una nota facoltativa — un buon posto per "memo required" o per indicare a quale<br />exchange appartiene un indirizzo di deposito.</p>
+<p>Perché importa: un indirizzo che non sai leggere è un indirizzo che non puoi controllare. Una volta che un<br />beneficiario è salvato, il modulo Send lo propone per nome ed etichetta l'indirizzo quando lo re-incolli, così<br />un indirizzo scambiato o troncato salta all'occhio invece di confondersi con gli altri.</p>
+<ul>
+<li><strong>Add</strong> una voce qui, oppure usa <strong>＋ Save to contacts</strong> direttamente dal modulo Send.</li>
+<li><strong>✎</strong> rinomina una voce, <strong>🗑</strong> la rimuove. Rimuovere un contatto non ha effetti on-chain.</li>
+<li><strong>⤓</strong> esporta l'elenco come CSV, così puoi conservarlo con gli altri tuoi archivi o spostarlo in<br />un altro browser.</li>
+</ul>
+<p>I contatti vivono solo in questo browser, insieme al resto dei dati del tuo wallet. Non vengono caricati<br />e vengono cancellati insieme a tutto il resto se azzeri il wallet.</p>
+<hr />
+<h2 id="watch-only-accounts">Account watch-only</h2>
+<p>Un account watch-only tiene traccia di un indirizzo di cui <strong>non</strong> possiedi le chiavi — un cold storage, un<br />wallet hardware, un indirizzo di deposito di un exchange, l'indirizzo di qualcun altro che tieni d'occhio.</p>
+<p>Ne aggiungi uno in <strong>Settings → 👥 Accounts → 👁 Watch Address</strong>: incolla l'indirizzo, dagli un<br />nome e si unirà al tuo elenco di account.</p>
+<p>Cosa può fare: mostrare il saldo, elencare la cronologia, esportare il CSV ed essere selezionato senza<br />PIN — non c'è alcun keystore da decifrare, quindi non c'è nulla da sbloccare.</p>
+<p>Cosa non può fare: <strong>firmare qualsiasi cosa.</strong> Invio, cifratura/decifratura, trasferimenti stealth,<br />chiamate a contratto e richieste di firma delle dApp vengono tutti rifiutati, e il modulo Send lo dice prima<br />che tu lo compili, non dopo. Gli account watch-only sono contrassegnati con 👁 nell'elenco account e nella<br />barra superiore, così sai sempre che tipo di account stai guardando.</p>
+<p>Per trasformare un account watch-only in uno reale, importa la frase di recupero o la chiave privata di<br />quell'indirizzo. Aggiungere le chiavi è l'unico modo; non ci sono scorciatoie.</p>
+<hr />
+<h2 id="encrypted-balance-fhe">Saldo cifrato (FHE)</h2>
+<p>Orion Wallet può conservare parte del tuo saldo cifrata usando la crittografia completamente omomorfica,<br />così l'importo non è visibile pubblicamente on-chain.</p>
+<p>È facoltativo. Tutto il resto funziona, sia che sia abilitato sia che non lo sia.</p>
+<h3 id="enabling-it">Abilitarlo</h3>
+<p>Vai su <strong>Settings → PVAC</strong>. Due indicatori devono essere entrambi verdi:</p>
+<ul>
+<li><strong>WASM Module</strong> — il modulo crittografico è stato caricato</li>
+<li><strong>Bridge Initialized</strong> — è stato associato al seed del tuo wallet</li>
+</ul>
+<p>Se uno dei due non è pronto, il pannello spiega la causa esatta e la soluzione.</p>
+<h3 id="encrypting-and-decrypting">Cifrare e decifrare</h3>
+<p>Usa <strong>Encrypt</strong> per spostare fondi tra il tuo saldo pubblico e quello cifrato. Queste<br />operazioni sono onerose dal punto di vista computazionale e possono richiedere alcuni secondi; una finestra<br />di avanzamento mostra ogni fase.</p>
+<hr />
+<h2 id="stealth-transfers">Trasferimenti stealth</h2>
+<p>I trasferimenti stealth inviano fondi a un indirizzo monouso derivato dalla chiave pubblica del<br />destinatario, così il pagamento non è pubblicamente collegabile al suo indirizzo principale.</p>
+<p>Apri <strong>Stealth</strong>, inserisci destinatario e importo e conferma. Il destinatario riscuote i fondi<br />dalla propria scheda Stealth.</p>
+<hr />
+<h2 id="connecting-to-a-dapp">Collegamento a una dApp</h2>
+<p>Quando un sito web richiede una connessione, appare un popup che mostra l'origine richiedente.</p>
+<p>Prima di approvare:</p>
+<ul>
+<li><strong>Controlla attentamente l'origine.</strong> Conferma che il dominio sia esattamente il sito che intendevi.</li>
+<li>Approva solo le autorizzazioni che ti aspetti.</li>
+<li>"Trust this site" salta i prompt futuri per le richieste di sola lettura — usalo con parsimonia.</li>
+<li>Controlla il selettore <strong>network</strong> nel popup. Elenca ogni rete che hai, comprese quelle che<br />hai aggiunto tu, così puoi connetterti a quella giusta senza uscire dal popup.</li>
+</ul>
+<p>Rivedi e revoca le connessioni in qualsiasi momento in <strong>Settings → Connected Sites</strong>.</p>
+<hr />
+<h2 id="locking-and-unlocking">Blocco e sblocco</h2>
+<p>Il tuo PIN decifra il wallet. Le chiavi decifrate restano poi disponibili per tutta la durata della<br />sessione di sblocco — non ti viene richiesto di nuovo il PIN finché non termina.</p>
+<ul>
+<li><strong>Aggiornare la pagina ti mantiene sbloccato.</strong> Le chiavi vengono re-sigillate per la scheda del<br />browser in cui ti trovi, quindi un ricaricamento riprende la sessione invece di riportarti alla schermata del PIN.<br />Vedrai brevemente "Restoring your session…" mentre accade.</li>
+</ul>
+<ul>
+<li><strong>Chiudere la scheda termina la sessione.</strong> La copia sigillata è limitata a quella singola scheda e<br />sparisce con essa, quindi una nuova scheda o finestra si apre bloccata.</li>
+</ul>
+<ul>
+<li><strong>🔒 nella barra superiore blocca immediatamente</strong> e distrugge la copia sigillata — un ricaricamento<br />dopo il blocco chiede il PIN, come deve essere.</li>
+</ul>
+<ul>
+<li><strong>L'inattività blocca il wallet</strong> dopo 30 minuti in modalità predefinita, e un singolo sblocco non<br />viene mai conservato per più di 8 ore, a prescindere dall'attività.</li>
+</ul>
+<p>Nessuna delle due metà della sessione sigillata è utile da sola: le chiavi cifrate sono conservate dalla<br />scheda, mentre la chiave che le apre è custodita dal browser in una forma che nessuna pagina —<br />inclusa questa — può rileggere.</p>
+<p>In <strong>Settings → Security → Session &amp; Auto-Lock</strong>:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Impostazione</th><th>Predefinito</th><th>Cosa fa</th></tr></thead>
+<tbody>
+<tr><td>Stay unlocked after a page refresh</td><td>On</td><td>Disattivalo per richiedere il PIN a ogni ricaricamento</td></tr>
+<tr><td>Auto-lock after inactivity</td><td>30 minuti</td><td>5 / 15 / 30 / 60 minuti, o mai (fino alla chiusura della scheda)</td></tr>
+</tbody>
+</table>
+</div>
+<p>Entrambe si applicano subito, anche alla sessione che hai già aperta. Su un computer condiviso o<br />non affidabile, disattiva la prima e blocca il wallet quando ti allontani.</p>
+<h3 id="unlocking-with-a-passkey">Sblocco con una passkey</h3>
+<p>Se il tuo dispositivo ha un lettore di impronte digitali, Face ID, Windows Hello o una security key, puoi<br />sbloccarlo con quello invece di digitare il PIN.</p>
+<p>Attivalo in <strong>Settings → 🔑 Security → Passkey Unlock → Enable passkey unlock</strong>. Il tuo<br />dispositivo ti chiede di registrarti — potrebbe chiedertelo <strong>due volte</strong>, una per creare la passkey e<br />una per usarla. La schermata di sblocco offre quindi <strong>👆 Unlock with passkey</strong> sopra il campo del PIN.</p>
+<p>Da sapere:</p>
+<ul>
+<li><strong>Il PIN esiste ancora e conta ancora.</strong> La passkey apre il wallet; non<br />sostituisce il PIN. Esportare le chiavi, rivelare la frase di recupero, cambiare il PIN e derivare<br />nuovi account richiedono ancora il PIN. Conserva il PIN — perderlo non si risolve avendo una passkey.</li>
+</ul>
+<ul>
+<li><strong>È legata a questo dispositivo e a questo browser.</strong> Le passkey non viaggiano con i dati del tuo<br />wallet. Su un altro dispositivo, sblocca con il PIN e registra lì una passkey se la vuoi.</li>
+</ul>
+<ul>
+<li><strong>La tua impronta digitale non arriva mai al wallet.</strong> Il dispositivo ti verifica localmente e consegna<br />alla pagina un segreto derivato dalla passkey; è quel segreto ad aprire il wallet.</li>
+</ul>
+<ul>
+<li><strong>La disponibilità dipende dal tuo dispositivo e dal tuo browser.</strong> Se il tuo non è in grado di fare<br />ciò che serve, il pannello Security lo dice e l'opzione resta disattivata — il PIN continua a funzionare<br />esattamente come prima.</li>
+</ul>
+<ul>
+<li><strong>Disattiva lo sblocco con passkey</strong> nello stesso pannello. Questo elimina immediatamente la copia<br />archiviata; non elimina la passkey dal tuo dispositivo, che puoi rimuovere nelle impostazioni del tuo<br />sistema operativo o del browser.</li>
+</ul>
+<p>Se una passkey smette di aprire il wallet — una credenziale ruotata o registrata di nuovo, oppure un<br />dispositivo ripristinato — il wallet lo segnala, elimina la copia obsoleta e chiede il PIN. Non si<br />perde nulla; puoi registrare una nuova passkey in seguito.</p>
+<p>Lo sblocco con passkey non può essere registrato mentre è attivo un account watch-only — non contiene<br />chiavi, quindi non c'è nulla che una passkey possa sigillare. Il pannello Security lo dice al posto<br />del pulsante.</p>
+<hr />
+<h2 id="session-expiry">Scadenza della sessione</h2>
+<p>Le stesse finestre regolano le connessioni alle dApp, che scadono automaticamente:</p>
+<ul>
+<li><strong>Timeout di inattività:</strong> 30 minuti di inattività</li>
+<li><strong>Timeout assoluto:</strong> 8 ore dalla connessione</li>
+</ul>
+<p>Quando una sessione scade, il wallet chiude la connessione e la dApp viene notificata.<br />La dApp dovrebbe quindi chiederti di riconnetterti.</p>
+<h3 id="what-happens-when-your-session-expires">Cosa succede quando la sessione scade</h3>
+<ol>
+<li>Il wallet emette un evento <code>sessionExpired</code> alla dApp.</li>
+<li>La dApp rileva la sessione scaduta e mostra un prompt "Reconnect".</li>
+<li>Fai clic su <strong>Connect</strong> per riaprire il popup del wallet.</li>
+<li>Il wallet ripristina la tua sessione e la dApp riprende.</li>
+</ol>
+<h3 id="if-a-dapp-doesnt-reconnect-automatically">Se una dApp non si riconnette automaticamente</h3>
+<ul>
+<li>Fai clic sul pulsante <strong>Connect</strong> nella dApp.</li>
+<li>Si apre il popup del wallet — approva la connessione.</li>
+<li>I dati della sessione precedente sono conservati, quindi non devi reimportare il wallet.</li>
+</ul>
+<hr />
+<h2 id="network-settings">Impostazioni di rete</h2>
+<p><strong>Settings → ⚙️ General</strong> contiene l'URL RPC a cui il wallet si rivolge, l'esploratore a cui<br />rimanda i collegamenti e un proxy facoltativo. Modifica l'URL RPC e seleziona <strong>Save URLs</strong> per<br />puntare il wallet a un nodo diverso.</p>
+<h3 id="adding-your-own-network">Aggiungere la propria rete</h3>
+<p>Devnet e Mainnet sono incluse nel wallet. Per aggiungerne un'altra — il tuo nodo, un fork di devnet, un<br />RPC a pagamento — scorri fino a <strong>Custom Networks</strong> nello stesso pannello e compila i campi:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Campo</th><th>Obbligatorio</th><th>Note</th></tr></thead>
+<tbody>
+<tr><td>Network name</td><td>sì</td><td>Mostrato ovunque compaia la rete, incluse le dApp</td></tr>
+<tr><td>RPC URL</td><td>sì</td><td><code>http://</code> o <code>https://</code></td></tr>
+<tr><td>Explorer URL</td><td>no</td><td>Predefinito: l'URL RPC</td></tr>
+<tr><td>Relayer URL</td><td>no</td><td>Serve solo per i trasferimenti stealth</td></tr>
+</tbody>
+</table>
+</div>
+<p>Seleziona <strong>Add network</strong> e la rete si unisce all'elenco. Da quel momento è una scelta normale:</p>
+<ul>
+<li>la <strong>pillola della rete</strong> nella barra superiore ci passa come per qualsiasi preimpostazione,</li>
+<li>il <strong>popup di connessione</strong> la elenca quando un sito chiede di connettersi, contrassegnata <em>(custom)</em>,</li>
+<li>e una dApp connessa può leggerne il nome e l'esploratore, così etichetta le cose correttamente.</li>
+</ul>
+<p>Cambiare rete aggiorna tutti e tre gli endpoint insieme — RPC, esploratore e relayer — così il wallet<br />non finisce mai per leggere da una rete mentre rimanda a un'altra.</p>
+<p>Rimuovi una rete con la ✕ accanto. Se elimini quella su cui ti trovi, il wallet ripiega su una<br />preimpostazione.</p>
+<p><strong>Cosa vede una dApp.</strong> I siti a cui ti connetti possono leggere nome, icona, URL dell'esploratore<br />di una rete personalizzata e il fatto che l'hai aggiunta tu. <strong>Non</strong> possono leggere il suo URL RPC o<br />relayer — l'indirizzo di un nodo di casa o una chiave del provider restano nel wallet. Poiché il nome è<br />visibile, evita di dare a una rete un nome che rimandi a qualcosa di personale.</p>
+<h3 id="nodes-without-https">Nodi senza HTTPS</h3>
+<p>Un nodo <code>https://</code> non richiede alcuna gestione speciale. Un nodo raggiungibile solo tramite<br /><code>http://</code> semplice è un'altra cosa, perché tutto ciò che il wallet gli chiede — ogni controllo di<br />saldo e cronologia, ogni transazione che invia — viaggia in chiaro, dove chiunque sia sul percorso di<br />rete può leggerlo <em>e modificare le risposte</em>. Per questo il wallet chiede prima.</p>
+<ul>
+<li><strong>Il loopback non richiede permessi.</strong> <code>localhost</code>, <code>127.0.0.1</code>, <code>[::1]</code> e simili non<br />lasciano mai la tua macchina, quindi un nodo locale funziona subito.</li>
+</ul>
+<ul>
+<li><strong>Qualsiasi altro indirizzo <code>http://</code> deve essere autorizzato esplicitamente.</strong> Incolla l'URL e il<br />pannello spiega cosa c'è in gioco, con un pulsante <strong>Trust <code>http://…</code></strong> accanto. La fiducia è<br />archiviata per origine (schema, host e porta), quindi fidarsi di un nodo non significa fidarsi di un<br />altro, e una porta diversa sullo stesso host è una decisione separata.</li>
+</ul>
+<ul>
+<li><strong>Trusted plaintext endpoints</strong> elenca ciò di cui ti sei fidato, con <strong>Remove</strong> per toglierlo.</li>
+</ul>
+<p>Due limiti non dipendono da noi, e il pannello indica quale dei due è d'intralcio:</p>
+<ul>
+<li><strong>Un wallet servito su <code>https://</code> non può recuperare <code>http://</code>.</strong> I browser lo bloccano<br />(si chiama mixed content) e fidarsi dell'origine non lo cambia. Metti il nodo dietro TLS, usa un proxy<br />oppure apri il wallet da una build in http semplice o su localhost.</li>
+</ul>
+<ul>
+<li><strong>La build distribuita consente solo <code>https://</code> e loopback.</strong> La sua policy di sicurezza è fissata<br />in fase di build e non può essere ampliata a runtime. Chi si auto-ospita e ha bisogno di http semplice<br />può compilare con <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code>; l'elenco delle fiducie qui sopra vale comunque.</li>
+</ul>
+<p>L'URL dell'esploratore è esente da tutto questo — è solo un collegamento su cui fai clic, non qualcosa<br />che il wallet recupera.</p>
+<h3 id="rpc-proxy">Proxy RPC</h3>
+<p><strong>RPC proxy (opzionale)</strong> instrada le chiamate attraverso un URL a tua scelta: l'URL RPC viene<br />aggiunto in coda, codificato in percentuale, e il browser si connette solo al proxy. È la soluzione<br />pratica per un nodo senza TLS o senza header CORS, e soddisfa le regole sopra perché la connessione<br />che il browser stabilisce è verso il proxy.</p>
+<p>Il proxy vede ogni richiesta del wallet, quindi <strong>gestiscine uno tuo</strong>. Non può firmare nulla né<br />raggiungere le tue chiavi, ma può osservare e può mentire.</p>
+<h3 id="when-something-is-off">Quando qualcosa non va</h3>
+<p>Se l'endpoint RPC non può essere usato come configurato, <strong>⚠️ Insecure RPC</strong> appare nell'intestazione;<br />selezionalo per saltare direttamente all'impostazione. Anche gli errori di rete riportano il motivo,<br />quindi un "Failed to fetch" nudo ti dice cosa sistemare.</p>
+<hr />
+<h2 id="backup-and-recovery">Backup e ripristino</h2>
+<h3 id="exporting">Esportare</h3>
+<p><strong>Settings → Backup → Export</strong> scarica un file <code>.oct</code> cifrato. È protetto dal tuo<br />PIN, ma trattalo come sensibile.</p>
+<h3 id="restoring">Ripristinare</h3>
+<p>Usa <strong>Import → Wallet file</strong> e fornisci il PIN in uso quando il file è stato esportato.</p>
+<h3 id="multiple-accounts">Account multipli</h3>
+<p><strong>Settings → Accounts</strong> deriva ulteriori account dalla stessa frase di recupero. Una sola<br />frase li ripristina tutti.</p>
+<p>Due cose che la frase <strong>non</strong> ripristina, perché non sono mai state derivate da essa:</p>
+<ul>
+<li><strong>Account watch-only</strong> — sono solo indirizzi che hai chiesto al wallet di monitorare. Prendine<br />nota separatamente se vuoi riaverli dopo una reinstallazione.</li>
+</ul>
+<ul>
+<li><strong>Contatti</strong> — esportali con <strong>⤓</strong> in Settings → Contacts se contano per te.</li>
+</ul>
+<p>Nessuno dei due contiene fondi, quindi perderli ti costa comodità, non denaro.</p>
+<hr />
+<h2 id="troubleshooting">Risoluzione dei problemi</h2>
+<h3 id="the-page-is-blank-or-stuck-loading">La pagina è vuota o bloccata in caricamento</h3>
+<p>Ricarica. Se persiste, dovrebbe apparire una scheda di errore con un pulsante <strong>Retry</strong>. Segnala<br />il messaggio mostrato lì.</p>
+<h3 id="encrypted-balance-is-unavailable">Saldo cifrato non disponibile</h3>
+<p>Settings → PVAC mostra uno dei seguenti:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Messaggio</th><th>Significato</th><th>Soluzione</th></tr></thead>
+<tbody>
+<tr><td><em>The WASM module has not been compiled</em></td><td><code>pvac.js</code> non viene servito</td><td>Esegui <code>npm run build:wasm</code></td></tr>
+<tr><td><em>Content-Security-Policy is blocking WebAssembly</em></td><td>La CSP non include <code>'wasm-unsafe-eval'</code></td><td>Aggiungilo a <code>script-src</code> in <code>index.html</code></td></tr>
+<tr><td><em>The compiled module is out of date</em></td><td>La build è precedente alle funzioni richieste</td><td>Ricompila con <code>npm run build:wasm</code></td></tr>
+<tr><td><em>FHE key generation failed</em></td><td>Il modulo è stato caricato ma la generazione delle chiavi è fallita</td><td>Controlla la console del browser e segnalalo</td></tr>
+</tbody>
+</table>
+</div>
+<p>Premi <strong>↻ Reload PVAC</strong> dopo aver applicato una soluzione — non serve riavviare.</p>
+<h3 id="failed-to-load-history-network-errors">"Failed to load history" / errori di rete</h3>
+<p>Di solito il nodo RPC non è raggiungibile o blocca i CORS. Verifica l'URL RPC in<br /><strong>Settings</strong> e consulta le <a href="../README.md#cors">note sui CORS</a>. Se l'errore indica un motivo —<br />plaintext, mixed content o una restrizione della build — consulta<br /><a href="#network-settings">Impostazioni di rete</a>; un <strong>RPC proxy</strong> risolve il caso dei CORS.</p>
+<h3 id="the-header-shows-insecure-rpc">L'intestazione mostra "⚠️ Insecure RPC"</h3>
+<p>L'endpoint RPC configurato è in <code>http://</code> semplice e non è utilizzabile così com'è. Seleziona<br />il badge per aprire l'impostazione, dove sono spiegati la causa esatta e la soluzione. Vedi<br /><a href="#network-settings">Impostazioni di rete</a>.</p>
+<h3 id="the-camera-wont-open-when-i-select-scan">La fotocamera non si apre quando seleziono 📷 Scan</h3>
+<ul>
+<li>Concedi l'autorizzazione alla fotocamera quando il browser la chiede; se l'hai ignorata,<br />riabilitala nei permessi del sito e riprova.</li>
+</ul>
+<ul>
+<li>L'accesso alla fotocamera richiede una pagina sicura. Funziona su <code>https://</code> e su <code>localhost</code>,<br />ma non su una pagina in <code>http://</code> semplice su un altro host.</li>
+</ul>
+<ul>
+<li>Se un'altra app sta usando la fotocamera, chiudila prima. Puoi sempre incollare l'indirizzo.</li>
+</ul>
+<h3 id="unlock-with-passkey-isnt-offered">"Unlock with passkey" non viene offerto</h3>
+<p>O non è registrata alcuna passkey in questo browser, oppure il dispositivo non è in grado di fare ciò<br />che lo sblocco con passkey richiede. <strong>Settings → 🔑 Security → Passkey Unlock</strong> dice quale dei due.<br />Le passkey sono per dispositivo e per browser, quindi una registrata altrove non appare qui. Il PIN<br />funziona sempre.</p>
+<h3 id="i-forgot-my-pin">Ho dimenticato il mio PIN</h3>
+<p>Reinstalla il wallet usando la tua frase di recupero e imposta un nuovo PIN. Senza la frase,<br />i fondi non possono essere recuperati — da nessuno.</p>
+<h3 id="could-not-read-your-saved-wallets-could-not-read-your-accounts">"Could not read your saved wallets" / "Could not read your accounts"</h3>
+<p>Il wallet non è riuscito ad aprire il suo database locale. Non è stato cancellato nulla — quasi<br />sempre la causa è un'altra scheda di Orion, o un popup <strong>Connect</strong> rimasto aperto, che tiene ancora<br />occupato il database. Dopo un aggiornamento il browser non aggiorna il database mentre una scheda più<br />vecchia è ancora collegata ad esso.</p>
+<p>Chiudi le altre schede e i popup di Orion, poi seleziona <strong>↻ Try again</strong>. Se il messaggio resta,<br />chiudi ogni scheda di Orion e riapri il wallet in una singola scheda.</p>
+<p>La schermata di sblocco distingue i due stati di proposito: <em>No stored wallet found</em> significa che il<br />database è davvero vuoto, mentre <em>Could not read your saved wallets</em> significa che i tuoi account ci<br />sono ma sono temporaneamente irraggiungibili. <strong>Non creare un nuovo wallet</strong> mentre vedi<br />il secondo messaggio.</p>
+<h3 id="my-wallet-vanished-after-an-update">Il mio wallet è sparito dopo un aggiornamento</h3>
+<p>I dati vengono migrati automaticamente dalle build precedenti al primo avvio. Se i tuoi account<br />mancano, <strong>non creare un nuovo wallet</strong> — potrebbe sovrascrivere i vecchi dati. Segnala<br />il problema e, nel frattempo, ripristina dalla tua frase di recupero.</p>
+<h3 id="dapp-says-session-expired">La dApp dice "Session expired"</h3>
+<p>Significa che la sessione del wallet è scaduta (30 min di inattività / 8 ore assolute). Riconnettiti<br />facendo clic su <strong>Connect</strong> nella dApp. I dati del tuo wallet sono conservati — devi solo<br />riapprovare la connessione.</p>
+<hr />
+<h2 id="keeping-your-funds-safe">Tenere al sicuro i tuoi fondi</h2>
+<p><strong>Da fare</strong></p>
+<ul>
+<li>Conserva la tua frase di recupero offline, su carta, idealmente in più di un luogo</li>
+<li>Verifica gli indirizzi dei destinatari prima di inviare</li>
+<li>Verifica l'origine mostrata nei prompt di connessione delle dApp</li>
+<li>Inizia con una piccola transazione di prova quando invii a un nuovo indirizzo</li>
+<li>Salva i beneficiari come contatti e controlla il nome — un nome che riconosci batte la lettura del base58</li>
+<li>Usa un account watch-only per tenere d'occhio il cold storage, invece di sbloccare quello vero</li>
+</ul>
+<p><strong>Da non fare mai</strong></p>
+<ul>
+<li>Inserire la tua frase di recupero su qualsiasi sito web. Orion Wallet non te la chiederà mai dopo la configurazione</li>
+<li>Conservare la frase in uno screenshot, in una nota del gestore di password, nel cloud o in una chat</li>
+<li>Condividere la tua chiave privata o il tuo file <code>.oct</code></li>
+<li>Usare un wallet con fondi reali su un computer condiviso o non affidabile</li>
+</ul>
+<p>Orion Wallet <strong>non è stato sottoposto a un audit indipendente</strong>. Consulta il<br /><a href="SECURITY.html">documento di sicurezza</a> prima di conservare un valore significativo.</p>
+</body>
+</html>

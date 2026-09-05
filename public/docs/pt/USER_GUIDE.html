@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guia do usuário — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="orion-wallet-user-guide">Orion Wallet — Guia do usuário</h1>
+<p>A Orion Wallet roda inteiramente no seu navegador. Suas chaves são geradas localmente, criptografadas<br />com seu PIN e armazenadas apenas no seu próprio dispositivo. Nada é enviado a um servidor.</p>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Código-fonte, issues e versões.</blockquote>
+<hr />
+<h2 id="contents">Conteúdo</h2>
+<ul>
+<li><a href="#getting-started">Primeiros passos</a></li>
+<li><a href="#creating-a-wallet">Criar uma carteira</a></li>
+<li><a href="#importing-an-existing-wallet">Importar uma carteira existente</a></li>
+<li><a href="#everyday-use">Uso diário</a></li>
+<li><a href="#contacts-address-book">Contatos (agenda de endereços)</a></li>
+<li><a href="#watch-only-accounts">Contas watch-only</a></li>
+<li><a href="#encrypted-balance-fhe">Saldo criptografado (FHE)</a></li>
+<li><a href="#stealth-transfers">Transferências stealth</a></li>
+<li><a href="#connecting-to-a-dapp">Conectar-se a uma dApp</a></li>
+<li><a href="#locking-and-unlocking">Bloqueio e desbloqueio</a></li>
+<li><a href="#session-expiry">Expiração da sessão</a></li>
+<li><a href="#network-settings">Configurações de rede</a></li>
+<li><a href="#backup-and-recovery">Backup e recuperação</a></li>
+<li><a href="#troubleshooting">Solução de problemas</a></li>
+<li><a href="#keeping-your-funds-safe">Como manter seus fundos seguros</a></li>
+</ul>
+<hr />
+<h2 id="getting-started">Primeiros passos</h2>
+<h3 id="requirements">Requisitos</h3>
+<ul>
+<li>Uma versão atual do Chrome, Edge, Firefox ou Safari</li>
+<li>JavaScript habilitado</li>
+<li>Cerca de 4 GB de RAM se você pretende usar os recursos de saldo criptografado</li>
+</ul>
+<h3 id="running-it">Executando</h3>
+<p>Use uma implantação hospedada ou execute localmente:</p>
+<pre><code class="language-bash">npm install --legacy-peer-deps
+npm run dev</code></pre>
+<p>Em seguida, abra &lt;http://localhost:5173&gt;.</p>
+<hr />
+<h2 id="creating-a-wallet">Criar uma carteira</h2>
+<ol>
+<li>Selecione <strong>Create New Wallet</strong>, dê um nome à conta e escolha um PIN. O PIN criptografa a carteira neste dispositivo.</li>
+<li><strong>Anote sua frase de recuperação.</strong> São mostradas 12 palavras. Copie-as no papel na ordem exata em que aparecem.</li>
+<li>Selecione <strong>I've Written It Down</strong>. A carteira então pede que você digite novamente <strong>3 das palavras</strong>, escolhidas aleatoriamente, para provar que a frase realmente saiu da tela. <strong>Show Phrase Again</strong> a traz de volta se você precisar de outra olhada; uma resposta errada apenas permite tentar de novo.</li>
+<li>Quando as palavras são confirmadas, a carteira se abre.</li>
+</ol>
+<blockquote><strong>Criar a carteira não a abre — passar na verificação das palavras abre.</strong> Até lá você ainda<br />pode simplesmente ir embora, e nada se perde, porque ainda não se dependeu da frase.</blockquote>
+<blockquote><strong>Sua frase de recuperação é a única maneira de restaurar sua carteira.</strong> Quem a tiver<br />controla seus fundos. Guarde-a offline. Nunca a fotografe, digite em um site<br />ou cole em um chat ou e-mail.</blockquote>
+<h3 id="pin-versus-recovery-phrase">PIN versus frase de recuperação</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>Frase de recuperação</th><th>PIN</th></tr></thead>
+<tbody>
+<tr><td>Finalidade</td><td>Restaura sua carteira em qualquer lugar</td><td>Desbloqueia-a somente neste dispositivo</td></tr>
+<tr><td>Se perdida</td><td>Os fundos não podem ser recuperados</td><td>Restaure a partir da frase de recuperação</td></tr>
+<tr><td>Onde fica guardada</td><td>Offline, com você</td><td>Nunca é armazenada — só você a conhece</td></tr>
+</tbody>
+</table>
+</div>
+<hr />
+<h2 id="importing-an-existing-wallet">Importar uma carteira existente</h2>
+<p>Escolha <strong>Import</strong> e selecione uma das opções:</p>
+<ul>
+<li><strong>Recovery phrase</strong> — digite suas 12/24 palavras</li>
+<li><strong>Private key</strong> — cole uma chave privada em base64</li>
+<li><strong>Wallet file</strong> — envie um arquivo <code>.oct</code> criptografado e informe o PIN dele</li>
+</ul>
+<hr />
+<h2 id="everyday-use">Uso diário</h2>
+<h3 id="checking-your-balance">Verificando seu saldo</h3>
+<p>A aba <strong>Balance</strong> mostra seu saldo público e, se o PVAC estiver ativado, seu saldo criptografado.</p>
+<h3 id="receiving">Recebendo</h3>
+<p>Abra <strong>Receive</strong> para exibir seu endereço e um código QR. Seu endereço é público e seguro<br />para compartilhar.</p>
+<p>Você também pode <strong>solicitar um valor específico</strong>. O código QR então carrega o valor junto<br />com o endereço (como <code>octra:&lt;endereço&gt;?amount=&lt;OCT&gt;</code>), então uma carteira que o escanear<br />preenche ambos. Sem valor solicitado, o código continua sendo apenas um endereço, que qualquer leitor consegue ler.</p>
+<h3 id="sending">Enviando</h3>
+<ol>
+<li>Abra <strong>Send</strong>.</li>
+<li>Informe o destinatário da forma que preferir:
+<ul>
+<li>Cole o endereço (ele começa com <code>oct</code>).</li>
+<li>Escolha um nome salvo em <strong>📇 Contacts…</strong>.</li>
+<li>Selecione <strong>📷 Scan</strong> para ler um código QR com a câmera. O navegador pede permissão de câmera na primeira vez; a imagem é processada na página e nunca é enviada. Escanear um código que traz um valor também preenche o valor.</li>
+</ul>
+</li>
+<li>Digite um valor.</li>
+<li>Revise a taxa (fee) e o nonce e confirme com seu PIN.</li>
+</ol>
+<p>Quando o endereço corresponde a um contato salvo, o formulário mostra o nome ao lado dele — um nome que você<br />reconhece é uma verificação muito melhor do que uma sequência de base58. Para um endereço novo, <strong>＋ Save to<br />contacts</strong> o armazena sob um rótulo que você escolher, para que o próximo pagamento seja uma escolha, não uma colagem.</p>
+<p>Verifique sempre o primeiro e o último caractere do endereço do destinatário antes de confirmar.<br />As transações não podem ser revertidas.</p>
+<h3 id="history">Histórico</h3>
+<p><strong>History</strong> lista as transações recentes. Quando a rede está inacessível, os registros em cache<br />são exibidos e marcados como <code>⚠ Cached</code>.</p>
+<p><strong>⤓</strong> exporta a tabela para um arquivo CSV (hora, hash, tipo, de, para, direção, valor, taxa,<br />status) para uma planilha ou seus próprios registros. Ele exporta <strong>as linhas atualmente carregadas</strong> —<br />o que você vê é o que você obtém — portanto, use <strong>Load more</strong> primeiro se quiser um intervalo maior. O<br />arquivo é gravado pelo seu navegador na pasta de downloads; nada é enviado a lugar nenhum.</p>
+<hr />
+<h2 id="contacts-address-book">Contatos (agenda de endereços)</h2>
+<p><strong>Settings → 📇 Contacts</strong> mantém uma lista de endereços sob nomes que você escolhe. Cada entrada tem<br />um endereço, um nome e uma nota opcional — um bom lugar para "memo required" ou para indicar a qual<br />exchange um endereço de depósito pertence.</p>
+<p>Por que se dar ao trabalho: um endereço que você não consegue ler é um endereço que você não consegue conferir. Depois que um<br />beneficiário é salvo, o formulário Send o oferece pelo nome e rotula o endereço quando você o cola de volta, de modo que<br />um endereço trocado ou truncado se destaca em vez de passar despercebido.</p>
+<ul>
+<li><strong>Add</strong> uma entrada aqui, ou use <strong>＋ Save to contacts</strong> direto no formulário Send.</li>
+<li><strong>✎</strong> renomeia uma entrada; <strong>🗑</strong> a remove. Remover um contato não afeta nada na blockchain.</li>
+<li><strong>⤓</strong> exporta a lista como CSV, para que possa ser guardada com seus outros registros ou movida para</li>
+</ul>
+<p>outro navegador.</p>
+<p>Os contatos vivem somente neste navegador, junto com o restante dos dados da sua carteira. Eles não são<br />enviados e são apagados junto com tudo o mais se você limpar a carteira.</p>
+<hr />
+<h2 id="watch-only-accounts">Contas watch-only</h2>
+<p>Uma conta watch-only acompanha um endereço cujas chaves você <strong>não</strong> possui — armazenamento frio (cold storage), uma<br />carteira de hardware, um endereço de depósito de exchange ou o endereço de outra pessoa que você quer vigiar.</p>
+<p>Adicione uma em <strong>Settings → 👥 Accounts → 👁 Watch Address</strong>: cole o endereço, dê um nome a ele,<br />e ele entra na sua lista de contas.</p>
+<p>O que ela pode fazer: mostrar o saldo, listar o histórico, exportar CSV e ser acessada sem<br />PIN — não há cofre de chaves (keystore) para descriptografar, portanto não há nada para desbloquear.</p>
+<p>O que ela não pode fazer: <strong>assinar qualquer coisa.</strong> Send, criptografar/descriptografar, transferências stealth, chamadas<br />de contrato e solicitações de assinatura de dApps são todas recusadas, e o formulário Send avisa antes de você preenchê-lo,<br />não depois. Contas watch-only são marcadas com 👁 na lista de contas e no<br />cabeçalho, para você sempre saber qual tipo está vendo.</p>
+<p>Para transformar uma conta watch-only em uma conta real, importe a frase de recuperação ou a chave privada<br />daquele endereço. Adicionar as chaves é a única maneira; não há atalho.</p>
+<hr />
+<h2 id="encrypted-balance-fhe">Saldo criptografado (FHE)</h2>
+<p>A Orion Wallet pode manter parte do seu saldo criptografada usando criptografia totalmente homomórfica,<br />de modo que o valor não fica visível publicamente na blockchain.</p>
+<p>Isso é opcional. Todo o resto funciona com ela ativada ou não.</p>
+<h3 id="enabling-it">Como ativar</h3>
+<p>Vá em <strong>Settings → PVAC</strong>. Dois indicadores precisam estar verdes:</p>
+<ul>
+<li><strong>WASM Module</strong> — o módulo criptográfico foi carregado</li>
+<li><strong>Bridge Initialized</strong> — ele foi vinculado à seed da sua carteira</li>
+</ul>
+<p>Se algum não estiver pronto, o painel explica a causa exata e a correção.</p>
+<h3 id="encrypting-and-decrypting">Criptografando e descriptografando</h3>
+<p>Use <strong>Encrypt</strong> para mover fundos entre seu saldo público e seu saldo criptografado. Essas<br />operações exigem muito processamento e podem levar vários segundos; uma caixa de diálogo de progresso<br />mostra cada etapa.</p>
+<hr />
+<h2 id="stealth-transfers">Transferências stealth</h2>
+<p>Transferências stealth enviam fundos para um endereço descartável derivado da chave pública do destinatário,<br />de modo que o pagamento não pode ser vinculado publicamente ao endereço principal dele.</p>
+<p>Abra <strong>Stealth</strong>, informe o destinatário e o valor e confirme. O destinatário reivindica os<br />fundos na própria aba Stealth dele.</p>
+<hr />
+<h2 id="connecting-to-a-dapp">Conectar-se a uma dApp</h2>
+<p>Quando um site solicita uma conexão, um pop-up aparece mostrando a origem solicitante.</p>
+<p>Antes de aprovar:</p>
+<ul>
+<li><strong>Verifique a origem com cuidado.</strong> Confirme que o domínio é exatamente o site pretendido.</li>
+<li>Aprove somente as permissões que você espera.</li>
+<li>"Trust this site" pula as solicitações futuras para requisições somente de leitura — use com moderação.</li>
+<li>Verifique o seletor de <strong>rede</strong> no pop-up. Ele lista todas as redes que você tem, inclusive</li>
+</ul>
+<p>as que você mesmo adicionou, para você se conectar na rede certa sem sair do pop-up.</p>
+<p>Revise e revogue conexões a qualquer momento em <strong>Settings → Connected Sites</strong>.</p>
+<hr />
+<h2 id="locking-and-unlocking">Bloqueio e desbloqueio</h2>
+<p>Seu PIN descriptografa a carteira. As chaves descriptografadas então permanecem disponíveis durante toda a<br />sessão de desbloqueio — você não precisa digitar o PIN novamente até que ela termine.</p>
+<ul>
+<li><strong>Atualizar a página mantém você desbloqueado.</strong> As chaves são re-seladas para a aba do navegador</li>
+</ul>
+<p>em que você está, então um recarregamento retoma a sessão em vez de levá-lo de volta à tela<br />de PIN. Você verá brevemente "Restoring your session…" enquanto isso acontece.</p>
+<ul>
+<li><strong>Fechar a aba encerra a sessão.</strong> A cópia selada está restrita àquela aba e</li>
+</ul>
+<p>desaparece junto com ela, então uma nova aba ou janela começa bloqueada.</p>
+<ul>
+<li><strong>🔒 no cabeçalho bloqueia imediatamente</strong> e destrói a cópia selada — recarregar depois de</li>
+</ul>
+<p>bloquear pede o PIN, como deve ser.</p>
+<ul>
+<li><strong>A inatividade bloqueia a carteira</strong> após 30 minutos por padrão, e um único desbloqueio</li>
+</ul>
+<p>nunca dura mais de 8 horas, independentemente da atividade.</p>
+<p>Nenhuma das duas metades da sessão selada é útil sozinha: as chaves criptografadas ficam com a<br />aba, enquanto a chave que as abre é mantida pelo navegador em uma forma que nenhuma página —<br />inclusive esta — consegue ler de volta.</p>
+<p>Em <strong>Settings → Security → Session &amp; Auto-Lock</strong>:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Configuração</th><th>Padrão</th><th>O que faz</th></tr></thead>
+<tbody>
+<tr><td>Stay unlocked after a page refresh</td><td>On</td><td>Desative para exigir o PIN a cada recarregamento</td></tr>
+<tr><td>Auto-lock after inactivity</td><td>30 minutes</td><td>5 / 15 / 30 / 60 minutos, ou nunca (até a aba fechar)</td></tr>
+</tbody>
+</table>
+</div>
+<p>Ambos valem ao mesmo tempo, inclusive para a sessão que você já tem aberta. Em um computador compartilhado ou<br />não confiável, desative a primeira opção e bloqueie a carteira quando se afastar.</p>
+<h3 id="unlocking-with-a-passkey">Desbloqueio com passkey</h3>
+<p>Se seu dispositivo tem leitor de impressão digital, Face ID, Windows Hello ou uma chave de segurança, você pode<br />desbloquear com isso em vez de digitar o PIN.</p>
+<p>Ative em <strong>Settings → 🔑 Security → Passkey Unlock → Enable passkey unlock</strong>. Seu<br />dispositivo pede que você registre — pode pedir <strong>duas vezes</strong>, uma para criar a passkey e<br />outra para usá-la. A tela de desbloqueio então oferece <strong>👆 Unlock with passkey</strong> acima do campo de PIN.</p>
+<p>Vale saber:</p>
+<ul>
+<li><strong>O PIN ainda existe e ainda importa.</strong> A passkey abre a carteira; ela não substitui</li>
+</ul>
+<p>o PIN. Exportar chaves, revelar a frase de recuperação, alterar o PIN e derivar novas contas continuam<br />exigindo o PIN. Guarde o PIN — perdê-lo não é resolvido por ter uma passkey.</p>
+<ul>
+<li><strong>Ela está vinculada a este dispositivo e a este navegador.</strong> Passkeys não viajam com os dados da sua carteira.</li>
+</ul>
+<p>Em outro dispositivo, desbloqueie com o PIN e registre uma passkey lá se quiser.</p>
+<ul>
+<li><strong>Sua impressão digital nunca chega à carteira.</strong> O dispositivo verifica você localmente e entrega</li>
+</ul>
+<p>à página um segredo derivado da passkey; é esse segredo que abre a carteira.</p>
+<ul>
+<li><strong>A disponibilidade depende do seu dispositivo e navegador.</strong> Se o seu não consegue fazer o que é</li>
+</ul>
+<p>necessário, o painel Security avisa e a opção permanece desativada — o PIN continua funcionando exatamente<br />como antes.</p>
+<ul>
+<li><strong>Desative o desbloqueio por passkey</strong> no mesmo painel. Isso apaga a cópia armazenada imediatamente;</li>
+</ul>
+<p>não apaga a passkey do seu dispositivo, que você pode remover nas configurações do seu sistema operacional ou<br />navegador.</p>
+<p>Se uma passkey parar de abrir a carteira — uma credencial rotacionada ou re-registrada, ou um<br />dispositivo restaurado — a carteira avisa, descarta a cópia antiga e pede o PIN. Nada se perde;<br />você pode registrar uma nova passkey depois.</p>
+<p>O desbloqueio por passkey não pode ser registrado enquanto uma conta watch-only estiver ativa — ela não tem chaves,<br />então não há nada para uma passkey selar. O painel Security informa isso no lugar do botão.</p>
+<hr />
+<h2 id="session-expiry">Expiração da sessão</h2>
+<p>As mesmas janelas de tempo regem as conexões de dApps, que expiram automaticamente:</p>
+<ul>
+<li><strong>Idle timeout:</strong> 30 minutos de inatividade</li>
+<li><strong>Absolute timeout:</strong> 8 horas desde a conexão</li>
+</ul>
+<p>Quando uma sessão expira, a carteira fecha a conexão e a dApp é notificada.<br />A dApp deve então pedir que você se reconecte.</p>
+<h3 id="what-happens-when-your-session-expires">O que acontece quando sua sessão expira</h3>
+<ol>
+<li>A carteira emite um evento <code>sessionExpired</code> para a dApp.</li>
+<li>A dApp detecta a sessão expirada e mostra um aviso de "Reconnect".</li>
+<li>Você clica em <strong>Connect</strong> para abrir o pop-up da carteira novamente.</li>
+<li>A carteira restaura sua sessão e a dApp retoma.</li>
+</ol>
+<h3 id="if-a-dapp-doesnt-reconnect-automatically">Se uma dApp não se reconectar automaticamente</h3>
+<ul>
+<li>Clique no botão <strong>Connect</strong> na dApp.</li>
+<li>O pop-up da carteira abre — aprove a conexão.</li>
+<li>Os dados da sua sessão anterior são preservados, então você não precisa reimportar sua carteira.</li>
+</ul>
+<hr />
+<h2 id="network-settings">Configurações de rede</h2>
+<p><strong>Settings → ⚙️ General</strong> guarda a URL de RPC com a qual a carteira fala, o explorer para o qual ela cria links<br />e um proxy opcional. Altere a URL de RPC e selecione <strong>Save URLs</strong> para apontar a carteira<br />para um nó diferente.</p>
+<h3 id="adding-your-own-network">Como adicionar sua própria rede</h3>
+<p>Devnet e Mainnet já vêm com a carteira. Para adicionar outra — seu próprio nó, um fork de devnet, um<br />RPC pago — role até <strong>Custom Networks</strong> no mesmo painel e preencha:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Campo</th><th>Obrigatório</th><th>Observações</th></tr></thead>
+<tbody>
+<tr><td>Network name</td><td>sim</td><td>Exibido em todos os lugares onde a rede aparece, inclusive para dApps</td></tr>
+<tr><td>RPC URL</td><td>sim</td><td><code>http://</code> ou <code>https://</code></td></tr>
+<tr><td>Explorer URL</td><td>não</td><td>Usa a URL de RPC por padrão</td></tr>
+<tr><td>Relayer URL</td><td>não</td><td>Necessária apenas para transferências stealth</td></tr>
+</tbody>
+</table>
+</div>
+<p>Selecione <strong>Add network</strong> e ela entra na lista. A partir daí é uma escolha normal:</p>
+<ul>
+<li>a <strong>pílula de rede</strong> na barra superior alterna para ela como qualquer predefinição,</li>
+<li>o <strong>pop-up de conexão</strong> a lista quando um site pede para se conectar, marcada como <em>(custom)</em>,</li>
+<li>e uma dApp conectada consegue ler o nome e o explorer dela para rotular as coisas corretamente.</li>
+</ul>
+<p>Alternar de rede atualiza os três endpoints juntos — RPC, explorer e relayer — para que a<br />carteira nunca fique lendo uma rede enquanto cria links para outra.</p>
+<p>Remova uma rede com o ✕ ao lado dela. Se você excluir a rede em que está no momento, a<br />carteira volta para uma predefinição.</p>
+<p><strong>O que uma dApp vê.</strong> Os sites aos quais você se conecta conseguem ler o nome, o ícone, a URL do explorer<br />de uma rede personalizada e o fato de você tê-la adicionado. Eles <strong>não</strong> conseguem ler a URL de RPC nem de relayer dela — o endereço<br />de um nó caseiro ou a chave de um provedor permanece na carteira. Como o nome fica visível, evite<br />dar a uma rede um nome ligado a algo pessoal.</p>
+<h3 id="nodes-without-https">Nós sem HTTPS</h3>
+<p>Um nó <code>https://</code> não exige tratamento especial. Um nó acessível apenas por <code>http://</code> simples é<br />outra história, porque tudo o que a carteira pede a ele — cada consulta de saldo e histórico, cada<br />transação que ela envia — trafega em texto puro, onde qualquer pessoa no caminho da rede pode lê-lo <em>e alterar as respostas</em>. Por isso a carteira pergunta antes.</p>
+<ul>
+<li><strong>Loopback não precisa de permissão.</strong> <code>localhost</code>, <code>127.0.0.1</code>, <code>[::1]</code> e afins nunca</li>
+</ul>
+<p>saem da sua máquina, então um nó local funciona de imediato.</p>
+<ul>
+<li><strong>Qualquer outro endereço <code>http://</code> precisa ser confiado explicitamente.</strong> Cole a URL e o painel</li>
+</ul>
+<p>explica o que está em jogo, com um botão <strong>Trust <code>http://…</code></strong> ao lado. A confiança é armazenada<br />por origem (esquema, host e porta), então confiar em um nó não confia em outro, e uma<br />porta diferente no mesmo host é uma decisão separada.</p>
+<ul>
+<li><strong>Trusted plaintext endpoints</strong> lista o que você confiou, com <strong>Remove</strong> para revogar</li>
+</ul>
+<p>a confiança.</p>
+<p>Há dois limites que não podemos remover, e o painel indica qual deles está no caminho:</p>
+<ul>
+<li><strong>Uma carteira servida via <code>https://</code> não consegue buscar <code>http://</code> de forma alguma.</strong> Os navegadores bloqueiam isso</li>
+</ul>
+<p>(chama-se mixed content), e confiar na origem não vai mudar. Coloque o nó<br />atrás de TLS, use um proxy ou abra a carteira a partir de uma versão em http simples ou localhost.</p>
+<ul>
+<li><strong>A versão distribuída permite apenas <code>https://</code> e loopback.</strong> A política de segurança dela é fixada</li>
+</ul>
+<p>no momento da compilação e não pode ser ampliada em execução. Quem faz self-hosting e precisa de http simples pode<br />compilar com <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code>; a lista de confiança acima continua valendo por cima.</p>
+<p>A URL do explorer está isenta de tudo isso — ela é apenas um link em que você clica, não<br />algo que a carteira busca.</p>
+<h3 id="rpc-proxy">RPC proxy</h3>
+<p><strong>RPC proxy (opcional)</strong> roteia as chamadas por uma URL de sua escolha: a URL de RPC é<br />acrescentada a ela, codificada em percent-encoding, e o navegador só se conecta ao proxy. É a<br />solução prática para um nó sem TLS ou sem cabeçalhos CORS, e satisfaz as regras acima<br />porque a conexão que o navegador faz é com o proxy.</p>
+<p>O proxy vê todas as requisições que a carteira faz, então <strong>use um seu</strong>. Ele não consegue assinar nada<br />nem acessar suas chaves, mas pode observar e pode mentir.</p>
+<h3 id="when-something-is-off">Quando algo está errado</h3>
+<p>Se o endpoint de RPC não puder ser usado como configurado, <strong>⚠️ Insecure RPC</strong> aparece no cabeçalho;<br />selecione-o para ir direto à configuração. Os erros de rede também trazem o motivo, então um simples<br />"Failed to fetch" diz o que corrigir.</p>
+<hr />
+<h2 id="backup-and-recovery">Backup e recuperação</h2>
+<h3 id="exporting">Exportando</h3>
+<p><strong>Settings → Backup → Export</strong> baixa um arquivo <code>.oct</code> criptografado. Ele é protegido por<br />seu PIN, mas trate-o como confidencial.</p>
+<h3 id="restoring">Restaurando</h3>
+<p>Use <strong>Import → Wallet file</strong> e informe o PIN que estava em uso quando o arquivo foi exportado.</p>
+<h3 id="multiple-accounts">Várias contas</h3>
+<p><strong>Settings → Accounts</strong> deriva contas adicionais da mesma frase de recuperação. Uma<br />frase restaura todas elas.</p>
+<p>Duas coisas que a frase <strong>não</strong> restaura, porque nunca foram derivadas dela:</p>
+<ul>
+<li><strong>Contas watch-only</strong> — são apenas endereços que você pediu à carteira para acompanhar. Anote-os</li>
+</ul>
+<p>separadamente se quiser tê-los de volta após uma reinstalação.</p>
+<ul>
+<li><strong>Contatos</strong> — exporte-os com <strong>⤓</strong> em Settings → Contacts se eles forem importantes para você.</li>
+</ul>
+<p>Nenhum dos dois guarda fundos, então perdê-los custa conveniência, não dinheiro.</p>
+<hr />
+<h2 id="troubleshooting">Solução de problemas</h2>
+<h3 id="the-page-is-blank-or-stuck-loading">A página está em branco ou travada ao carregar</h3>
+<p>Recarregue. Se persistir, um cartão de erro com um botão <strong>Retry</strong> deve aparecer. Informe a<br />mensagem exibida ali.</p>
+<h3 id="encrypted-balance-is-unavailable">O saldo criptografado está indisponível</h3>
+<p>Settings → PVAC mostra um dos seguintes:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Mensagem</th><th>Significado</th><th>Correção</th></tr></thead>
+<tbody>
+<tr><td><em>The WASM module has not been compiled</em></td><td><code>pvac.js</code> não está sendo servido</td><td>Execute <code>npm run build:wasm</code></td></tr>
+<tr><td><em>Content-Security-Policy is blocking WebAssembly</em></td><td>A CSP não tem <code>'wasm-unsafe-eval'</code></td><td>Adicione-a em <code>script-src</code> no <code>index.html</code></td></tr>
+<tr><td><em>The compiled module is out of date</em></td><td>A compilação é anterior às funções necessárias</td><td>Recompile com <code>npm run build:wasm</code></td></tr>
+<tr><td><em>FHE key generation failed</em></td><td>O módulo carregou, mas a geração das chaves falhou</td><td>Verifique o console do navegador e informe</td></tr>
+</tbody>
+</table>
+</div>
+<p>Pressione <strong>↻ Reload PVAC</strong> depois de aplicar uma correção — não é preciso reiniciar.</p>
+<h3 id="failed-to-load-history-network-errors">"Failed to load history" / erros de rede</h3>
+<p>Normalmente o nó de RPC está inacessível ou bloqueando CORS. Verifique a URL de RPC em<br /><strong>Settings</strong> e consulte as <a href="../README.md#cors">notas sobre CORS</a>. Se o erro citar um motivo —<br />texto puro, mixed content ou uma restrição de compilação — consulte<br /><a href="#network-settings">Configurações de rede</a>; um <strong>RPC proxy</strong> resolve o caso de CORS.</p>
+<h3 id="the-header-shows-insecure-rpc">O cabeçalho mostra "⚠️ Insecure RPC"</h3>
+<p>O endpoint de RPC configurado é <code>http://</code> simples e não pode ser usado como está. Selecione o<br />selo para abrir a configuração, onde a causa exata e a correção estão detalhadas. Consulte<br /><a href="#network-settings">Configurações de rede</a>.</p>
+<h3 id="the-camera-wont-open-when-i-select-scan">A câmera não abre quando seleciono 📷 Scan</h3>
+<ul>
+<li>Conceda a permissão de câmera quando o navegador pedir; se você a dispensou, permita-a novamente nas</li>
+</ul>
+<p>permissões do site e tente de novo.</p>
+<ul>
+<li>O acesso à câmera exige uma página segura. Funciona em <code>https://</code> e em <code>localhost</code>, mas não em</li>
+</ul>
+<p>uma página <code>http://</code> simples em outro host.</p>
+<ul>
+<li>Se outro aplicativo estiver usando a câmera, feche-o primeiro. Você sempre pode colar o endereço em vez disso.</li>
+</ul>
+<h3 id="unlock-with-passkey-isnt-offered">"Unlock with passkey" não é oferecido</h3>
+<p>Ou nenhuma passkey está registrada neste navegador, ou o dispositivo não consegue fazer o que o desbloqueio<br />por passkey exige. <strong>Settings → 🔑 Security → Passkey Unlock</strong> diz qual é o caso. Passkeys são por dispositivo<br />e por navegador, então uma registrada em outro lugar não aparece aqui. O PIN sempre funciona.</p>
+<h3 id="i-forgot-my-pin">Esqueci meu PIN</h3>
+<p>Reinstale a carteira usando sua frase de recuperação e defina um novo PIN. Sem a frase,<br />os fundos não podem ser recuperados — por ninguém.</p>
+<h3 id="could-not-read-your-saved-wallets-could-not-read-your-accounts">"Could not read your saved wallets" / "Could not read your accounts"</h3>
+<p>A carteira não conseguiu abrir o banco de dados local. Nada foi excluído — isso quase sempre<br />é outra aba da Orion, ou um pop-up <strong>Connect</strong> remanescente, ainda mantendo o banco de dados aberto.<br />Após uma atualização, o navegador não atualiza o banco de dados enquanto uma aba mais antiga ainda estiver<br />conectada a ele.</p>
+<p>Feche as outras abas e pop-ups da Orion e selecione <strong>↻ Try again</strong>. Se a mensagem persistir,<br />feche todas as abas da Orion e reabra a carteira em uma única aba.</p>
+<p>A tela de desbloqueio distingue os dois estados de propósito: <em>No stored wallet found</em> significa que o<br />banco de dados está realmente vazio, enquanto <em>Could not read your saved wallets</em> significa que suas contas estão<br />lá, mas temporariamente inacessíveis. <strong>Não crie uma nova carteira</strong> enquanto estiver vendo a<br />segunda mensagem.</p>
+<h3 id="my-wallet-vanished-after-an-update">Minha carteira sumiu após uma atualização</h3>
+<p>Os dados são migrados automaticamente de versões anteriores no primeiro início. Se suas contas estiverem<br />faltando, <strong>não crie uma nova carteira</strong> — isso pode sobrescrever os dados antigos. Informe o<br />problema e restaure a partir da sua frase de recuperação nesse meio-tempo.</p>
+<h3 id="dapp-says-session-expired">a dApp diz "Session expired"</h3>
+<p>Isso significa que a sessão da carteira expirou (30 min de inatividade / 8h absolutos). Reconecte-se<br />clicando em <strong>Connect</strong> na dApp. Seus dados da carteira são preservados — você só precisa<br />re-aprovar a conexão.</p>
+<hr />
+<h2 id="keeping-your-funds-safe">Como manter seus fundos seguros</h2>
+<p><strong>Faça</strong></p>
+<ul>
+<li>Mantenha sua frase de recuperação offline, em papel, de preferência em mais de um local</li>
+<li>Verifique os endereços dos destinatários antes de enviar</li>
+<li>Verifique a origem mostrada nos avisos de conexão de dApps</li>
+<li>Comece com uma pequena transação de teste ao enviar para um endereço novo</li>
+<li>Salve os beneficiários como contatos e confira o nome — um nome que você reconhece é melhor do que ler base58</li>
+<li>Use uma conta watch-only para ficar de olho no cold storage, em vez de desbloquear a conta real</li>
+</ul>
+<p><strong>Nunca</strong></p>
+<ul>
+<li>Digite sua frase de recuperação em qualquer site. A Orion Wallet nunca vai pedi-la após a configuração</li>
+<li>Guarde a frase em uma captura de tela, anotação de gerenciador de senhas, nuvem ou chat</li>
+<li>Compartilhe sua chave privada ou arquivo <code>.oct</code></li>
+<li>Use uma carteira com fundos reais em um computador compartilhado ou não confiável</li>
+</ul>
+<p>A Orion Wallet <strong>não foi auditada de forma independente</strong>. Revise o<br /><a href="SECURITY.html">documento de segurança</a> antes de guardar valores significativos.</p>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Güvenlik — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="security">Güvenlik</h1>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Kaynak kod, sorunlar ve sürümler.<br /><strong>Güvenlik açığı bildirin:</strong> <a href="https://github.com/maragung/OrionWallet/security/advisories/new">GitHub Security Advisories</a></blockquote>
+<h2 id="audit-status">Denetim durumu</h2>
+<p><strong>Orion Wallet bağımsız bir üçüncü taraf güvenlik denetiminden geçmemiştir.</strong></p>
+<p>Kriptografik tasarım, referans <code>octra-labs/webcli</code> uygulamasını izler ve ilkeller iyi<br />incelenmiş kütüphanelerden gelir. Ancak bütünleştirmenin kendisi denetimsizdir.<br />Önemli değerler saklamadan önce lütfen bunu göz önünde bulundurun.</p>
+<hr />
+<h2 id="reporting-a-vulnerability">Bir güvenlik açığını bildirme</h2>
+<p><strong>Bir güvenlik sorunu için herkese açık bir konu (issue) açmayın.</strong></p>
+<p>Sorunu bakımcılara özel olarak bildirin ve şunları ekleyin:</p>
+<ul>
+<li>Sorunun ve etkisinin bir açıklaması</li>
+<li>Yeniden üretme adımları</li>
+<li>Etkilenen sürüm veya commit</li>
+<li>Önerilen her türlü düzeltme</li>
+</ul>
+<p>Kamuya açıklamadan önce düzeltme için makul bir süre tanıyın. Bildirimler memnuniyetle karşılanır<br />ve aksini tercih etmediğiniz sürece size itibar edilir.</p>
+<hr />
+<h2 id="threat-model">Tehdit modeli</h2>
+<h3 id="what-orion-wallet-protects-against">Orion Wallet nelere karşı korur</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Tehdit</th><th>Azaltma</th></tr></thead>
+<tbody>
+<tr><td>Anahtarların bir sunucuya sızması</td><td>Arka uç yok. Anahtarlar tarayıcıdan asla çıkmaz</td></tr>
+<tr><td>Beklemede keystore hırsızlığı</td><td>AES-256-GCM; anahtar PBKDF2 ile PIN'den türetilir</td></tr>
+<tr><td>Kötü niyetli dApp istekleri</td><td>Açık onay istemleriyle origin başına izinler</td></tr>
+<tr><td>Çapraz origin mesaj sahteciliği</td><td>Her gelen mesajda origin doğrulanır</td></tr>
+<tr><td>Mesaj tekrarı (replay)</td><td>Oturum başına CSPRNG challenge ve nonce</td></tr>
+<tr><td>Enjekte edilen işaretlemeyle XSS</td><td><code>innerHTML</code> / <code>dangerouslySetInnerHTML</code> yok; CSP kaynakları kısıtlar</td></tr>
+<tr><td>Uygulamayı çökerten hatalı RPC verisi</td><td>Savunmacı normalleştirme artı hata sınırları</td></tr>
+<tr><td>Asla kâğıda yazılmayan bir kurtarma ifadesi</td><td>Oluşturma, 3 rastgele kelimenin yeniden yazılmasına bağlıdır</td></tr>
+<tr><td>Anahtarı olmayan bir hesaptan imzalama</td><td><code>assertCanSign</code> yalnızca arayüzde değil, API sınırında reddeder</td></tr>
+<tr><td>Sessizce dinlenen RPC trafiği</td><td>Düz metin uç noktalar açık origin başına onay gerektirir</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="what-it-cannot-protect-against">Nelere karşı koruyamaz</h3>
+<p>Bunlar konusunda kendinize karşı net olun:</p>
+<ul>
+<li><strong>Ele geçirilmiş bir cihaz.</strong> Kötü amaçlı yazılım, bir keylogger veya düşmanca bir tarayıcı uzantısı, PIN'inizi<br />yazarken okuyabilir ve çözülmüş anahtarları bellekten çıkarabilir.</li>
+<li><strong>Kaybolmuş bir kurtarma ifadesi.</strong> Hiçbir kurtarma mekanizması yoktur. Kimse onu geri getiremez.</li>
+<li><strong>Kimlik avı (phishing).</strong> Kurtarma ifadenizi sahte bir siteye girerseniz fonlar gider. Orion Wallet, kurulumdan<br />sonra ifadenizi asla istemez.</li>
+<li><strong>Ele geçirilmiş bir RPC düğümü.</strong> Kötü niyetli bir düğüm sahte bakiyeler sunabilir ya da işlemleri alıkoyabilir.<br />İmza sahtesi yapamaz veya anahtar çalamaz.</li>
+<li><strong>Tedarik zinciri</strong> npm bağımlılıklarının ya da barındırma sağlayıcısının tehlikeye girmesi.</li>
+<li>Cüzdanın kilidi açık durumdayken, kilidi açılmış bir cihaza <strong>fiziksel erişim</strong>.</li>
+</ul>
+<hr />
+<h2 id="cryptographic-design">Kriptografik tasarım</h2>
+<h3 id="key-derivation-and-storage">Anahtar türetme ve saklama</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Amaç</th><th>Algoritma</th></tr></thead>
+<tbody>
+<tr><td>Anımsatıcı (mnemonic)</td><td>BIP39</td></tr>
+<tr><td>HD türetme</td><td>Ed25519, SLIP-0010 tarzı</td></tr>
+<tr><td>İmzalama</td><td>Ed25519 (tweetnacl)</td></tr>
+<tr><td>ECDH (stealth)</td><td>X25519 (@noble/curves)</td></tr>
+<tr><td>Keystore şifrelemesi</td><td>AES-256-GCM (WebCrypto)</td></tr>
+<tr><td>PIN → anahtar</td><td>PBKDF2-HMAC-SHA256</td></tr>
+<tr><td>Rastgelelik</td><td><code>crypto.getRandomValues</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Keystore biçimi C++ orijinaliyle eşleşir: <code>OCT1</code> sihri, sürüm, PBKDF2 yineleme sayısı, tuz, nonce ve ardından<br />kimlik doğrulama etiketiyle birlikte AES-GCM şifreli metni.</p>
+<h3 id="pin-handling">PIN işleme</h3>
+<p>PIN <strong>hiçbir biçimde asla kalıcı olarak saklanmaz</strong>. Kilit açma sırasında çözme anahtarını türetir ve ardından atılır.<br />Tasarım gereği "PIN'imi hatırla" yoktur. Sonuç olarak, unutulmuş bir PIN yalnızca kurtarma ifadesinden geri yüklenerek çözülebilir.</p>
+<h3 id="unlock-session">Kilit açma oturumu</h3>
+<p>PIN kalıcı değildir, ancak kilidi açmanın <em>sonucu</em>, oturum sürdüğü sürece kalıcıdır: sayfayı yenilemek kullanıcıyı PIN<br />ekranına geri atmamalıdır. <code>src/wallet/unlock-session.ts</code>, çözülmüş cüzdanı AES-256-GCM ile mühürler ve iki depoya böler:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Yarı</th><th>Nerede</th><th>Ömür</th></tr></thead>
+<tbody>
+<tr><td>Şifreli metin (<code>orion:unlock-session</code>)</td><td><code>sessionStorage</code></td><td>Tek sekme. Sekme kapandığında kaybolur</td></tr>
+<tr><td>Mühürleme anahtarı</td><td>IndexedDB <code>unlock-session-keys</code>, <strong>dışa aktarılamaz</strong> bir <code>CryptoKey</code> olarak</td><td>Kilitlemede silinir; yetimler yaşa göre budanır</td></tr>
+</tbody>
+</table>
+</div>
+<p>İki yarının hiçbiri tek başına kullanışlı değildir. IndexedDB, sekme kapanmasına dayanır ama şifreli metin tutmaz;<br /><code>sessionStorage</code> şifreli metni tutar ama anahtarı tutmaz ve ikinci bir sekme ya da başka bir origin onu okuyamaz. Anahtar,<br /><code>extractable: false</code> ile üretilir; böylece bu origin tarafından <em>kullanılabilir</em> ama baytları dışarı okunamaz — ne kendi<br />kodumuz ne de sayfada çalışmayı başaran herhangi bir şey. Oturum her geri yüklemede döner (taze anahtar, taze nonce) ve<br /><code>createdAt</code> değerini ileri taşır; böylece yenileme mutlak sınırı uzatamaz.</p>
+<p>Süre sonu: <strong>30 dakika boşta</strong> (yapılandırılabilir, <code>autoLockMinutes</code>; <code>0</code> devre dışı bırakır) ve ilk kilit açmadan<br />itibaren <strong>8 saatlik mutlak sınır</strong>. Her ikisi de geri yüklemede uygulanır ve boşta kalma penceresi <code>useAutoLock</code><br />tarafından canlı olarak da uygulanır; böylece açık bırakılan bir sekme kendini kilitler.</p>
+<p>Bunun neye karşı savunmadığı — dürüst kısım:</p>
+<ul>
+<li><strong>Sekmede betik yürütülmesi.</strong> Canlı bir oturum sırasında sayfada çalışan kod, tarayıcıdan oturumun şifresini çözmesini<br />ve ardından cüzdanın yaptığı gibi anahtarlarla imzalamasını isteyebilir. Mühürleme anahtarını dışarı sızdıramaz; bu yüzden<br />tehlike sekme ile sınırlı kalır; başka yerde kullanılabilir çalınmış bir anahtara dönüşmez.</li>
+<li><strong>Ele geçirilmiş bir cihaz.</strong> Yukarıdaki tehdit modelinden değişmemiştir: yerel kötü amaçlı yazılım IndexedDB'yi ve<br /><code>sessionStorage</code>'u birlikte okuyabilir.</li>
+<li><strong>Güvenli olmayan bağlamlar.</strong> <code>crypto.subtle</code> olmadan (düz <code>http://</code>, aşağıya bakın), mühürleme anahtarı IndexedDB'de<br />ham baytlara geri döner ve dışa aktarılamazlık güvencesi kaybolur. Bölme ve süre sonu yine de geçerlidir.</li>
+</ul>
+<p>Tamamen vazgeçmek için <strong>Settings → Security → Stay unlocked after a page refresh</strong> seçeneğini kapatın<br />(<code>keepUnlocked: false</code>). Hiçbir şey yazılmaz ve her yenileme PIN sorar — bu özellik var olmadan önceki davranış. Açık bir<br />kilit (🔒) iki yarıyı da anında yok eder.</p>
+<h3 id="passkey-unlock">Passkey ile kilit açma</h3>
+<p>İsteğe bağlıdır, varsayılan olarak kapalıdır ve ekleme niteliğindedir: mevcut bir cüzdanı açmanın ikinci bir yoludur,<br />asla PIN'in yerini tutmaz. <code>src/wallet/passkey.ts</code>.</p>
+<p>Kayıt, <code>userVerification: 'required'</code> ve WebAuthn <strong>PRF</strong> uzantısıyla bir platform kimlik bilgisi oluşturur.<br />PRF, sayfaya kimlik bilgisinden ve saklanan 32 baytlık tuzdan türetilen bir sır verir; tarayıcı bunu yalnızca kullanıcı<br />doğrulamasından sonra üretir. Cüzdan, <code>sha256("orion-passkey-unlock-v1" || prf)</code> değerini bir AES-256 anahtarı olarak alır,<br />serileştirilmiş cüzdanı AES-256-GCM ile mühürler, anahtarı sıfırlar ve mühürlü blob'u IndexedDB'de kimlik bilgisi kimliğinin ve<br />tuzun yanında saklar.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Saklanan</th><th>Saklanmayan</th></tr></thead>
+<tbody>
+<tr><td>Kimlik bilgisi kimliği, PRF tuzu, IV, cüzdanın şifreli metni</td><td>PRF çıktısı, türetilen anahtar, PIN, herhangi bir düz metin anahtar malzemesi</td></tr>
+</tbody>
+</table>
+</div>
+<p>Açıkça belirtmeye değer sonuçlar:</p>
+<ul>
+<li><strong>PRF zorunludur, asla gevşetilmez.</strong> Doğrulayıcı bunu desteklemiyorsa, kayıt hata verir ve hiçbir şey saklamaz.<br />Alternatif — şifreli metnin yanında okunabilir bir anahtar tutmak — kaydı kendi kendini çözer hale getirirdi; bu da özelliği<br />hiç sunmamaktan daha kötüdür.</li>
+<li><strong>Kayıt tek başına etkisizdir.</strong> O doğrulayıcıda kullanıcı tarafından doğrulanmış başarılı bir jest olmadan,<br />disktekinden anahtarı türetmenin hiçbir yolu yoktur.</li>
+<li><strong>Cüzdanı mühürler, PIN'i değil.</strong> Anahtarları dışa aktaran, ifadeyi açığa çıkaran, PIN'i değiştiren ya da hesap türeten<br />tek şey hâlâ PIN'dir. Bu yüzden passkey ile kilit açma, bunlara yetki yükseltmek için kullanılamaz ve saklanan kayıt,<br />saklanan bir PIN'den kesinlikle daha azını sızdırır.</li>
+<li><strong>PIN ile aynı oturum modeli.</strong> Passkey ile kilit açma, aynı boşta kalma ve mutlak sınırlara sahip aynı kilit açma<br />oturumunu üretir; ikisini de uzatmaz.</li>
+<li><strong>Cihaza ve tarayıcıya bağlı.</strong> Origin'in <code>rpId</code> değerine bağlıdır ve yerel olarak saklanır. Bir cüzdan dışa<br />aktarımının parçası değildir ve kurtarma ifadesinden türetilmez.</li>
+<li><strong>Bayat bir kimlik bilgisi kapalı durumda başarısız olur.</strong> Şifre çözme başarısız olursa — döndürülmüş veya yeniden<br />kaydedilmiş bir kimlik bilgisi, geri yüklenmiş bir cihaz — kayıt silinir ve PIN gerekir. <em>Kapatılmış ya da zaman aşımına<br />uğramış bir jest</em> bilinçli olarak onu <strong>silmez</strong>; böylece iptal edilmiş bir istem özelliği sessizce devre dışı bırakamaz.</li>
+<li><strong>Salt-izleme hesapları için reddedilir.</strong> Mühürlenecek anahtar malzemesi yoktur.</li>
+</ul>
+<p>Savunmadığı şey değişmemiştir: ele geçirilmiş bir cihaz ve canlı bir oturumda betik yürütülmesi — tıpkı yukarıdaki kilit açma<br />oturumunda olduğu gibi. Ancak gerçek bir maruziyeti ortadan kaldırır — PIN'in her kilit açışta yazılıp gözlenmesi.</p>
+<h3 id="watch-only-accounts">Salt-izleme hesapları</h3>
+<p>Bir hesap, keystore olmadan yalnızca adresle eklenebilir. Değişmez kural, böyle bir hesabın asla imzalayamayacağıdır ve bu,<br />imzalamanın olduğu yerde uygulanır, arayüzde değil: <code>assertCanSign</code> (<code>src/wallet/watch-only.ts</code>) gönderme, şifreleme,<br />stealth, sözleşme ve dApp-istek yolları tarafından çağrılır ve hem eylemi hem de düzeltmeyi adlandıran bir hata fırlatır.</p>
+<p>Yapı gereği kapalı durumda başarısız olur: denetim, gizli anahtarı tam 64 baytlık bir Ed25519 anahtarı olmayan her cüzdanı<br />reddeder; böylece <code>watchOnly</code> bayrağı bir şekilde kaybolsa bile kırpılmış ya da eksik bir anahtar reddedilir. Bayrak,<br /><code>serializeWallet</code>/<code>deserializeWallet</code> üzerinden taşınır; böylece bir kilit açma oturumundan geri yüklenen bir cüzdan hâlâ<br />salt-izleme olur.</p>
+<h3 id="randomness">Rastgelelik</h3>
+<p>Güvenlikle ilgili tüm değerler <code>src/crypto/random.ts</code> üzerinden <code>crypto.getRandomValues</code> kullanır.</p>
+<p><code>src/sdk/protocol.ts</code> içindeki <code>makeId</code>, bir <code>Math.random</code> geri dönüşüne sahiptir. <strong>Yalnızca</strong> mesaj ilişkilendirme<br />kimlikleri için kullanılır, asla güvenlik değerleri için değil ve bu şekilde ek açıklanmıştır. Challenge, nonce, anahtar ya da<br />tuz için onu yeniden kullanmayın.</p>
+<hr />
+<h2 id="browser-security-posture">Tarayıcı güvenlik duruşu</h2>
+<h3 id="content-security-policy">Content-Security-Policy</h3>
+<p><code>index.html</code> içinde tanımlanır:</p>
+<pre><code class="language-">default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob:; font-src 'self' data:;
+connect-src 'self' https: http://localhost:* http://127.0.0.1:* http://[::1]:*;
+frame-src 'self' https:; worker-src 'self' blob:; object-src 'none';
+base-uri 'self'; form-action 'self';</code></pre>
+<p>Açıklanmayı hak eden üç girdi vardır:</p>
+<ul>
+<li><strong><code>'wasm-unsafe-eval'</code></strong>, PVAC FHE modülü için gereklidir. Chromium, onsuz<br /><code>WebAssembly.instantiate()</code> çağrısını engeller. Yalnızca WebAssembly derlemesine izin verir — JavaScript<br /><code>eval()</code> işlevini yeniden etkinleştirmez.</li>
+<li><strong>Stiller için <code>'unsafe-inline'</code></strong>, boyanmamış içerik parlamasını önleyen boyama-öncesi kritik CSS için<br />gereklidir. Yalnızca stillere uygulanır, asla betiklere değil.</li>
+<li><strong><code>connect-src</code> içinde loopback</strong>, ilkeyi genel olarak düz metne genişletmeden yerel olarak çalıştırılan bir<br />düğümün kullanılmasını sağlar. <code>localhost</code> / <code>127.0.0.0/8</code> / <code>[::1]</code> trafiği makineden asla çıkmaz; bu yüzden<br />ele geçirilecek tel üzerinde hiçbir şey yoktur.</li>
+</ul>
+<h3 id="plaintext-http-rpc-endpoints">Düz metin (http) RPC uç noktaları</h3>
+<p>Düz <code>http://</code> üzerinden başka her şey varsayılan olarak reddedilir ve kararı veren tek yer<br /><code>src/wallet/endpoint-policy.ts</code> dosyasıdır. URL'nin ve açık bir bağlamın saf bir işlevidir; böylece store, Settings arayüzü<br />ve testler neye izin verildiği konusunda çelişemez.</p>
+<p>Üç bağımsız engel uygulanır ve karar, en temel olanı önce adlandırır; böylece gerçek neden karışık içerikken kullanıcıya<br />izin listesini düzeltmesi asla söylenmez:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Engel</th><th>Kim uygular</th><th>Nasıl kaldırılır</th></tr></thead>
+<tbody>
+<tr><td>Karışık içerik</td><td>Tarayıcı, koşulsuz olarak</td><td>Kaldırılamaz. TLS veya bir proxy kullanın</td></tr>
+<tr><td>Content-Security-Policy</td><td>Dağıtılan meta-etiket CSP'si</td><td><code>VITE_ALLOW_HTTP_ENDPOINTS=1</code> ile yeniden derleyin</td></tr>
+<tr><td>Kullanıcı onayı</td><td>Settings içindeki <code>allowedInsecureOrigins</code></td><td>Settings → Network içinde origin'e <strong>Trust</strong> deyin</td></tr>
+</tbody>
+</table>
+</div>
+<p>Tasarıma ilişkin notlar:</p>
+<ul>
+<li>CSP bir meta etikettir, bu yüzden <strong>çalışma zamanında genişletilemez</strong> — hiçbir ayar bunu veremez; bir derleme<br />bayrağı olmasının nedeni budur. <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code>, derleme zamanında <code>connect-src</code> değerine <code>http:</code> ekler,<br />başka hiçbir şey yapmaz; üstüne kullanıcı onayı hâlâ gereklidir.</li>
+<li>Onay <strong>origin başınadır</strong> — düzen (scheme), konak (host) ve bağlantı noktası. Bir konak adı eşleşmesi ya da URL ön eki<br />değildir; bu yüzden <code>http://node.lan:8080</code> adresine güvenmek o konağın başka bir bağlantı noktasına güvenmez ve<br /><code>http://127.0.0.1.evil.com</code> loopback olarak ele alınmaz.</li>
+<li><strong>Explorer URL'leri muaftır</strong> çünkü bunlar yalnızca <code>&lt;a href&gt;</code> gezinmeleridir, getirme (fetch) değildir.<br /><code>connect-src</code> ve karışık içerik onlara uygulanmaz. <code>relayerUrl</code> saklanır ama asla getirilmez. Yalnızca <code>rpcUrl</code> bu<br />ilkeye tabidir.</li>
+<li>Engellenen bir uç nokta yine de bir <code>RpcClient</code> kurar, bilinçli olarak: bir tane kurmayı reddetmek, kullanıcının onu<br />düzeltmek için Settings'e ulaşamamasına yol açar. Bunun yerine neden, başlıkta bir <strong>⚠️ Insecure RPC</strong> rozeti olarak ve<br />yalnızca fırlatılan bir <code>TypeError</code> öğesine eklenen — gerçek bir sunucu hatasına ya da zaman aşımına asla eklenmeyen, çünkü<br />yanıltıcı olurdu — <code>RpcClient.unreachableHint</code> olarak yüzeye çıkar.</li>
+<li><strong><code>rpcProxyUrl</code></strong>, kararı proxy'ye taşır: uç nokta, tarayıcının gerçekten bağlandığı şey olduğu için proxy'nin kendi<br />düzenine göre değerlendirilir. Proxy her isteği görür; bu yüzden arayüz, kendi proxy'nizi çalıştırmanızı söyler. Anahtarlara<br />ulaşamaz veya imzalayamaz.</li>
+</ul>
+<p>Düz metin RPC bir gizlilik <em>ve</em> bütünlük maruziyetidir — yol üzerindeki bir düğüm her sorguyu okuyabilir ve yanıtları<br />değiştirebilir — ama anahtarın tehlikeye girmesi değildir: imzalar yerel olarak üretilir ve cüzdan, anahtar malzemesine<br />dönüştürerek aldığı hiçbir şeyi doğrulamaz.</p>
+<h3 id="cross-origin-isolation">Çapraz origin izolasyonu</h3>
+<p>COOP/COEP, uygulama genelinde <code>same-origin</code> / <code>require-corp</code> değerlerindedir ve <code>/connect</code> üzerinde <code>unsafe-none</code><br />geçersiz kılmaları vardır; böylece onay popup'ı, açan pencereyle (opener) bir MessagePort değiş tokuş edebilir. Bu daraltma<br />bilinçlidir ve yalnızca o tek rotayla sınırlıdır.</p>
+<hr />
+<h2 id="dapp-connection-security">dApp bağlantı güvenliği</h2>
+<p>Bir site bağlantı istediğinde:</p>
+<ol>
+<li>Popup, istekte bulunan origin'i belirgin biçimde gösterir.</li>
+<li>Kullanıcı açıkça onaylamalıdır; yeni bir origin için sessiz bağlantı yoktur.</li>
+<li>Onay o origin ile sınırlıdır ve origin başına kalıcıdır.</li>
+<li>İmzalama işlemleri, güvenilir siteler için bile her zaman onay gerektirir.</li>
+</ol>
+<p>"Trust this site", yalnızca <strong>salt-okunur</strong> isteklerin (bakiye, hesaplar, ağ) istemlerini bastırır.<br />Asla sessiz imzalamaya izin vermez.</p>
+<p>Bağlantılar <strong>Settings → Connected Sites</strong> altında gözden geçirilebilir ve iptal edilebilir.</p>
+<h3 id="what-a-dapp-learns-about-a-custom-network">Bir dApp, özel bir ağ hakkında ne öğrenir</h3>
+<p>Kullanıcının elle eklediği ağlar, bağlı sitelere görünür (<code>wallet_getNetworkInfo</code>, <code>wallet_getNetworks</code> ve<br /><code>networkChanged</code> olayı), çünkü bir dApp hangi ağda olduğunu bilmeden doğru bir explorer bağlantısı ya da zincir etiketi<br />gösteremez. Tel üzerinden geçen kayıt, bilinçli bir alt kümedir:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Gönderilen</th><th>Gizlenen</th></tr></thead>
+<tbody>
+<tr><td><code>id</code>, <code>name</code>, <code>explorerUrl</code>, <code>icon</code>, <code>custom</code></td><td><code>rpcUrl</code>, <code>relayerUrl</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Uç noktalar gizlenir çünkü kullanıcının eklediği bir ağ genellikle özeldir — bir LAN adresi, bir tünel, sorgu dizgisinde API<br />anahtarı olan ücretli bir sağlayıcı URL'si. Bir siteye bağlanmak, kullanıcının düğümünün nerede yaşadığını açığa çıkarmamalı<br />veya kimlik bilgisi içeren bir URL'yi teslim etmemelidir. Hiçbir işlevsellik kaybolmaz: okumalar cüzdan üzerinden vekilenen<br />isteklerdir ve işlemler cüzdan tarafından oluşturulup yayınlanır; böylece bir dApp'in RPC'ye kendisinin ulaşması asla gerekmez.</p>
+<p>Bilmeye değer iki sonuç:</p>
+<ul>
+<li>Özel bir ağın <strong>adı</strong> kullanıcı tarafından seçilir ve dApp'lere gösterilir. Bir ağı kişisel bir tanımlayıcının ardından<br />adlandırmak, o tanımlayıcıyı bağlandığınız her siteye açığa çıkarır.</li>
+<li><code>wallet_getNetworks</code>, <strong>kaç</strong> ağ yapılandırdığınızı açığa çıkarır. Bu küçük bir parmak izi yüzeyidir; bir dApp'in<br />"şuna geç" rehberliği sunabilmesi için kabul edilmiştir.</li>
+</ul>
+<p>Hiçbir dApp ağı değiştiremez. <code>wallet_switchNetwork</code> yöntemi yoktur; değiştirme yalnızca cüzdanın kendi arayüzünde olur<br />ve dApp bunu sonradan <code>networkChanged</code> üzerinden öğrenir.</p>
+<hr />
+<h2 id="dependency-status">Bağımlılık durumu</h2>
+<p>Üretim bağımlılıkları: <strong>sıfır bilinen güvenlik açığı</strong> (<code>npm audit --omit=dev</code>).</p>
+<p>Geliştirme bağımlılıkları vitest, vite, esbuild ve ilgili paketlerde danışmanlıklar taşır. Geriye kalan her düzeltme,<br />derlemeyi kırma riski taşıyan büyük bir yükseltme gerektirir (vite 5→8, vitest 2→4). Bu paketler derleme araçlarıdır —<br />kullanıcılara gönderilmezler ve dağıtılmış bir cüzdanı etkileyemezler.</p>
+<p>Bu, her sürümde yeniden gözden geçirilen bilinçli bir ödünleşimdir. Dağıtılan yüzeyin temiz kaldığını doğrulamak için<br /><code>npm audit --omit=dev</code> çalıştırın.</p>
+<hr />
+<h2 id="guidance-for-users">Kullanıcılar için rehber</h2>
+<p><strong>Yapın</strong></p>
+<ul>
+<li>Kurtarma ifadenizi çevrimdışı, kâğıt üzerinde, birden fazla yerde saklayın</li>
+<li>Göndermeden önce alıcı adreslerini karakter karakter doğrulayın</li>
+<li>Her dApp bağlantı isteminde origin'i doğrulayın</li>
+<li>Yeni bir adres kullanırken önce küçük bir test tutarı gönderin</li>
+<li>Tarayıcınızı ve işletim sisteminizi güncel tutun</li>
+</ul>
+<p><strong>Asla</strong></p>
+<ul>
+<li>Kurulumdan sonra kurtarma ifadenizi herhangi bir web sitesine girmeyin</li>
+<li>İfadeyi dijital olarak saklamayın — ekran görüntüsü, bulut notu veya sohbet mesajı yok</li>
+<li>Özel anahtarınızı veya <code>.oct</code> yedek dosyanızı paylaşmayın</li>
+<li>Gerçek fon tutan bir cüzdanı paylaşılan veya güvenilmeyen bir bilgisayarda kullanmayın</li>
+</ul>
+<hr />
+<h2 id="for-contributors">Katkıda bulunanlar için</h2>
+<p>Zayıflatılmaması gereken güvenlik açısından hassas değişmezler:</p>
+<ul>
+<li>Her gelen <code>postMessage</code> üzerinde origin doğrulaması</li>
+<li>Tüm güvenlik değerleri için CSPRNG; <code>makeId</code> bunlardan biri değildir</li>
+<li><code>localStorage</code>, <code>sessionStorage</code>, günlükler veya hata iletilerinde sır yok</li>
+<li><code>innerHTML</code> veya <code>dangerouslySetInnerHTML</code> yok</li>
+<li>PIN asla kalıcı değildir</li>
+<li>Passkey ile kilit açma PRF gerektirir; okunabilir bir anahtar saklamaya asla geri düşme</li>
+<li><code>assertCanSign</code> her imzalama yolunu korur — salt-izleme bir hesap asla imzalamamalıdır</li>
+<li>Düz metin uç nokta ilkesi <code>endpoint-policy.ts</code> içinde kalır; başka yerlerde uygun-görülen URL kontrolleri yok</li>
+<li>Kurallı JSON bayt-eksiksiz kalır — imzalar ona bağlıdır</li>
+</ul>
+<p>Kripto, anahtar işleme, depolama ya da bağlantı akışına dokunan her değişiklik, bunu çekme isteğinde (pull request)<br />açıkça belirtmelidir.</p>
+</body>
+</html>

@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guía para desarrolladores — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="orion-wallet-developer-guide">Orion Wallet — Guía para desarrolladores</h1>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Código fuente, incidencias y versiones.</blockquote>
+<h2 id="contents">Contenido</h2>
+<ul>
+<li><a href="#setup">Configuración</a></li>
+<li><a href="#project-layout">Estructura del proyecto</a></li>
+<li><a href="#architecture">Arquitectura</a></li>
+<li><a href="#build-system">Sistema de compilación</a></li>
+<li><a href="#the-pvac-wasm-pipeline">El proceso WASM de PVAC</a></li>
+<li><a href="#state-management">Gestión del estado</a></li>
+<li><a href="#error-handling">Gestión de errores</a></li>
+<li><a href="#loading-states">Estados de carga</a></li>
+<li><a href="#storage-and-migrations">Almacenamiento y migraciones</a></li>
+<li><a href="#wallet-sdk">SDK de la cartera</a></li>
+<li><a href="#dapp-integration">Integración de dApps</a></li>
+<li><a href="#session-management">Gestión de sesiones</a></li>
+<li><a href="#testing">Pruebas</a></li>
+<li><a href="#release-checklist">Lista de verificación de publicación</a></li>
+<li><a href="#known-issues">Problemas conocidos</a></li>
+</ul>
+<hr />
+<h2 id="setup">Configuración</h2>
+<pre><code class="language-bash">npm install --legacy-peer-deps
+npm run dev</code></pre>
+<p><code>--legacy-peer-deps</code> es obligatorio: ESLint 9 y <code>@eslint/js</code> 10 declaran rangos de pares<br />en conflicto. <code>vercel.json</code> usa la misma opción, de modo que las instalaciones de CI y locales coinciden.</p>
+<p>Se recomienda Node 20+.</p>
+<hr />
+<h2 id="project-layout">Estructura del proyecto</h2>
+<pre><code class="language-">src/
+├── api/          High-level operations (wallet-api, send, encrypt)
+├── components/   React components, one panel per tab
+├── connect/      dApp approval popup (/connect route)
+├── crypto/       Primitives: ed25519, x25519, sha256, aes, bip39, hd, base58/64
+├── hooks/        useTheme, usePanelLoading
+├── i18n/         Translations and the provider
+├── pvac/         FHE bridge: stub + WASM implementation
+├── rpc/          JSON-RPC client
+├── sdk/          Provider injected into dApps + transport
+├── stealth/      Stealth address derivation
+├── store/        Zustand store
+├── tx/           Canonical JSON, signing, ABI helpers
+├── utils/        Clipboard, progress reporting, CSV export
+└── wallet/       Keystore, IndexedDB storage, PIN, passkey unlock, watch-only
+                  guard, endpoint policy, payment URIs, mnemonic backup check
+
+public/
+  demo/           Standalone dApp integration demo (dapp.html)
+  docs/           Static HTML documentation pages
+  wasm/           Compiled PVAC module (pvac.js + pvac.wasm)
+
+tests/unit/       Vitest
+tests/e2e/        Playwright
+docs/             This documentation</code></pre>
+<hr />
+<h2 id="architecture">Arquitectura</h2>
+<p>Totalmente del lado del cliente; no hay backend. Los datos fluyen en una sola dirección:</p>
+<pre><code class="language-">React components  (src/components/)
+       │  read state, dispatch actions
+       ▼
+Zustand store  (src/store/wallet-store.ts)
+       │
+       ▼
+API layer  (src/api/)          ← orchestrates crypto + RPC
+       │
+       ├──► Crypto core  (src/crypto/)   WebCrypto, tweetnacl, @noble
+       ├──► PVAC FHE     (src/pvac/)     WebAssembly
+       ├──► Transaction  (src/tx/)       canonical JSON + signing
+       └──► RPC client   (src/rpc/)      fetch
+                                           │ HTTPS
+                                           ▼
+                                    Octra RPC node</code></pre>
+<h3 id="design-constraints">Restricciones de diseño</h3>
+<p><strong>El JSON canónico debe ser exacto a nivel de bytes.</strong> <code>src/tx/canonical-json.ts</code> reproduce<br />exactamente el orden de claves y el formato de <code>nlohmann::json</code>. Las firmas se calculan sobre estos<br />bytes, de modo que cualquier desviación produce una firma que la red rechaza. No "ordene ni limpie" este<br />serializador.</p>
+<p><strong>Nomenclatura: producto frente a protocolo.</strong> "Orion Wallet" es el producto. Los métodos RPC <code>octra_*</code>,<br />el prefijo de dirección <code>oct</code>, el símbolo <code>OCT</code> y "Octra Network" son identificadores del protocolo<br />y nunca deben renombrarse.</p>
+<hr />
+<h2 id="build-system">Sistema de compilación</h2>
+<p>Los archivos de configuración de TypeScript son la <strong>única fuente de verdad</strong>:</p>
+<ul>
+<li><code>vite.config.ts</code></li>
+<li><code>vitest.config.ts</code></li>
+<li><code>playwright.config.ts</code></li>
+</ul>
+<blockquote><strong>No añada equivalentes <code>.js</code> para estos.</strong> Vite resuelve <code>vite.config.js</code> antes que<br /><code>vite.config.ts</code>, de modo que una copia transpilada obsoleta oculta silenciosamente la configuración real y las ediciones<br />al archivo <code>.ts</code> no surten efecto. Esos tres nombres de archivo están en <code>.gitignore</code>.<br /><code>eslint.config.js</code> es configuración plana genuina y se conserva intencionadamente.</blockquote>
+<p>Ignorarlos no bastaba por sí solo, porque nada impedía que fueran <em>creados</em>:<br /><code>tsconfig.node.json</code> es un proyecto <code>composite</code>, lo que fuerza la emisión de declaraciones, y sin<br />ningún <code>outDir</code> cualquier <code>tsc -b</code> escribía <code>vite.config.js</code> justo al lado del código fuente. Ocurrió dos veces.<br />La emisión de ese proyecto ahora va a <code>node_modules/.tmp/tsconfig-node/</code>, donde no puede ocultar<br />nada. Si añade un archivo de configuración a ese proyecto, no toque el <code>outDir</code>.</p>
+<h3 id="environment-flags">Indicadores de entorno</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Indicador</th><th>Efecto</th></tr></thead>
+<tbody>
+<tr><td><code>VITE_ALLOW_HTTP_ENDPOINTS=1</code></td><td>Añade <code>http:</code> a la directiva CSP <code>connect-src</code> en el momento de compilación, de modo que una compilación autoalojada pueda alcanzar un nodo RPC de http simple. El consentimiento del usuario por origen sigue aplicándose; consulte <code>src/wallet/endpoint-policy.ts</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Se establece solo en el momento de compilación. Lo lee el complemento <code>allowHttpEndpointsCsp</code> en <code>vite.config.ts</code><br />y reescribe <code>index.html</code>; no tiene efecto en tiempo de ejecución, porque una CSP de metaetiqueta no se puede ampliar<br />una vez analizado el documento.</p>
+<h3 id="headers">Cabeceras</h3>
+<p>COOP/COEP se establecen en <code>same-origin</code> / <code>require-corp</code> (reservado para el futuro uso de hilos en WASM),<br />con anulaciones <code>unsafe-none</code> en <code>/connect</code> para que funcionen el <code>postMessage</code> de la ventana emergente y la<br />transferencia de MessagePort. Las cabeceras de desarrollo están en <code>vite.config.ts</code>; las de producción en <code>vercel.json</code>.<br /><strong>Mantenga ambas sincronizadas.</strong></p>
+<h3 id="content-security-policy">Content-Security-Policy</h3>
+<p>Definida en <code>index.html</code>. <code>script-src</code> debe incluir <code>'wasm-unsafe-eval'</code>; Chromium rechaza<br /><code>WebAssembly.instantiate()</code> sin él, que es exactamente lo que hacía que el módulo PVAC fallara al<br />cargarse de forma silenciosa. Esa directiva solo permite la compilación de WebAssembly; no vuelve a habilitar<br />el <code>eval()</code> de JavaScript.</p>
+<p><code>connect-src</code> es <code>'self' https:</code> más bucle local (<code>http://localhost:*</code>, <code>http://127.0.0.1:*</code>,<br /><code>http://[::1]:*</code>) para que un nodo ejecutado localmente funcione sin abrir texto plano en general. Cualquier<br />otra cosa por <code>http://</code> está controlada por <code>src/wallet/endpoint-policy.ts</code>, que es el único lugar que<br />decide: una función pura de la URL más un contexto explícito, de modo que el store, la interfaz de Settings<br />y las pruebas no puedan discrepar. No añada comprobaciones de URL ad hoc en otros lugares. Se aplican tres<br />bloqueadores independientes (contenido mixto → CSP → consentimiento del usuario) y el veredicto informa del más<br />fundamental primero, de modo que nunca se le dice al usuario que corrija la lista de permitidos cuando es el navegador<br />el que rechaza.</p>
+<hr />
+<h2 id="the-pvac-wasm-pipeline">El proceso WASM de PVAC</h2>
+<h3 id="building">Compilación</h3>
+<pre><code class="language-bash">git clone https://github.com/emscripten-core/emsdk.git /tmp/emsdk
+cd /tmp/emsdk &amp;&amp; ./emsdk install latest &amp;&amp; ./emsdk activate latest
+source /tmp/emsdk/emsdk_env.sh
+
+git clone https://github.com/octra-labs/webcli ../webcli-source
+python3 scripts/patch-pvac-aes.py ../webcli-source/pvac   # software AES fallback
+npm run build:wasm</code></pre>
+<p><code>patch-pvac-aes.py</code> es necesario porque PVAC lanza un <code>#error</code> rígido sin AES por hardware (AES-NI o<br />las extensiones criptográficas de ARM), que WebAssembly no ofrece. El parche añade una implementación<br />por software portátil que es idéntica bit a bit pero aproximadamente 5–10× más lenta. Es aditivo: las<br />rutas por hardware quedan intactas y se escribe una copia de seguridad <code>.hpp.bak</code>.</p>
+<h3 id="loading">Carga</h3>
+<p><code>src/pvac/wasm-bridge.ts</code> carga el módulo en tres pasos:</p>
+<ol>
+<li><strong>Sondeo</strong> — <code>HEAD</code> sobre la URL de pegamento, de modo que "sin compilar" (404) se distinga de "bloqueado por la CSP". Sin esto, ambos se manifiestan como un fallo de importación opaco idéntico.</li>
+<li><strong>Importación</strong> — <code>import()</code> dinámico de una URL absoluta con <code>/* @vite-ignore */</code>. Debe ser absoluta: un especificador simple no se resuelve, y <code>./wasm/pvac.js</code> se resuelve contra <code>/assets/</code> y da 404.</li>
+<li><strong>Verificación</strong> — comprueba que existen las 13 exportaciones <code>_pvac_*</code> requeridas antes de intercambiar el puente. Las compilaciones anteriores omitían las funciones de serialización, lo que rompía el cifrado/descifrado de una forma que el nodo solo reportaba como "malformed transaction".</li>
+</ol>
+<p>Los fallos se clasifican como <code>PvacFailureReason</code>: <code>not-built</code>, <code>csp-blocked</code>,<br /><code>missing-exports</code>, <code>init-failed</code>, <code>unknown</code>. Cada uno se corresponde con una solución concreta mostrada en<br />Settings. La promesa singleton se reinicia en caso de fallo para que <strong>↻ Reload PVAC</strong> pueda reintentar en lugar<br />de repetir un rechazo en caché.</p>
+<h3 id="memory-rules">Reglas de memoria</h3>
+<p>La API de C es de memoria manual. Cada <code>_malloc</code> necesita un <code>_free</code>; cada <code>serialize_*</code> devuelve un<br />búfer que debe liberarse con <code>_pvac_free_bytes</code>. Los identificadores de <code>keygen</code>/<code>enc_*</code> necesitan<br />su <code>_pvac_free_*</code> correspondiente. Use <code>try/finally</code>; consulte <code>WasmPvacBridge</code> para el patrón.</p>
+<hr />
+<h2 id="state-management">Gestión del estado</h2>
+<p>Zustand, en <code>src/store/wallet-store.ts</code>. Es propietario de la cartera, el cliente RPC, los ajustes, el estado<br />de PVAC, los avisos (toasts) y el indicador global de carga.</p>
+<p>El indicador global de carga (<code>isLoading</code>) controla una superposición de desenfoque a pantalla completa y está reservado para<br /><strong>solo las transiciones de toda la aplicación</strong>, como el desbloqueo de la cartera. El trabajo por panel debe usar<br /><code>usePanelLoading</code> en su lugar; vea más abajo.</p>
+<hr />
+<h2 id="error-handling">Gestión de errores</h2>
+<p><code>src/components/ErrorBoundary.tsx</code> envuelve cada panel en <code>Layout.tsx</code>, con clave según la pestaña<br />activa para que un límite que se dispara se reinicie al navegar, más un límite en la raíz en <code>main.tsx</code>.</p>
+<p>Esto importa más de lo que parece. <code>index.html</code> contiene:</p>
+<pre><code class="language-css">#root:empty::before { content: 'Loading Orion Wallet…'; }</code></pre>
+<p>Sin un límite, cualquier excepción en tiempo de renderizado hace que React 18 desmonte todo el árbol, <code>#root</code><br />queda vacío y se renderiza ese contenido de reserva, produciendo una página en blanco que parece atascada<br />cargando para siempre. El límite mantiene vivo el armazón y muestra una tarjeta de error reintentable.</p>
+<p><strong>Consecuencia:</strong> las funciones llamadas durante el renderizado no deben lanzar excepciones ante entradas mal formadas.<br /><code>formatAmount</code> en <code>src/tx/builder.ts</code> acepta <code>unknown</code> y degrada a un marcador de posición,<br />porque ni las respuestas de RPC ni la caché de transacciones local se validan por esquema. Normalice<br />las filas no confiables antes de renderizarlas; <code>HistoryView</code> muestra el patrón.</p>
+<hr />
+<h2 id="loading-states">Estados de carga</h2>
+<p>Use <code>usePanelLoading</code> (<code>src/hooks/usePanelLoading.ts</code>) para el trabajo con alcance de panel:</p>
+<pre><code class="language-typescript">const panelLoading = usePanelLoading();
+
+await panelLoading.run('Loading history', async () =&gt; {
+  const data = await fetchSomething();
+  if (!panelLoading.isMounted()) return;   // guard late setState
+  setData(data);
+}, 'Fetching from the network…');</code></pre>
+<p>Después renderice <code>&lt;ProcessingModal open={panelLoading.loading} … dismissible onClose={panelLoading.hide} /&gt;</code>.</p>
+<p>Importan dos propiedades: el modal es <strong>descartable</strong> (el trabajo continúa en segundo plano, de modo que una<br />red lenta nunca atrapa al usuario), y las escrituras de estado están condicionadas a <code>isMounted()</code> para que<br />navegar a otro lugar a mitad de camino no pueda dejar un modal atascado en pantalla.</p>
+<hr />
+<h2 id="storage-and-migrations">Almacenamiento y migraciones</h2>
+<p>IndexedDB mediante <code>idb</code>, base de datos <code>orion-wallet</code>, versión 6. Los almacenes se declaran una sola vez en el<br />array <code>OBJECT_STORES</code> de <code>src/wallet/storage.ts</code>; añada los nuevos ahí para que la creación y la<br />migración se mantengan coherentes; ese array también impulsa <code>wipeEverything()</code>, de modo que un almacén añadido<br />en cualquier otro lugar sobreviviría a un borrado.</p>
+<p>Las migraciones son <strong>solo aditivas</strong>: incremente <code>DB_VERSION</code>, añada al array y anote la<br />versión en un comentario junto a las nuevas entradas. Los almacenes existentes nunca se renombran ni se eliminan.<br />Las versiones hasta ahora: v2 almacenes del SDK, v3 tokens OCS01, v4 marcadores <code>oct://</code>, v5<br /><code>unlock-session-keys</code>, v6 <code>contacts</code> + <code>passkey-unlock</code>.</p>
+<h3 id="the-rebrand-migration">La migración del cambio de marca</h3>
+<p>Renombrar la base de datos desde <code>webcli-react</code> habría dejado huérfana cada cartera existente, ya que<br />IndexedDB delimita los datos por nombre de base de datos. <code>migrateLegacyDatabase</code> copia todos los almacenes hacia adelante en el<br />primer inicio. Es:</p>
+<ul>
+<li><strong>idempotente</strong> — se omite una vez que el destino tiene alguna cartera</li>
+<li><strong>no destructiva</strong> — la base de datos heredada se deja intacta para poder revertir</li>
+<li><strong>no fatal</strong> — los fallos se registran, nunca se lanzan; un error de migración no debe bloquear el arranque</li>
+</ul>
+<p>Recuerde que <code>clearIndexedDB</code> en los ayudantes de E2E debe eliminar <strong>ambas</strong> bases de datos, o la<br />migración vuelve a copiar los datos heredados y el "estado limpio" no está limpio.</p>
+<hr />
+<h2 id="wallet-sdk">SDK de la cartera</h2>
+<p><code>src/sdk/</code> es el proveedor orientado a las dApps; <code>src/connect/</code> es la ventana emergente de aprobación servida en<br /><code>/connect</code>.</p>
+<h3 id="method-namespaces">Espacios de nombres de métodos</h3>
+<p>La cartera responde a dos espacios de nombres equivalentes:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Genérico</th><th>Con marca Orion</th><th>Operación</th></tr></thead>
+<tbody>
+<tr><td><code>wallet_connect</code></td><td><code>orion_wallet_connect</code></td><td>Iniciar conexión</td></tr>
+<tr><td><code>wallet_signMessage</code></td><td><code>orion_wallet_signMessage</code></td><td>Firmar un mensaje simple</td></tr>
+<tr><td><code>wallet_signTypedData</code></td><td><code>orion_wallet_signTypedData</code></td><td>Firmar datos estructurados</td></tr>
+<tr><td><code>wallet_approveContract</code></td><td><code>orion_wallet_approveContract</code></td><td>Preaprobar una llamada a contrato</td></tr>
+<tr><td><code>wallet_signContract</code></td><td><code>orion_wallet_signContract</code></td><td>Firmar una transacción de contrato</td></tr>
+<tr><td><code>wallet_getAccounts</code></td><td><code>orion_wallet_getAccounts</code></td><td>Enumerar cuentas</td></tr>
+<tr><td><code>wallet_getBalance</code></td><td><code>orion_wallet_getBalance</code></td><td>Leer el saldo</td></tr>
+<tr><td><code>wallet_getNetworkInfo</code></td><td><code>orion_wallet_getNetworkInfo</code></td><td>Leer la red activa como un registro</td></tr>
+<tr><td><code>wallet_getNetworks</code></td><td><code>orion_wallet_getNetworks</code></td><td>Enumerar todas las redes que ofrece la cartera</td></tr>
+<tr><td>…</td><td>…</td><td>…</td></tr>
+</tbody>
+</table>
+</div>
+<p>Ambos se aceptan y se ejecutan de forma idéntica. Los nombres <code>orion_wallet_*</code> existen para las dApps que<br />quieren dirigirse explícitamente a Orion Wallet; los nombres genéricos <code>wallet_*</code> siguen siendo compatibles para<br />que las integraciones existentes sigan funcionando.</p>
+<p><code>canonicalizeMethod</code> en <code>src/sdk/protocol.ts</code> reduce cada nombre de método a su forma canónica<br /><code>wallet_*</code> antes del despacho, de modo que los dos espacios de nombres nunca puedan desincronizarse.</p>
+<h3 id="connection-lifecycle">Ciclo de vida de la conexión</h3>
+<p><strong>Handshake (una vez por sesión):</strong></p>
+<ol>
+<li>La dApp llama a <code>provider.connect()</code> → <code>PopupTransport</code> abre <code>/connect?v=1&amp;rid=…&amp;origin=…</code></li>
+<li>La cartera renderiza <code>ConnectApp</code>, el usuario desbloquea si es necesario</li>
+<li>La cartera envía <code>hello</code> + MessagePort mediante <code>window.postMessage</code>, con el origen validado</li>
+<li>La dApp devuelve el <code>challenge</code> por el puerto (anti-repetición)</li>
+<li><code>ConnectHandler</code> verifica el acuse, sirve la RPC <code>CONNECT</code> → devuelve dirección, cuentas, red</li>
+</ol>
+<p><strong>Tras conectar:</strong></p>
+<ul>
+<li>La <strong>ventana emergente puede cerrarse</strong>, pero el MessagePort permanece abierto; es independiente de la ventana</li>
+<li>La sesión persiste en IndexedDB (<code>sdk-sessions</code>) con TTL por inactividad + absoluto</li>
+<li>Los métodos de lectura (<code>getBalance</code>, <code>getAccounts</code>) son silenciosos dentro de la sesión</li>
+<li>Los métodos de firma <strong>siempre</strong> abren un nuevo aviso de aprobación</li>
+</ul>
+<p><strong>La solución para "conectar funciona, nada más funciona":</strong></p>
+<p>Originalmente <code>PopupTransport.isConnected()</code> comprobaba <code>popup.closed</code>, de modo que cada llamada después de que la<br />ventana de aprobación se cerrara fallaba con "Transport is not connected". Ahora solo comprueba el<br />puerto, que sobrevive a la ventana emergente. La cartera cierra la ventana emergente tras la aprobación, pero la<br />conexión sigue activa.</p>
+<h3 id="permission-model">Modelo de permisos</h3>
+<p><strong>En el momento de la conexión:</strong> solo ámbitos de solo lectura (<code>viewAccounts</code>, <code>viewBalance</code>, <code>viewNetwork</code>).</p>
+<p><strong>Los ámbitos de firma</strong> (<code>signMessage</code>, <code>signContract</code>, etc.) se <strong>conceden de forma diferida</strong> en la primera<br />aprobación correcta. Antes de la corrección, estaban ausentes de <code>DEFAULT_PERMISSIONS</code> y el<br />despachador rechazaba cada llamada de firma con <code>UNAUTHORIZED</code> antes de que el aviso pudiera aparecer:<br />la segunda causa raíz del síntoma.</p>
+<p>Ahora:</p>
+<ul>
+<li>La comprobación de permisos permite que los ámbitos de firma no concedidos avancen hasta el aviso de aprobación</li>
+<li>Al aprobar, <code>grantPermission</code> persiste el ámbito en la sesión</li>
+<li>Las llamadas posteriores omiten la comprobación de permisos pero <strong>siguen requiriendo aprobación</strong>: conceder un ámbito solo registra que el usuario acepta que la dApp pueda preguntar</li>
+</ul>
+<p>La revocación es explícita: <code>revokePermission</code> elimina el ámbito de <code>permissions</code> y lo registra<br />en <code>deniedPermissions</code>, que el despachador rechaza de plano.</p>
+<h3 id="security-invariants">Invariantes de seguridad</h3>
+<p>No debilite estas:</p>
+<ul>
+<li><strong>Validación de origen</strong> en cada <code>postMessage</code> entrante (<code>PopupTransport.ts</code>, <code>rpc-handler.ts</code>)</li>
+<li><strong>Anti-repetición:</strong> desafío CSPRNG + nonce de la dApp + nonce monótono por sesión. <code>makeId</code> sirve únicamente para la correlación de mensajes y nunca debe usarse como valor de seguridad</li>
+<li><strong>Los permisos</strong> son por origen, se persisten en <code>sdk-sessions</code> y se conceden/revocan explícitamente</li>
+<li><strong>Independencia del MessagePort:</strong> el puerto sobrevive a la ventana emergente. Una vez transferido, la cartera puede cerrar la ventana de aprobación sin romper la conexión</li>
+<li><strong>Los métodos prohibidos</strong> se rechazan tanto en el lado del cliente (<code>WalletProvider</code>) como en el lado de la cartera (<code>rpc-handler</code>), de modo que la ejecución de transacciones nunca puede escapar al SDK ni siquiera a través del mecanismo de escape de bajo nivel <code>request()</code></li>
+<li><strong><code>localStorage</code></strong> contiene solo una pista para restaurar la sesión (dirección, red); nunca secretos</li>
+</ul>
+<hr />
+<h2 id="dapp-integration">Integración de dApps</h2>
+<h3 id="quick-start">Inicio rápido</h3>
+<pre><code class="language-javascript">import { WalletProvider } from '@orion-wallet/sdk';
+
+const provider = new WalletProvider({
+  walletUrl: 'https://orionwallet.example/connect',
+  capabilities: [
+    'signMessage',
+    'signTypedData',
+    'approveContract',
+    'signContract',
+    'multiAccount',
+    'events',
+    'sessionRestore',
+    'customNetworks',
+  ],
+});
+
+const result = await provider.connect();</code></pre>
+<h3 id="session-management">Gestión de sesiones</h3>
+<p>Las sesiones de Orion caducan tras <strong>30 minutos de inactividad</strong> u <strong>8 horas absolutas</strong>. El SDK proporciona<br />comprobaciones integradas del estado de la sesión y reconexión automática:</p>
+<pre><code class="language-javascript">// Check session health before every signing operation
+if (!provider.isSessionAlive()) {
+  await provider.refreshSession();
+}
+
+// Listen for session expiry events
+provider.on('sessionExpired', () =&gt; {
+  setConnected(false);
+});</code></pre>
+<h3 id="networks-including-the-users-own">Redes, incluidas las propias del usuario</h3>
+<p>Un usuario puede añadir su propia red en Settings → Network (su propio nodo, una bifurcación de devnet, un<br />RPC de pago). Esas redes son de primera clase: aparecen en el selector de la ventana emergente de conexión<br />junto a las predefinidas, y una dApp conectada puede verlas.</p>
+<pre><code class="language-javascript">// Which network am I on? A record, not just an id string.
+const active = await provider.getNetworkInfo();
+// { id: 'home-node', name: 'Home node', explorerUrl: 'https://octrascan.io',
+//   icon: '🏠', custom: true }
+
+// Everything the wallet offers — presets first, user-added ones after.
+const all = await provider.getNetworks();
+const userAdded = all.filter((n) =&gt; n.custom);
+
+// Cached from the connect reply, no round-trip; null before connect.
+provider.networkInfo();
+
+provider.on('networkChanged', ({ network, chainId, networkInfo }) =&gt; {
+  // networkInfo is present on wallets that granted `customNetworks`.
+  setChain(networkInfo?.name ?? network);
+});</code></pre>
+<p>Detecte la característica mediante la capacidad <strong><code>customNetworks</code></strong> antes de depender de nada de esto: las<br />compilaciones de cartera más antiguas solo responden al escueto <code>wallet_getNetwork</code>, que devuelve una cadena de id.</p>
+<p><strong><code>NetworkInfo</code> deliberadamente no lleva ni <code>rpcUrl</code> ni <code>relayerUrl</code>.</strong> Una red añadida por el<br />usuario suele ser un endpoint privado —una dirección de LAN, un túnel, una URL de proveedor con la<br />clave de API en la cadena de consulta— y entregar eso a cada sitio al que el usuario se conecta<br />filtraría su infraestructura. Una dApp no lo necesita: cada lectura pasa por la cartera<br />(<code>wallet_getBalance</code> y similares) y la ejecución nunca sale de la interfaz de la cartera. Lo que cruza<br />el cable es lo que una dApp necesita legítimamente: a qué red está hablando, si el<br />propietario la añadió a mano (<code>custom</code>) y dónde enlazar una transacción (<code>explorerUrl</code>).</p>
+<p>No existe <strong>ningún <code>wallet_switchNetwork</code></strong>. El cambio permanece en la propia interfaz de la cartera —el<br />selector de la ventana emergente o la píldora de red de la ventana principal—, coherente con la regla de que los cambios de estado<br />nunca se originan en una dApp. Una dApp que necesita otra red pide al usuario que cambie y luego<br />espera <code>networkChanged</code>.</p>
+<p><code>networkChanged</code> se emite desde <strong>ambos</strong> lugares donde puede ocurrir un cambio: la ventana emergente de conexión y<br />la ventana principal. Las sesiones se traspasan a la ventana principal cuando la ventana emergente se cierra, de modo que para<br />cuando la mayoría de los usuarios tocan la píldora de red la ventana emergente hace tiempo que desapareció: <code>Layout.tsx</code> emite a los<br />manejadores adoptados para que a una dApp conectada no se le quede mostrando una red obsoleta.</p>
+<p>Dos clases independientes implementan <code>WalletHost</code>: <code>src/connect/host.ts</code> (ventana principal) y un<br />host en línea en <code>src/connect/ConnectApp.tsx</code> (ventana emergente). Cualquier cosa que se añada a la interfaz debe<br />implementarse en ambas, más el fixture en <code>tests/unit/connect-handler.test.ts</code>.</p>
+<h3 id="connection-flow-diagram">Diagrama del flujo de conexión</h3>
+<pre><code class="language-">dApp                          Orion Wallet
+  │                              │
+  │  provider.connect()          │
+  │  ──────────────────────────► │
+  │  │  opens popup ───────────► │  User approves
+  │  │  hello + MessagePort ◄── │  ──────────────────►
+  │  │  challenge echo ────────► │
+  │  │  CONNECT RPC ──────────► │  Returns address
+  │  │  ◄────────────────────── │
+  │  ◄────────────────────────── │
+  │                              │
+  │  provider.signContract()     │
+  │  ──────────────────────────► │  Opens approval prompt
+  │  │  signContract RPC ──────► │  User approves
+  │  │  ◄────────────────────── │  Returns signed tx
+  │  ◄────────────────────────── │
+  │                              │
+  │  (session expires after      │
+  │   30 min idle / 8h absolute) │
+  │                              │
+  │  provider.isSessionAlive()   │  Returns false
+  │  ──────────────────────────► │
+  │                              │
+  │  provider.refreshSession()   │
+  │  ──────────────────────────► │  Reopens popup
+  │  │  (reconnects) ◄───────── │
+  │  ◄────────────────────────── │</code></pre>
+<h3 id="prohibited-methods">Métodos prohibidos</h3>
+<p>El SDK bloquea estos métodos localmente antes de que lleguen al transporte. La cartera también<br />vuelve a comprobarlos en el lado del servidor, de modo que la ejecución de transacciones nunca puede escapar:</p>
+<ul>
+<li><code>wallet_sendTransaction</code> / <code>sendTransaction</code></li>
+<li><code>wallet_broadcastTransaction</code> / <code>broadcastTransaction</code></li>
+<li><code>wallet_transfer</code> / <code>transfer</code></li>
+<li><code>wallet_swap</code> / <code>swap</code></li>
+<li><code>wallet_bridge</code> / <code>bridge</code></li>
+</ul>
+<hr />
+<h2 id="session-management-1">Gestión de sesiones</h2>
+<p>Las sesiones de Orion Wallet se gestionan automáticamente mediante el SDK. Las sesiones caducan tras:</p>
+<ul>
+<li><strong>Tiempo de espera por inactividad:</strong> 30 minutos de inactividad</li>
+<li><strong>Tiempo de espera absoluto:</strong> 8 horas desde la conexión</li>
+</ul>
+<p>La dApp puede comprobar el estado de la sesión en cualquier momento:</p>
+<pre><code class="language-javascript">if (!provider.isSessionAlive()) {
+  await provider.refreshSession();
+}</code></pre>
+<p>Cuando una sesión caduca, la cartera emite un evento <code>sessionExpired</code>. La dApp debería<br />escuchar este evento y pedir al usuario que se reconecte:</p>
+<pre><code class="language-javascript">provider.on('sessionExpired', () =&gt; {
+  // Prompt user to reconnect
+  setConnected(false);
+});</code></pre>
+<p>La restauración de la sesión se gestiona automáticamente: la cartera conserva la pista de la sesión en<br />IndexedDB, de modo que reconectarse tras la caducidad no exige que el usuario vuelva a importar su cartera.</p>
+<hr />
+<h2 id="testing">Pruebas</h2>
+<pre><code class="language-bash">npm test                 # 676 unit tests, 56 files
+npm run test:coverage    # V8 coverage, 60% threshold
+npm run test:e2e         # 7 Playwright specs (needs npm run build first)
+npm run autofix          # typecheck → format → lint --fix → test → build
+npm run check            # same, read-only (CI)</code></pre>
+<p>Las pruebas unitarias se ejecutan bajo jsdom con <code>fake-indexeddb</code>. Las pruebas de componentes usan<br /><code>renderToStaticMarkup</code> en lugar de una biblioteca de pruebas del DOM; consulte<br /><code>tests/unit/processing-modal.test.tsx</code>.</p>
+<p>WebAuthn no tiene implementación en jsdom, así que <code>tests/unit/passkey.test.ts</code> instala un<br /><code>FakeAuthenticator</code> que modela la extensión PRF (incluido un autenticador que carece de ella,<br />un aviso descartado y un secreto rotado). Afirma lo que el registro almacenado <em>no</em> debe<br />contener, que es la propiedad que realmente importa.</p>
+<p>Nota sobre E2E: antes de creerse un muro de fallos de Playwright, revise la máquina, no el diff.<br />Dos límites del entorno producen fallos que se parecen exactamente a regresiones reales:</p>
+<ul>
+<li><strong>Espacio temporal.</strong> Chromium coloca cada perfil de navegador bajo <code>TMPDIR</code> (<code>/tmp</code> por defecto). Si ese sistema de archivos está lleno —fácil cuando <code>/tmp</code> es un tmpfs pequeño compartido con otros procesos— los contextos mueren al arrancar y pruebas no relacionadas fallan en milisegundos, o se cuelgan hasta el tiempo de espera de 30 s. Ejecute <code>df -h /tmp</code> primero; vuelva a ejecutar con <code>TMPDIR=$HOME/.cache/e2e-tmp</code> en un sistema de archivos holgado y las mismas specs pasan de agotar el tiempo a superarse en ~4 s.</li>
+<li><strong>Memoria.</strong> Aproximadamente 2 GB de memoria libre por worker. Cuando se agota, Chromium se mata a mitad de prueba y Playwright informa de <code>Target crashed</code>; vuelva a ejecutar con <code>--workers=1</code>.</li>
+</ul>
+<p><code>playwright.config.ts</code> establece <code>reuseExistingServer: !isCI</code>, de modo que un <code>npm run preview</code> residual en<br />el puerto 4173 se reutiliza silenciosamente: incluido uno iniciado desde un checkout <em>diferente</em>. Al<br />comparar dos árboles, mate el listener entre ejecuciones (<code>ss -lptn | grep 4173</code>) o la segunda<br />ejecución probará la compilación de la primera.</p>
+<p>Al corregir un error, añada una prueba que documente el modo de fallo, no solo la corrección.<br /><code>tests/unit/history-view.test.ts</code> y <code>error-boundary.test.tsx</code> siguen esto: cada una nombra el<br />síntoma que evita que reaparezca.</p>
+<hr />
+<h2 id="release-checklist">Lista de verificación de publicación</h2>
+<ol>
+<li><code>npm run autofix</code>: debe estar totalmente en verde</li>
+<li><code>npm run test:e2e</code> contra un <code>npm run build</code> recién hecho</li>
+<li><code>npm audit --omit=dev</code>: producción debe informar de cero vulnerabilidades</li>
+<li>Verifique que PVAC se carga en una vista previa de producción (<code>npm run preview</code>), no solo en desarrollo</li>
+<li>Pruebe la ruta de migración desde una compilación anterior al cambio de marca con datos de cartera existentes</li>
+<li>Confirme que las cabeceras de servidor de <code>vite.config.ts</code> siguen coincidiendo con <code>vercel.json</code></li>
+</ol>
+<hr />
+<h2 id="known-issues">Problemas conocidos</h2>
+<p><strong>Avisos de dependencias de desarrollo.</strong> <code>npm audit</code> informa de vulnerabilidades en vitest, vite, esbuild<br />y paquetes relacionados. Cada corrección restante requiere una actualización mayor (vite 5→8, vitest 2→4).<br />Son solo herramientas de compilación y no se envían a los usuarios; las auditorías de producción salen limpias. Consulte<br /><a href="SECURITY.html#dependency-status">SECURITY.html</a>.</p>
+<p><strong>Advertencia de fragmentación de <code>storage.ts</code>.</strong> La compilación advierte de que <code>storage.ts</code> se importa tanto de forma estática como<br />dinámica, por lo que no puede dividirse en su propio fragmento. Es inofensivo, pero significa<br />que las importaciones dinámicas en <code>HistoryView</code> y <code>WalletExportImport</code> no aportan ningún beneficio de división de código.</p>
+<p><strong>Rendimiento del AES por software.</strong> El AES de WASM de respaldo es 5–10× más lento que el nativo. Las operaciones<br />pesadas de PVAC bloquean el hilo principal; moverlas a un Web Worker es el siguiente paso lógico.</p>
+</body>
+</html>

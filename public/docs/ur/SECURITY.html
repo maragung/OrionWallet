@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>سیکیورٹی — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="security">سیکیورٹی</h1>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — سورس کوڈ، ایشوز اور ریلیزز۔<br /><strong>خطرات کی رپورٹ:</strong> <a href="https://github.com/maragung/OrionWallet/security/advisories/new">GitHub Security Advisories</a></blockquote>
+<h2 id="audit-status">آڈٹ کی حیثیت</h2>
+<p><strong>Orion Wallet نے کوئی آزاد تیسرے فریق کا سیکیورٹی آڈٹ نہیں کرایا ہے۔</strong></p>
+<p>خفیہ نگاری کا ڈیزائن حوالہ <code>octra-labs/webcli</code> نفاذ کی پیروی کرتا ہے، اور<br />پرائمیٹوز اچھی طرح جائزہ شدہ لائبریریوں سے آتے ہیں۔ لیکن انٹیگریشن خود غیر آڈٹ شدہ ہے۔<br />اہم رقم محفوظ کرنے سے پہلے اس کا وزن کریں۔</p>
+<hr />
+<h2 id="reporting-a-vulnerability">خطرے کی رپورٹ کرنا</h2>
+<p><strong>سیکیورٹی مسئلے کے لیے عوامی ایشو نہ کھولیں۔</strong></p>
+<p>مینٹینرز کو نجی طور پر رپورٹ کریں، بشمول:</p>
+<ul>
+<li>مسئلے کی تفصیل اور اس کا اثر</li>
+<li>دوبارہ پیدا کرنے کے اقدامات</li>
+<li>متاثرہ ورژن یا کمٹ</li>
+<li>کوئی تجویز کردہ اصلاح</li>
+</ul>
+<p>عوامی انکشاف سے پہلے اصلاح کے لیے ایک معقول مدت دیں۔ رپورٹس خوش آئند ہیں<br />اور کریڈٹ دیا جاتا ہے جب تک کہ آپ اس کے برعکس نہ چاہیں۔</p>
+<hr />
+<h2 id="threat-model">خطرے کا ماڈل</h2>
+<h3 id="what-orion-wallet-protects-against">Orion Wallet کس چیز سے حفاظت کرتا ہے</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>خطرہ</th><th>تخفیف</th></tr></thead>
+<tbody>
+<tr><td>کلیدوں کا سرور تک رسنا</td><td>کوئی بیک اینڈ نہیں۔ کلیدیں کبھی براؤزر سے نکلتی نہیں</td></tr>
+<tr><td>آرام پر کیسٹور کی چوری</td><td>AES-256-GCM، کلید PIN سے PBKDF2 کے ذریعے اخذ کردہ</td></tr>
+<tr><td>بدنیتی پر مبنی dApp درخواستیں</td><td>فی اوریجن اجازتیں واضح منظوری پرامپٹس کے ساتھ</td></tr>
+<tr><td>کراس اوریجن پیغام جعلسازی</td><td>ہر آنے والے پیغام پر اوریجن کی تصدیق</td></tr>
+<tr><td>پیغام ری پلے</td><td>ہر سیشن کے لیے CSPRNG چیلنج اور نانس</td></tr>
+<tr><td>انجیکٹڈ مارک اپ سے XSS</td><td>کوئی <code>innerHTML</code> / <code>dangerouslySetInnerHTML</code> نہیں؛ CSP ذرائع کو محدود کرتا ہے</td></tr>
+<tr><td>خراب RPC ڈیٹا سے ایپ کا کریش</td><td>دفاعی نارملائزیشن علاوہ ایرر باؤنڈریز</td></tr>
+<tr><td>ریکوری فقرہ جو کبھی لکھا نہ گیا ہو</td><td>تخلیق 3 تصادفی الفاظ دوبارہ ٹائپ کرنے پر گیتڈ ہے</td></tr>
+<tr><td>بغیر کلیدوں کے اکاؤنٹ سے دستخط</td><td><code>assertCanSign</code> صرف UI میں نہیں، API باؤنڈری پر انکار کرتا ہے</td></tr>
+<tr><td>خاموشی سے سنے جانے والے RPC ٹریفک</td><td>صاف متن اینڈ پوائنٹس کو واضح فی اوریجن رضامندی درکار ہے</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="what-it-cannot-protect-against">کس چیز سے حفاظت نہیں کر سکتا</h3>
+<p>ان کے بارے میں خود سے واضح رہیں:</p>
+<ul>
+<li><strong>سمجھوتہ شدہ آلہ۔</strong> مالویئر، کی لاگر، یا مخالف براؤزر ایکسٹینشن آپ کے ٹائپ کرتے وقت PIN پڑھ سکتا ہے اور میموری سے ڈیکرپٹ شدہ کلیدیں نکال سکتا ہے۔</li>
+<li><strong>کھویا ہوا ریکوری فقرہ۔</strong> کوئی بازیابی طریقہ کار نہیں۔ کوئی بھی اسے بحال نہیں کر سکتا۔</li>
+<li><strong>فشنگ۔</strong> اگر آپ کسی جعلی سائٹ پر اپنا ریکوری فقرہ درج کرتے ہیں تو فنڈز ختم۔ Orion Wallet سیٹ اپ کے بعد کبھی آپ کا فقرہ نہیں مانگتا۔</li>
+<li><strong>سمجھوتہ شدہ RPC نوڈ۔</strong> ایک بدنیتی نوڈ جھوٹے بیلنس پیش کر سکتا ہے یا ٹرانزیکشنز روک سکتا ہے۔ یہ دستخط جعل نہیں کر سکتا اور نہ کلیدیں چوری کر سکتا ہے۔</li>
+<li><strong>سپلائی چین سمجھوتہ</strong> npm ڈیپنڈنسیز یا ہوسٹنگ پرووائیڈر کا۔</li>
+<li><strong>فزیکل رسائی</strong> والیٹ ان لاک والے غیر مقفل آلے تک۔</li>
+</ul>
+<hr />
+<h2 id="cryptographic-design">خفیہ نگاری کا ڈیزائن</h2>
+<h3 id="key-derivation-and-storage">کلید اخذ اور اسٹوریج</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>مقصد</th><th>الگورتھم</th></tr></thead>
+<tbody>
+<tr><td>Mnemonic</td><td>BIP39</td></tr>
+<tr><td>HD اخذ</td><td>Ed25519, SLIP-0010 style</td></tr>
+<tr><td>دستخط</td><td>Ed25519 (tweetnacl)</td></tr>
+<tr><td>ECDH (اسٹیلتھ)</td><td>X25519 (@noble/curves)</td></tr>
+<tr><td>کیسٹور خفیہ کاری</td><td>AES-256-GCM (WebCrypto)</td></tr>
+<tr><td>PIN → کلید</td><td>PBKDF2-HMAC-SHA256</td></tr>
+<tr><td>تصادفی پن</td><td><code>crypto.getRandomValues</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>کیسٹور فارمیٹ C++ اصل سے میل کھاتا ہے: <code>OCT1</code> magic، ورژن، PBKDF2 iteration<br />کاؤنٹ، سالٹ، نانس، پھر اس کے توثیقی ٹیگ کے ساتھ AES-GCM ciphertext۔</p>
+<h3 id="pin-handling">PIN ہینڈلنگ</h3>
+<p>PIN <strong>کبھی محفوظ نہیں ہوتا</strong>، کسی بھی شکل میں۔ یہ ان لاک کے وقت ڈیکرپشن کلید اخذ کرتا ہے<br />اور پھر ضائع کر دیا جاتا ہے۔ کوئی "remember my PIN" نہیں — ڈیزائن کے لحاظ سے۔ نتیجتاً، بھولا ہوا<br />PIN صرف ریکوری فقرے سے بحالی سے حل ہو سکتا ہے۔</p>
+<h3 id="unlock-session">ان لاک سیشن</h3>
+<p>PIN محفوظ نہیں ہوتا، لیکن ان لاک کا <em>نتیجہ</em> محفوظ ہوتا ہے، جب تک سیشن جاری ہے:<br />صفحہ ریفریش کرنے سے صارف کو PIN اسکرین پر واپس نہیں پھینکنا چاہیے۔ <code>src/wallet/unlock-session.ts</code><br />ڈیکرپٹ شدہ والیٹ کو AES-256-GCM سے سیل کرتا ہے اور اسے دو اسٹورز میں تقسیم کرتا ہے:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>حصہ</th><th>کہاں</th><th>عمر</th></tr></thead>
+<tbody>
+<tr><td>Ciphertext (<code>orion:unlock-session</code>)</td><td><code>sessionStorage</code></td><td>ایک ٹیب۔ اس ٹیب کے بند ہوتے ہی ختم</td></tr>
+<tr><td>Sealing key</td><td>IndexedDB <code>unlock-session-keys</code>، بطور <strong>non-extractable</strong> <code>CryptoKey</code></td><td>لاک پر حذف؛ یتیم پرانے ہونے پر تراشے جاتے ہیں</td></tr>
+</tbody>
+</table>
+</div>
+<p>دونوں میں سے کوئی بھی حصہ اکیلے قابلِ استعمال نہیں۔ IndexedDB ٹیب بند ہونے پر باقی رہتا ہے لیکن کوئی ciphertext نہیں رکھتا؛<br /><code>sessionStorage</code> ciphertext رکھتا ہے لیکن کلید نہیں، اور دوسرا ٹیب یا کوئی اور اوریجن اسے نہیں پڑھ سکتا۔ کلید<br /><code>extractable: false</code> کے ساتھ بنائی جاتی ہے، لہٰذا یہ اس اوریجن کے ذریعے <em>استعمال</em> ہو سکتی ہے لیکن اس کے بائٹس باہر نہیں پڑھے جا سکتے — نہ ہمارے اپنے کوڈ سے، اور نہ کسی ایسی چیز سے جو<br />صفحے میں چلنے میں کامیاب ہو جائے۔ سیشن ہر بحالی پر گھومتا ہے (تازہ کلید، تازہ نانس)، اور <code>createdAt</code><br />آگے منتقل ہوتا ہے تاکہ ریفریش مطلق حد کو نہ بڑھا سکے۔</p>
+<p>میعادِ ختمی: <strong>30 منٹ بیکاری</strong> (قابلِ ترتیب، <code>autoLockMinutes</code>؛ <code>0</code> اسے غیر فعال کرتا ہے) اور اصل ان لاک سے <strong>8 گھنٹے کی<br />مطلق حد</strong>۔ دونوں بحالی پر نافذ ہوتے ہیں، اور بیکاری کی ونڈو کو <code>useAutoLock</code> لائیو بھی نافذ کرتا ہے،<br />لہٰذا کھلا چھوڑا گیا ٹیب خود کو لاک کر لیتا ہے۔</p>
+<p>یہ کس چیز کے خلاف دفاع <em>نہیں</em> کرتا — ایماندارانہ حصہ:</p>
+<ul>
+<li><strong>ٹیب میں اسکرپٹ کا عمل۔</strong> لائیو سیشن کے دوران صفحے میں چلنے والا کوڈ براؤزر سے سیشن ڈیکرپٹ کرنے کو کہہ سکتا ہے اور پھر کلیدوں کے ساتھ دستخط کر سکتا ہے، بالکل ویسے جیسے والیٹ کرتا ہے۔ یہ sealing key کو باہر نہیں نکال سکتا، لہٰذا سمجھوتہ ٹیب کے ساتھ ہی ختم ہو جاتا ہے؛ یہ کہیں اور استعمال ہونے والی چوری شدہ کلید نہیں بنتا۔</li>
+<li><strong>سمجھوتہ شدہ آلہ۔</strong> اوپر والے خطرے کے ماڈل سے بدلا ہوا نہیں: مقامی مالویئر IndexedDB اور <code>sessionStorage</code> کو ایک ساتھ پڑھ سکتا ہے۔</li>
+<li><strong>غیر محفوظ سیاق و سباق۔</strong> <code>crypto.subtle</code> کے بغیر (صاف <code>http://</code>، نیچے دیکھیں)، sealing key IndexedDB میں خام بائٹس پر واپس گر جاتی ہے اور غیر-اخذ پذیری کی ضمانت ختم ہو جاتی ہے۔ تقسیم اور میعادِ ختمی پھر بھی برقرار رہتی ہے۔</li>
+</ul>
+<p>مکمل طور پر آپٹ آؤٹ کرنے کے لیے، <strong>Settings → Security → Stay unlocked after a page refresh</strong> بند کر دیں<br />(<code>keepUnlocked: false</code>)۔ کچھ بھی نہیں لکھا جاتا، اور ہر ری لوڈ PIN مانگتا ہے — وہی رویہ جو اس فیچر کے<br />وجود سے پہلے تھا۔ ایک واضح لاک (🔒) دونوں حصوں کو فوری تباہ کر دیتا ہے۔</p>
+<h3 id="passkey-unlock">پاس کی ان لاک</h3>
+<p>اختیاری، بطور ڈیفالٹ بند، اور اضافی: یہ موجودہ والیٹ کھولنے کا ایک دوسرا طریقہ ہے، PIN کا متبادل ہرگز نہیں۔ <code>src/wallet/passkey.ts</code>۔</p>
+<p>رجسٹریشن <code>userVerification: 'required'</code> اور WebAuthn <strong>PRF</strong> ایکسٹینشن کے ساتھ ایک پلیٹ فارم کریڈینشل بناتی ہے۔ PRF صفحے کو کریڈینشل اور محفوظ کردہ 32-بائٹ سالٹ سے اخذ کردہ ایک راز دیتا ہے، جسے براؤزر صارف کی تصدیق کے بعد ہی پیدا کرتا ہے۔<br />والیٹ <code>sha256("orion-passkey-unlock-v1" || prf)</code> کو AES-256 کلید کے طور پر لیتا ہے، سیریلائزڈ والیٹ کو AES-256-GCM سے سیل کرتا ہے، کلید کو صفر کر دیتا ہے، اور سیل شدہ بلاک کو کریڈینشل ID اور سالٹ کے ساتھ IndexedDB میں محفوظ کرتا ہے۔</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>محفوظ کردہ</th><th>محفوظ نہیں کیا گیا</th></tr></thead>
+<tbody>
+<tr><td>کریڈینشل ID، PRF سالٹ، IV، والیٹ کا ciphertext</td><td>PRF آؤٹ پٹ، اخذ کردہ کلید، PIN، کوئی بھی صاف متن کلیدی مواد</td></tr>
+</tbody>
+</table>
+</div>
+<p>واضح طور پر بیان کرنے کے قابل نتائج:</p>
+<ul>
+<li><strong>PRF لازمی ہے، کبھی تنزلی نہیں۔</strong> اگر آتھنٹیکیٹر اسے سپورٹ نہیں کرتا، رجسٹریشن خرابی پھینکتی ہے اور کچھ محفوظ نہیں کرتی۔ متبادل — ciphertext کے ساتھ ایک پڑھنے کے قابل کلید رکھنا — ریکارڈ کو خود-ڈیکرپٹنگ بنا دیتا، جو فیچر پیش نہ کرنے سے بدتر ہے۔</li>
+<li><strong>ریکارڈ خود سے غیر فعال ہے۔</strong> اس آتھنٹیکیٹر پر کامیاب صارف-تصدیق شدہ اشارے کے بغیر، ڈسک پر موجود چیز سے کلید اخذ کرنے کا کوئی طریقہ نہیں۔</li>
+<li><strong>یہ والیٹ کو سیل کرتا ہے، PIN کو نہیں۔</strong> PIN پھر بھی واحد چیز ہے جو کلیدیں برآمد کرتی ہے، فقرہ ظاہر کرتی ہے، PIN تبدیل کرتی ہے، یا اکاؤنٹ اخذ کرتی ہے۔ لہٰذا پاس کی ان لاک ان تک بڑھانے کے لیے استعمال نہیں ہو سکتا، اور محفوظ کردہ ریکارڈ محفوظ شدہ PIN کے مقابلے میں سختی سے کم رسا کرتا ہے۔</li>
+<li><strong>PIN ان لاک جیسا ہی سیشن ماڈل۔</strong> پاس کی ان لاک وہی ان لاک سیشن پیدا کرتا ہے جس میں وہی بیکاری اور مطلق حدود ہوتی ہیں؛ یہ دونوں میں سے کسی کو نہیں بڑھاتا۔</li>
+<li><strong>آلے اور براؤزر تک محدود۔</strong> اوریجن کے <code>rpId</code> سے منسلک اور مقامی طور پر محفوظ۔ یہ والیٹ ایکسپورٹ کا حصہ نہیں ہے اور نہ ریکوری فقرے سے اخذ کیا جاتا ہے۔</li>
+<li><strong>فرسودہ کریڈینشل بند ہونے پر ناکام ہوتا ہے۔</strong> اگر ڈیکرپشن ناکام ہو — گھمایا گیا یا دوبارہ رجسٹرڈ کریڈینشل، بحال شدہ آلہ — ریکارڈ حذف کر دیا جاتا ہے اور PIN درکار ہوتا ہے۔ ایک مسترد یا ٹائم آؤٹ شدہ اشارہ دانستہ طور پر اسے حذف نہیں کرتا، لہٰذا منسوخ پرامپٹ خاموشی سے فیچر کو غیر فعال نہیں کر سکتا۔</li>
+<li><strong>صرف-دیکھنے والے اکاؤنٹس کے لیے مسترد۔</strong> سیل کرنے کے لیے کوئی کلیدی مواد نہیں ہے۔</li>
+</ul>
+<p>یہ کس چیز کے خلاف دفاع نہیں کرتا وہ بدلا ہوا نہیں: سمجھوتہ شدہ آلہ، اور لائیو سیشن میں اسکرپٹ کا عمل، بالکل اسی طرح جیسے اوپر والے ان لاک سیشن کے لیے تھا۔ تاہم یہ ایک حقیقی نمائش ختم کرتا ہے — ہر ان لاک پر PIN ٹائپ کیے جانے اور دیکھے جانے کا۔</p>
+<h3 id="watch-only-accounts">صرف-دیکھنے والے اکاؤنٹس</h3>
+<p>ایک اکاؤنٹ صرف پتے سے شامل کیا جا سکتا ہے، بغیر کیسٹور کے۔ اصول یہ ہے کہ ایسا اکاؤنٹ کبھی دستخط نہیں کر سکتا، اور یہ وہیں نافذ ہوتا ہے جہاں دستخط ہوتا ہے، نہ کہ UI میں:<br /><code>assertCanSign</code> (<code>src/wallet/watch-only.ts</code>) بھیجنے، خفیہ کاری، اسٹیلتھ، کنٹریکٹ، اور dApp-درخواست کے راستوں سے بلایا جاتا ہے، اور یہ عمل اور اصلاح دونوں کا نام لے کر خرابی پھینکتا ہے۔</p>
+<p>یہ تعمیر کے لحاظ سے بند ہونے پر ناکام ہوتا ہے: چیک کسی بھی والیٹ کو مسترد کرتا ہے جس کی خفیہ کلید مکمل 64-بائٹ Ed25519 کلید نہ ہو، لہٰذا اگر <code>watchOnly</code><br />جھنڈا کسی طرح کھو بھی جائے تو ایک کٹی ہوئی یا غائب کلید مسترد کر دی جاتی ہے۔ جھنڈا <code>serializeWallet</code>/<code>deserializeWallet</code> کے ذریعے لے جایا جاتا ہے،<br />لہٰذا ان لاک سیشن سے بحال شدہ والیٹ پھر بھی صرف-دیکھنے والا رہتا ہے۔</p>
+<h3 id="randomness">تصادفی پن</h3>
+<p>تمام حفاظتی لحاظ سے اہم اقدار <code>src/crypto/random.ts</code> کے ذریعے <code>crypto.getRandomValues</code> استعمال کرتی ہیں۔</p>
+<p><code>src/sdk/protocol.ts</code> میں <code>makeId</code> میں <code>Math.random</code> فالبیک ہے۔ یہ <strong>صرف</strong> پیغام کی<br />کرلیشن IDs کے لیے استعمال ہوتا ہے، حفاظتی اقدار کے لیے کبھی نہیں، اور ایسے ہی نوٹ کیا گیا ہے۔ اسے چیلنجز، نانسز، کلیدوں، یا سالٹس کے لیے دوبارہ استعمال نہ کریں۔</p>
+<hr />
+<h2 id="browser-security-posture">براؤزر سیکیورٹی پوزیشن</h2>
+<h3 id="content-security-policy">Content-Security-Policy</h3>
+<p><code>index.html</code> میں ترتیب دیا گیا:</p>
+<pre><code class="language-">default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob:; font-src 'self' data:;
+connect-src 'self' https: http://localhost:* http://127.0.0.1:* http://[::1]:*;
+frame-src 'self' https:; worker-src 'self' blob:; object-src 'none';
+base-uri 'self'; form-action 'self';</code></pre>
+<p>تین اندراجات وضاحت کے مستحق ہیں:</p>
+<ul>
+<li><strong><code>'wasm-unsafe-eval'</code></strong> PVAC FHE ماڈیول کے لیے درکار ہے۔ اس کے بغیر Chromium <code>WebAssembly.instantiate()</code> کو روکتا ہے۔ یہ صرف WebAssembly کمپائلیشن کی اجازت دیتا ہے — یہ JavaScript <code>eval()</code> کو <strong>دوبارہ</strong> فعال نہیں کرتا۔</li>
+<li><strong><code>'unsafe-inline'</code> برائے اسٹائلز</strong> پینٹ سے پہلے کی اہم CSS کے لیے درکار ہے جو غیر اسٹائل شدہ مواد کی چمک سے بچاتی ہے۔ یہ صرف اسٹائلز پر لاگو ہوتا ہے، اسکرپٹس پر کبھی نہیں۔</li>
+<li><strong><code>connect-src</code> میں لوپ بیک</strong> مقامی طور پر چلائے گئے نوڈ کو پالیسی کو عام طور پر صاف متن تک وسیع کیے بغیر استعمال کرنے دیتا ہے۔ <code>localhost</code> / <code>127.0.0.0/8</code> / <code>[::1]</code> تک ٹریفک کبھی مشین سے نکلتی نہیں، لہٰذا وائر پر روکنے کے لیے کچھ نہیں ہوتا۔</li>
+</ul>
+<h3 id="plaintext-http-rpc-endpoints">صاف متن (http) RPC اینڈ پوائنٹس</h3>
+<p>صاف <code>http://</code> پر کوئی اور چیز بطور ڈیفالٹ مسترد کر دی جاتی ہے، اور <code>src/wallet/endpoint-policy.ts</code> وہ واحد مقام ہے جو فیصلہ کرتا ہے۔ یہ URL اور ایک واضح سیاق و سباق کا خالص فعل ہے،<br />لہٰذا اسٹور، Settings UI اور ٹیسٹ اس بارے میں متفق نہیں ہو سکتے کہ کیا جائز ہے۔</p>
+<p>تین آزاد رکاوٹیں لاگو ہوتی ہیں، اور فیصلہ سب سے بنیادی رکاوٹ کا نام پہلے لیتا ہے تاکہ جب مکسڈ مواد اصل وجہ ہو تو صارف کو کبھی الاؤنس لسٹ ٹھیک کرنے کو نہ کہا جائے:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>رکاوٹ</th><th>کون نافذ کرتا ہے</th><th>کیسے ہٹائی جاتی ہے</th></tr></thead>
+<tbody>
+<tr><td>مکسڈ مواد</td><td>براؤزر، غیر مشروط طور پر</td><td>ہٹائی نہیں جا سکتی۔ TLS یا پراکسی استعمال کریں</td></tr>
+<tr><td>Content-Security-Policy</td><td>شپڈ میٹا-ٹیگ CSP</td><td><code>VITE_ALLOW_HTTP_ENDPOINTS=1</code> کے ساتھ دوبارہ بلڈ کریں</td></tr>
+<tr><td>صارف کی رضامندی</td><td>سیٹنگز میں <code>allowedInsecureOrigins</code></td><td>Settings → Network میں اوریجن کو <strong>Trust</strong> کریں</td></tr>
+</tbody>
+</table>
+</div>
+<p>ڈیزائن پر نوٹس:</p>
+<ul>
+<li>CSP ایک میٹا ٹیگ ہے، لہٰذا اسے رن ٹائم پر <strong>وسیع نہیں کیا جا سکتا</strong> — کوئی سیٹنگ یہ اجازت نہیں دے سکتی، اسی لیے یہ ایک بلڈ فلیگ ہے۔ <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code> بلڈ ٹائم پر <code>connect-src</code> میں <code>http:</code> کا اضافہ کرتا ہے اور کچھ اور نہیں؛ اس کے علاوہ صارف کی رضامندی پھر بھی درکار ہے۔</li>
+<li>رضامندی <strong>فی اوریجن</strong> ہے — اسکیم، ہوسٹ اور پورٹ۔ یہ ہوسٹ نام کا میل نہیں ہے اور نہ URL کا سابقہ، لہٰذا <code>http://node.lan:8080</code> پر بھروسہ کرنا اس ہوسٹ کے کسی اور پورٹ پر بھروسہ نہیں کرتا، اور <code>http://127.0.0.1.evil.com</code> کو لوپ بیک نہیں سمجھا جاتا۔</li>
+<li><strong>Explorer URLs مستثنیٰ ہیں</strong> کیونکہ وہ کبھی بھی صرف <code>&lt;a href&gt;</code> نیویگیشنز ہوتے ہیں، فیچز نہیں۔ <code>connect-src</code> اور مکسڈ مواد ان پر لاگو نہیں ہوتے۔ <code>relayerUrl</code> محفوظ کیا جاتا ہے لیکن کبھی فیچ نہیں ہوتا۔ صرف <code>rpcUrl</code> اس پالیسی کے تابع ہے۔</li>
+<li>ایک مسدود اینڈ پوائنٹ جان بوجھ کر پھر بھی ایک <code>RpcClient</code> بناتا ہے: ایک بنانے سے انکار صارف کو اسے ٹھیک کرنے کے لیے Settings تک پہنچنے سے قاصر چھوڑ دیتا۔ اس کی وجہ اس کے بجائے ہیڈر میں <strong>⚠️ Insecure RPC</strong> بیج اور <code>RpcClient.unreachableHint</code> کے طور پر سامنے آتی ہے، جو صرف پھینکے گئے <code>TypeError</code> کے ساتھ منسلک ہوتی ہے — کبھی حقیقی سرور ایرر یا ٹائم آؤٹ کے ساتھ نہیں، جو گمراہ کن ہوتا۔</li>
+<li><strong><code>rpcProxyUrl</code></strong> فیصلہ پراکسی کو منتقل کرتا ہے: اینڈ پوائنٹ پراکسی کے اپنے اسکیم سے پرکھا جاتا ہے، کیونکہ براؤزر حقیقت میں اسی سے جڑتا ہے۔ پراکسی ہر درخواست دیکھتی ہے، لہٰذا UI کہتا ہے کہ آپ اپنی پراکسی چلائیں۔ یہ کلیدوں تک نہیں پہنچ سکتی اور نہ دستخط کر سکتی ہے۔</li>
+</ul>
+<p>صاف متن RPC ایک رازداری <em>اور</em> سالمیت کی نمائش ہے — راستے میں موجود نوڈ ہر تلاش پڑھ سکتا ہے اور جوابات بدل سکتا ہے — لیکن کلید-سمجھوتے والی نہیں: دستخط مقامی طور پر بنائے جاتے ہیں اور والیٹ اپنے کلیدی مواد میں موصول ہونے والی کسی چیز کی تصدیق نہیں کرتا۔</p>
+<h3 id="cross-origin-isolation">کراس-اوریجن آئسولیشن</h3>
+<p>COOP/COEP ایپلیکیشن بھر میں <code>same-origin</code> / <code>require-corp</code> ہیں، <code>/connect</code> پر <code>unsafe-none</code><br />اوور رائڈز کے ساتھ تاکہ منظوری پاپ اپ اوپنر کے ساتھ MessagePort کا تبادلہ کر سکے۔ یہ تنگ کرنا جان بوجھ کر ہے اور اسی واحد راستے تک محدود ہے۔</p>
+<hr />
+<h2 id="dapp-connection-security">dApp کنکشن سیکیورٹی</h2>
+<p>جب کوئی سائٹ کنکشن کی درخواست کرتی ہے:</p>
+<ol>
+<li>پاپ اپ درخواست کرنے والے اوریجن کو نمایاں طور پر دکھاتا ہے۔</li>
+<li>صارف کو واضح طور پر منظور کرنا ہوتا ہے؛ کسی نئے اوریجن کے لیے کوئی خاموش کنکشن نہیں۔</li>
+<li>منظوری اس اوریجن تک محدود ہے اور فی-اوریجن محفوظ کی جاتی ہے۔</li>
+<li>دستخطی کارروائیاں ہمیشہ تصدیق درکار کرتی ہیں، حتیٰ کہ بھروسے مند سائٹس کے لیے بھی۔</li>
+</ol>
+<p>"Trust this site" صرف <strong>صرف-پڑھنے</strong> کی درخواستوں (بیلنس، اکاؤنٹس،<br />نیٹ ورک) کے لیے پرامپٹس دباتا ہے۔ یہ کبھی خاموش دستخط نہیں دیتا۔</p>
+<p>کنکشنز کا جائزہ اور منسوخی <strong>Settings → Connected Sites</strong> کے تحت کی جا سکتی ہے۔</p>
+<h3 id="what-a-dapp-learns-about-a-custom-network">ایک dApp حسبِ ضرورت نیٹ ورک کے بارے میں کیا سیکھتا ہے</h3>
+<p>صارف کے ہاتھ سے شامل کردہ نیٹ ورک منسلک سائٹس کو نظر آتے ہیں (<code>wallet_getNetworkInfo</code>،<br /><code>wallet_getNetworks</code>، اور <code>networkChanged</code> ایونٹ)، کیونکہ dApp یہ جانے بغیر درست ایکسپلورر لنک یا چین لیبل پیش نہیں کر سکتا کہ وہ کس نیٹ ورک پر ہے۔ وہ ریکارڈ جو وائر پر جاتا ہے ایک جان بوجھ کر منتخب ذیلی سیٹ ہے:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>بھیجا گیا</th><th>روکا گیا</th></tr></thead>
+<tbody>
+<tr><td><code>id</code>, <code>name</code>, <code>explorerUrl</code>, <code>icon</code>, <code>custom</code></td><td><code>rpcUrl</code>, <code>relayerUrl</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>اینڈ پوائنٹس اس لیے روکے جاتے ہیں کیونکہ صارف کا شامل کردہ نیٹ ورک عموماً نجی ہوتا ہے — ایک LAN پتہ، ایک ٹنل، کوئری سٹرنگ میں API کلید والا ادا شدہ پرووائیڈر URL۔ کسی سائٹ سے جڑنا یہ ظاہر نہیں کرنا چاہیے کہ صارف کا نوڈ کہاں رہتا ہے اور نہ کوئی اسناد والا URL حوالے کرنا چاہیے۔ کوئی فعالیت ضائع نہیں ہوتی: ریڈز والیٹ کے ذریعے پراکسی ہوتی ہیں اور ٹرانزیکشنز والیٹ بناتا اور براڈکاسٹ کرتا ہے، لہٰذا dApp کو کبھی خود RPC تک پہنچنے کی ضرورت نہیں۔</p>
+<p>جاننے کے قابل دو نتائج:</p>
+<ul>
+<li>حسبِ ضرورت نیٹ ورک کا <strong>نام</strong> صارف کا چنا ہوا ہوتا ہے اور dApps کو دکھایا جاتا ہے۔ اسے کسی ذاتی شناخت کے بعد نام دینا اس شناخت کو ہر اس سائٹ پر ظاہر کرتا ہے جس سے آپ جڑتے ہیں۔</li>
+<li><code>wallet_getNetworks</code> ظاہر کرتا ہے کہ آپ نے <strong>کتنے</strong> نیٹ ورک ترتیب دیے ہیں۔ یہ ایک چھوٹی فنگر پرنٹنگ سطح ہے، قبول شدہ تاکہ dApp "switch to X" رہنمائی پیش کر سکے۔</li>
+</ul>
+<p>کوئی dApp نیٹ ورک تبدیل نہیں کر سکتا۔ کوئی <code>wallet_switchNetwork</code> طریقہ نہیں ہے؛ تبدیلی صرف والیٹ کے اپنے UI میں ہوتی ہے، اور dApp کو بعد میں <code>networkChanged</code> کے ذریعے پتہ چلتا ہے۔</p>
+<hr />
+<h2 id="dependency-status">ڈیپنڈنسی حیثیت</h2>
+<p>پروڈکشن ڈیپنڈنسیز: <strong>صفر معلوم خطرات</strong> (<code>npm audit --omit=dev</code>)۔</p>
+<p>ڈیولپمنٹ ڈیپنڈنسیز vitest، vite، esbuild، اور متعلقہ پیکجز میں ایڈوائزری رکھتی ہیں۔<br />ہر باقی اصلاح کے لیے ایک بڑے اپ گریڈ کی ضرورت ہوتی ہے (vite 5→8، vitest 2→4) جو بلڈ توڑنے کا خطرہ رکھتا ہے۔<br />یہ پیکجز بلڈ ٹولنگ ہیں — یہ صارفین تک نہیں بھیجے جاتے اور تعینات والیٹ کو متاثر نہیں کر سکتے۔</p>
+<p>یہ ایک دانستہ تجارت ہے، جس کا ہر ریلیز پر جائزہ لیا جاتا ہے۔ تصدیق کے لیے <code>npm audit --omit=dev</code> چلائیں<br />کہ بھیجی گئی سطح صاف رہتی ہے۔</p>
+<hr />
+<h2 id="guidance-for-users">صارفین کے لیے رہنمائی</h2>
+<p><strong>کریں</strong></p>
+<ul>
+<li>اپنا ریکوری فقرہ آف لائن، کاغذ پر، ایک سے زیادہ مقامات پر رکھیں</li>
+<li>بھیجنے سے پہلے وصول کنندہ کے پتے حرف بہ حرف تصدیق کریں</li>
+<li>ہر dApp کنکشن پرامپٹ میں اوریجن کی تصدیق کریں</li>
+<li>نیا پتہ استعمال کرتے وقت پہلے ایک چھوٹی آزمائشی رقم بھیجیں</li>
+<li>اپنے براؤزر اور OS کو اپ ڈیٹ رکھیں</li>
+</ul>
+<p><strong>کبھی نہ کریں</strong></p>
+<ul>
+<li>سیٹ اپ کے بعد کسی بھی ویب سائٹ پر اپنا ریکوری فقرہ درج نہ کریں</li>
+<li>فقرے کو ڈیجیٹل طور پر محفوظ نہ کریں — کوئی اسکرین شاٹس، کلاؤڈ نوٹس، یا چیٹ پیغامات نہیں</li>
+<li>اپنی پرائیویٹ کلید یا <code>.oct</code> بیک اپ فائل شیئر نہ کریں</li>
+<li>حقیقی فنڈز رکھنے والے والیٹ کو مشترکہ یا ناقابلِ بھروسہ کمپیوٹر پر استعمال نہ کریں</li>
+</ul>
+<hr />
+<h2 id="for-contributors">شراکت کاروں کے لیے</h2>
+<p>حفاظتی لحاظ سے حساس اصول جو کمزور نہیں کیے جانے چاہئیں:</p>
+<ul>
+<li>ہر آنے والے <code>postMessage</code> پر اوریجن کی توثیق</li>
+<li>تمام حفاظتی اقدار کے لیے CSPRNG؛ <code>makeId</code> اس میں شامل نہیں</li>
+<li><code>localStorage</code>، <code>sessionStorage</code>، لاگز، یا ایرر پیغامات میں کوئی راز نہیں</li>
+<li>کوئی <code>innerHTML</code> یا <code>dangerouslySetInnerHTML</code> نہیں</li>
+<li>PIN کبھی محفوظ نہیں ہوتا</li>
+<li>پاس کی ان لاک کو PRF درکار ہے؛ پڑھنے کے قابل کلید محفوظ کرنے پر کبھی تنزلی نہ کریں</li>
+<li><code>assertCanSign</code> ہر دستخطی راستے کی حفاظت کرتا ہے — صرف-دیکھنے والا اکاؤنٹ کبھی دستخط نہیں کر سکتا</li>
+<li>صاف متن اینڈ پوائنٹ پالیسی <code>endpoint-policy.ts</code> میں رہتی ہے؛ کہیں اور کوئی فوری URL چیک نہیں</li>
+<li>کینونیکل JSON بائٹ-عین مطابق رہتا ہے — دستخط اس پر منحصر ہیں</li>
+</ul>
+<p>خفیہ نگاری، کلید ہینڈلنگ، اسٹوریج، یا کنیکٹ فلو کو چھونے والی کوئی بھی تبدیلی پل ریکویسٹ میں صراحتاً یہ بتائے۔</p>
+</body>
+</html>

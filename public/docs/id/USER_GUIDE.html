@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panduan Pengguna — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="orion-wallet-user-guide">Orion Wallet — Panduan Pengguna</h1>
+<p>Orion Wallet berjalan sepenuhnya di browser Anda. Kunci Anda dibuat secara lokal, dienkripsi<br />dengan PIN Anda, dan hanya disimpan di perangkat Anda sendiri. Tidak ada apa pun yang dikirim ke server.</p>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Kode sumber, isu, dan rilis.</blockquote>
+<hr />
+<h2 id="contents">Daftar isi</h2>
+<ul>
+<li><a href="#getting-started">Memulai</a></li>
+<li><a href="#creating-a-wallet">Membuat wallet</a></li>
+<li><a href="#importing-an-existing-wallet">Mengimpor wallet yang sudah ada</a></li>
+<li><a href="#everyday-use">Penggunaan sehari-hari</a></li>
+<li><a href="#contacts-address-book">Kontak (buku alamat)</a></li>
+<li><a href="#watch-only-accounts">Akun watch-only</a></li>
+<li><a href="#encrypted-balance-fhe">Saldo terenkripsi (FHE)</a></li>
+<li><a href="#stealth-transfers">Transfer stealth</a></li>
+<li><a href="#connecting-to-a-dapp">Menghubungkan ke dApp</a></li>
+<li><a href="#locking-and-unlocking">Mengunci dan membuka kunci</a></li>
+<li><a href="#session-expiry">Kedaluwarsa sesi</a></li>
+<li><a href="#network-settings">Pengaturan jaringan</a></li>
+<li><a href="#backup-and-recovery">Backup dan pemulihan</a></li>
+<li><a href="#troubleshooting">Penyelesaian masalah</a></li>
+<li><a href="#keeping-your-funds-safe">Menjaga keamanan dana Anda</a></li>
+</ul>
+<hr />
+<h2 id="getting-started">Memulai</h2>
+<h3 id="requirements">Persyaratan</h3>
+<ul>
+<li>Versi terbaru Chrome, Edge, Firefox, atau Safari</li>
+<li>JavaScript aktif</li>
+<li>Sekitar 4 GB RAM bila Anda berencana memakai fitur saldo terenkripsi</li>
+</ul>
+<h3 id="running-it">Menjalankannya</h3>
+<p>Gunakan deployment yang dihosting, atau jalankan secara lokal:</p>
+<pre><code class="language-bash">npm install --legacy-peer-deps
+npm run dev</code></pre>
+<p>Lalu buka &lt;http://localhost:5173&gt;.</p>
+<hr />
+<h2 id="creating-a-wallet">Membuat wallet</h2>
+<ol>
+<li>Pilih <strong>Create New Wallet</strong>, beri nama akun, dan tentukan PIN. PIN mengenkripsi wallet di perangkat ini.</li>
+<li><strong>Tuliskan recovery phrase Anda.</strong> Anda akan diperlihatkan 12 kata. Salin ke kertas dengan urutan yang persis sama.</li>
+<li>Pilih <strong>I've Written It Down</strong>. Wallet lalu meminta Anda mengetik ulang <strong>3 dari kata-kata tersebut</strong>, dipilih acak, untuk membuktikan bahwa phrase benar-benar sudah dicatat. <strong>Show Phrase Again</strong> menampilkannya kembali bila perlu dilihat lagi; jawaban yang salah hanya meminta Anda mencoba lagi.</li>
+<li>Setelah kata-kata terverifikasi, wallet terbuka.</li>
+</ol>
+<blockquote><strong>Membuat wallet tidak langsung membukanya — lolos pemeriksaan kata baru membukanya.</strong> Sampai saat itu Anda masih bisa mundur dan tidak ada yang hilang, karena phrase belum diandalkan.</blockquote>
+<blockquote><strong>Recovery phrase Anda adalah satu-satunya cara memulihkan wallet.</strong> Siapa pun yang memilikinya mengendalikan dana Anda. Simpan secara offline. Jangan pernah memotretnya, mengetiknya di sebuah situs web, atau menempelkannya di chat maupun email.</blockquote>
+<h3 id="pin-versus-recovery-phrase">PIN versus recovery phrase</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>Recovery phrase</th><th>PIN</th></tr></thead>
+<tbody>
+<tr><td>Fungsi</td><td>Memulihkan wallet di mana saja</td><td>Membukanya hanya di perangkat ini</td></tr>
+<tr><td>Bila hilang</td><td>Dana tidak dapat dipulihkan</td><td>Pulihkan dari recovery phrase</td></tr>
+<tr><td>Disimpan di mana</td><td>Offline, oleh Anda</td><td>Tidak pernah disimpan — hanya Anda yang tahu</td></tr>
+</tbody>
+</table>
+</div>
+<hr />
+<h2 id="importing-an-existing-wallet">Mengimpor wallet yang sudah ada</h2>
+<p>Pilih <strong>Import</strong> dan pilih salah satu:</p>
+<ul>
+<li><strong>Recovery phrase</strong> — masukkan 12/24 kata Anda</li>
+<li><strong>Private key</strong> — tempelkan private key base64</li>
+<li><strong>Wallet file</strong> — unggah file <code>.oct</code> terenkripsi dan masukkan PIN-nya</li>
+</ul>
+<hr />
+<h2 id="everyday-use">Penggunaan sehari-hari</h2>
+<h3 id="checking-your-balance">Melihat saldo</h3>
+<p>Tab <strong>Balance</strong> menampilkan saldo publik Anda dan, bila PVAC aktif, saldo terenkripsi Anda.</p>
+<h3 id="receiving">Menerima</h3>
+<p>Buka <strong>Receive</strong> untuk menampilkan alamat dan kode QR Anda. Alamat Anda bersifat publik dan aman untuk dibagikan.</p>
+<p>Anda juga bisa <strong>meminta jumlah tertentu</strong>. Kode QR lalu membawa jumlah bersama alamat (sebagai <code>octra:&lt;address&gt;?amount=&lt;OCT&gt;</code>), sehingga wallet yang memindainya mengisi keduanya sekaligus. Tanpa jumlah yang diminta, kode tetap berupa alamat polos yang dapat dibaca pemindai mana pun.</p>
+<h3 id="sending">Mengirim</h3>
+<ol>
+<li>Buka <strong>Send</strong>.</li>
+<li>Berikan penerima dengan cara apa pun yang menurut Anda nyaman:</li>
+</ol>
+<ul>
+<li>Tempel alamatnya (diawali <code>oct</code>).</li>
+<li>Pilih nama tersimpan dari <strong>📇 Contacts…</strong>.</li>
+<li>Pilih <strong>📷 Scan</strong> untuk membaca kode QR dengan kamera. Browser meminta izin kamera pada kali pertama; gambar diproses di dalam halaman dan tidak pernah diunggah. Memindai kode yang membawa jumlah turut mengisi jumlahnya.</li>
+</ul>
+<ol start="3">
+<li>Masukkan jumlah.</li>
+<li>Periksa biaya dan nonce, lalu konfirmasi dengan PIN Anda.</li>
+</ol>
+<p>Bila alamat cocok dengan kontak tersimpan, formulir menampilkan namanya di samping alamat — nama yang Anda kenali jauh lebih mudah diperiksa daripada deretan base58. Untuk alamat baru, <strong>＋ Save to contacts</strong> menyimpannya dengan label pilihan Anda, sehingga pembayaran berikutnya tinggal memilih, bukan menempel.</p>
+<p>Selalu periksa karakter pertama dan terakhir alamat penerima sebelum mengonfirmasi.<br />Transaksi tidak dapat dibatalkan.</p>
+<h3 id="history">Riwayat</h3>
+<p><strong>History</strong> menampilkan transaksi terbaru. Saat jaringan tidak dapat dijangkau, entri tersimpan<br />di cache ditampilkan dan ditandai <code>⚠ Cached</code>.</p>
+<p><strong>⤓</strong> mengekspor tabel ke file CSV (waktu, hash, tipe, dari, ke, arah, jumlah, biaya,<br />status) untuk spreadsheet atau catatan Anda sendiri. Yang diekspor adalah <strong>baris yang saat ini dimuat</strong> — apa yang Anda lihat itulah yang Anda dapat — jadi gunakan <strong>Load more</strong> dulu bila menginginkan rentang lebih panjang. File ditulis oleh browser Anda ke folder unduhan; tidak ada yang dikirim ke mana pun.</p>
+<hr />
+<h2 id="contacts-address-book">Kontak (buku alamat)</h2>
+<p><strong>Settings → 📇 Contacts</strong> menyimpan daftar alamat dengan nama pilihan Anda. Setiap entri berisi<br />alamat, nama, dan catatan opsional — tempat yang tepat untuk "memo wajib" atau exchange mana<br />pemilik alamat deposit tersebut.</p>
+<p>Mengapa repot-repot: alamat yang tidak bisa Anda baca adalah alamat yang tidak bisa Anda periksa. Begitu penerima tersimpan, formulir Send menawarkan mereka berdasarkan nama dan memberi label pada alamat saat Anda menempelkannya kembali, sehingga alamat yang tertukar atau terpotong langsung terlihat, tidak menyamar.</p>
+<ul>
+<li><strong>Tambahkan</strong> entri di sini, atau gunakan <strong>＋ Save to contacts</strong> langsung dari formulir Send.</li>
+<li><strong>✎</strong> mengganti nama entri, <strong>🗑</strong> menghapusnya. Menghapus kontak tidak berpengaruh apa pun on-chain.</li>
+<li><strong>⤓</strong> mengekspor daftar sebagai CSV, sehingga bisa disimpan bersama catatan lain atau dipindahkan ke browser lain.</li>
+</ul>
+<p>Kontak hanya tersimpan di browser ini, bersama sisa data wallet Anda. Kontak tidak diunggah,<br />dan ikut terhapus bersama yang lain bila Anda menghapus isi wallet.</p>
+<hr />
+<h2 id="watch-only-accounts">Akun watch-only</h2>
+<p>Akun watch-only melacak alamat yang kuncinya <strong>tidak</strong> Anda pegang — penyimpanan dingin,<br />hardware wallet, alamat deposit exchange, atau alamat orang lain yang Anda pantau.</p>
+<p>Tambahkan lewat <strong>Settings → 👥 Accounts → 👁 Watch Address</strong>: tempel alamatnya, beri nama,<br />dan akun itu bergabung ke daftar akun Anda.</p>
+<p>Yang bisa dilakukan: menampilkan saldo, mendaftar riwayat, mengekspor CSV, dan dipindahkan tanpa<br />PIN — tidak ada keystore yang perlu didekripsi, jadi tidak ada yang perlu dibuka.</p>
+<p>Yang tidak bisa dilakukan: <strong>menandatangani apa pun.</strong> Kirim, enkripsi/dekripsi, transfer stealth, pemanggilan<br />kontrak, dan permintaan tanda tangan dApp semuanya ditolak, dan formulir Send memberi tahu hal itu sebelum Anda mengisinya, bukan setelahnya. Akun watch-only ditandai 👁 di daftar akun dan di<br />header, sehingga Anda selalu tahu sedang melihat jenis yang mana.</p>
+<p>Untuk mengubah akun watch-only menjadi akun sungguhan, impor recovery phrase atau private key untuk<br />alamat tersebut. Menambahkan kunci adalah satu-satunya caranya; tidak ada jalan pintas.</p>
+<hr />
+<h2 id="encrypted-balance-fhe">Saldo terenkripsi (FHE)</h2>
+<p>Orion Wallet dapat menyimpan sebagian saldo Anda dalam bentuk terenkripsi menggunakan fully homomorphic<br />encryption, sehingga jumlahnya tidak terlihat publik di chain.</p>
+<p>Ini opsional. Semua yang lain tetap berfungsi apa pun statusnya.</p>
+<h3 id="enabling-it">Mengaktifkannya</h3>
+<p>Buka <strong>Settings → PVAC</strong>. Dua indikator harus keduanya hijau:</p>
+<ul>
+<li><strong>WASM Module</strong> — modul kriptografi telah dimuat</li>
+<li><strong>Bridge Initialized</strong> — telah diberi kunci dari seed wallet Anda</li>
+</ul>
+<p>Bila salah satunya belum siap, panel menjelaskan penyebab dan perbaikannya secara persis.</p>
+<h3 id="encrypting-and-decrypting">Mengenkripsi dan mendekripsi</h3>
+<p>Gunakan <strong>Encrypt</strong> untuk memindahkan dana antara saldo publik dan terenkripsi Anda. Operasi ini<br />berat secara komputasi dan bisa memakan beberapa detik; dialog kemajuan<br />menampilkan setiap tahapnya.</p>
+<hr />
+<h2 id="stealth-transfers">Transfer stealth</h2>
+<p>Transfer stealth mengirim dana ke alamat sekali pakai yang diturunkan dari kunci publik penerima,<br />sehingga pembayaran tidak dapat ditautkan secara publik ke alamat utamanya.</p>
+<p>Buka <strong>Stealth</strong>, masukkan penerima dan jumlahnya, lalu konfirmasikan. Penerima mengklaim<br />dananya dari tab Stealth miliknya sendiri.</p>
+<hr />
+<h2 id="connecting-to-a-dapp">Menghubungkan ke dApp</h2>
+<p>Saat sebuah situs web meminta koneksi, popup muncul menampilkan asal permintaannya.</p>
+<p>Sebelum menyetujui:</p>
+<ul>
+<li><strong>Periksa asalnya dengan saksama.</strong> Pastikan domainnya persis situs yang Anda maksud.</li>
+<li>Setujui hanya izin yang Anda harapkan.</li>
+<li>"Trust this site" melewati prompt berikutnya untuk permintaan baca-saja — gunakan secukupnya.</li>
+<li>Periksa pemilih <strong>network</strong> di popup. Ia mendaftar semua jaringan yang Anda miliki, termasuk yang Anda tambahkan sendiri, sehingga Anda bisa terhubung di jaringan yang tepat tanpa keluar dari popup.</li>
+</ul>
+<p>Tinjau dan cabut koneksi kapan saja di <strong>Settings → Connected Sites</strong>.</p>
+<hr />
+<h2 id="locking-and-unlocking">Mengunci dan membuka kunci</h2>
+<p>PIN Anda mendekripsi wallet. Kunci yang telah didekripsi lalu tetap tersedia selama sesi buka<br />berlangsung — Anda tidak diminta PIN lagi sampai sesinya berakhir.</p>
+<ul>
+<li><strong>Memuat ulang halaman tetap membuat Anda dalam keadaan terbuka.</strong> Kunci disegel ulang untuk tab browser<br />yang Anda gunakan, sehingga reload melanjutkan sesi alih-alih mengembalikan Anda ke layar PIN. Anda akan sesaat melihat "Restoring your session…" selama itu terjadi.</li>
+<li><strong>Menutup tab mengakhiri sesi.</strong> Salinan tersegel hanya berlaku untuk tab itu dan<br />ikut hilang bersamanya, sehingga tab atau jendela baru mulai dalam keadaan terkunci.</li>
+<li><strong>🔒 di header mengunci seketika</strong> dan menghancurkan salinan tersegel — reload setelah<br />mengunci akan meminta PIN, sebagaimana mestinya.</li>
+<li><strong>Tanpa aktivitas, wallet terkunci</strong> setelah 30 menit secara bawaan, dan satu kali buka tidak pernah<br />dipertahankan lebih dari 8 jam berapa pun aktivitasnya.</li>
+</ul>
+<p>Tidak ada separuh dari sesi tersegel yang berguna sendirian: kunci terenkripsi dipegang oleh<br />tab, sedangkan kunci pembukanya disimpan browser dalam bentuk yang tidak bisa dibaca kembali oleh halaman mana pun —<br />termasuk halaman ini.</p>
+<p>Di <strong>Settings → Security → Session &amp; Auto-Lock</strong>:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Pengaturan</th><th>Bawaan</th><th>Fungsinya</th></tr></thead>
+<tbody>
+<tr><td>Tetap terbuka setelah memuat ulang halaman</td><td>Aktif</td><td>Matikan untuk meminta PIN pada setiap reload</td></tr>
+<tr><td>Kunci otomatis setelah tidak aktif</td><td>30 menit</td><td>5 / 15 / 30 / 60 menit, atau never (sampai tab ditutup)</td></tr>
+</tbody>
+</table>
+</div>
+<p>Keduanya berlaku sekaligus, termasuk pada sesi yang sedang terbuka. Di komputer bersama atau<br />yang tidak dipercaya, matikan yang pertama dan kunci wallet saat Anda meninggalkannya.</p>
+<h3 id="unlocking-with-a-passkey">Membuka kunci dengan passkey</h3>
+
+<p>Bila perangkat Anda memiliki pembaca sidik jari, Face ID, Windows Hello, atau security key, Anda bisa<br />membukanya dengan itu alih-alih mengetik PIN.</p>
+<p>Aktifkan di <strong>Settings → 🔑 Security → Passkey Unlock → Enable passkey unlock</strong>. Perangkat<br />Anda meminta pendaftaran — bisa diminta <strong>dua kali</strong>, sekali untuk membuat passkey dan<br />sekali untuk memakainya. Layar buka lalu menawarkan <strong>👆 Unlock with passkey</strong> di atas kotak PIN.</p>
+<p>Perlu diketahui:</p>
+<ul>
+<li><strong>PIN tetap ada dan tetap penting.</strong> Passkey membuka wallet; ia tidak<br />menggantikan PIN. Mengekspor kunci, menampilkan recovery phrase, mengganti PIN, dan<br />menurunkan akun baru tetap memintanya. Simpan PIN — kehilangannya tidak teratasi dengan<br />memiliki passkey.</li>
+<li><strong>Terikat ke perangkat dan browser ini.</strong> Passkey tidak ikut berpindah bersama data wallet<br />Anda. Di perangkat lain, buka dengan PIN dan daftarkan passkey di sana bila menginginkannya.</li>
+<li><strong>Sidik jari Anda tidak pernah sampai ke wallet.</strong> Perangkat memverifikasi Anda secara lokal dan menyerahkan<br />ke halaman sebuah secret yang diturunkan dari passkey; secret itulah yang membuka wallet.</li>
+<li><strong>Ketersediaan bergantung pada perangkat dan browser Anda.</strong> Bila milik Anda tidak mampu melakukan yang dibutuhkan,<br />panel Security mengatakannya dan opsi tetap mati — PIN tetap bekerja seperti<br />sediakala.</li>
+<li><strong>Matikan passkey unlock</strong> di panel yang sama. Itu segera menghapus salinan tersimpannya;<br />bukan menghapus passkey dari perangkat Anda, yang bisa Anda hapus di pengaturan OS atau<br />browser.</li>
+</ul>
+<p>Bila suatu passkey berhenti membuka wallet — kredensial yang dirotasi atau didaftarkan ulang, atau<br />perangkat yang dipulihkan — wallet memberitahukannya, membuang salinan basi itu, dan meminta PIN. Tidak ada<br />yang hilang; Anda bisa mendaftarkan passkey baru setelahnya.</p>
+<p>Passkey unlock tidak bisa didaftarkan saat akun watch-only sedang aktif — akun itu tidak memegang kunci,<br />sehingga tidak ada yang bisa disegel oleh passkey. Panel Security mengatakannya di tempat tombol tersebut.</p>
+<hr />
+<h2 id="session-expiry">Kedaluwarsa sesi</h2>
+<p>Jendela waktu yang sama mengatur koneksi dApp, yang kedaluwarsa secara otomatis:</p>
+<ul>
+<li><strong>Batas idle:</strong> 30 menit tanpa aktivitas</li>
+<li><strong>Batas absolut:</strong> 8 jam sejak koneksi</li>
+</ul>
+<p>Saat sesi kedaluwarsa, wallet menutup koneksi dan dApp diberi tahu.<br />dApp selanjutnya seharusnya meminta Anda menyambung ulang.</p>
+<h3 id="what-happens-when-your-session-expires">Apa yang terjadi saat sesi Anda kedaluwarsa</h3>
+<ol>
+<li>Wallet mengirim event <code>sessionExpired</code> ke dApp.</li>
+<li>dApp mendeteksi sesi yang kedaluwarsa dan menampilkan permintaan "Reconnect".</li>
+<li>Anda menekan <strong>Connect</strong> untuk membuka popup wallet lagi.</li>
+<li>Wallet memulihkan sesi Anda dan dApp melanjutkan.</li>
+</ol>
+<h3 id="if-a-dapp-doesnt-reconnect-automatically">Bila dApp tidak menyambung ulang secara otomatis</h3>
+<ul>
+<li>Tekan tombol <strong>Connect</strong> di dApp.</li>
+<li>Popup wallet terbuka — setujui koneksinya.</li>
+<li>Data sesi Anda sebelumnya tetap utuh, jadi Anda tidak perlu mengimpor ulang wallet.</li>
+</ul>
+<hr />
+<h2 id="network-settings">Pengaturan jaringan</h2>
+<p><strong>Settings → ⚙️ General</strong> memuat URL RPC yang dituju wallet, explorer yang ditautkannya,<br />serta proxy opsional. Ubah URL RPC dan pilih <strong>Save URLs</strong> untuk mengarahkan wallet<br />ke node yang berbeda.</p>
+<h3 id="adding-your-own-network">Menambahkan jaringan Anda sendiri</h3>
+<p>Devnet dan Mainnet sudah disertakan. Untuk menambahkan lainnya — node Anda sendiri, fork devnet, atau<br />RPC berbayar — gulir ke <strong>Custom Networks</strong> di panel yang sama dan isi:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Kolom</th><th>Wajib</th><th>Catatan</th></tr></thead>
+<tbody>
+<tr><td>Nama jaringan</td><td>ya</td><td>Ditampilkan di semua tempat jaringan muncul, termasuk ke dApp</td></tr>
+<tr><td>RPC URL</td><td>ya</td><td><code>http://</code> atau <code>https://</code></td></tr>
+<tr><td>Explorer URL</td><td>tidak</td><td>Bawaannya mengikuti URL RPC</td></tr>
+<tr><td>Relayer URL</td><td>tidak</td><td>Hanya diperlukan untuk transfer stealth</td></tr>
+</tbody>
+</table>
+</div>
+<p>Pilih <strong>Add network</strong> dan jaringan itu masuk ke daftar. Sejak saat itu ia menjadi pilihan biasa:</p>
+<ul>
+<li><strong>pill jaringan</strong> di bilah atas berpindah ke sana seperti preset mana pun,</li>
+<li><strong>popup connect</strong> mendaftarnya saat sebuah situs meminta koneksi, ditandai <em>(custom)</em>,</li>
+<li>dan dApp yang terhubung bisa membaca namanya dan explorer-nya agar pelabelannya benar.</li>
+</ul>
+<p>Mengganti jaringan memperbarui ketiga endpoint sekaligus — RPC, explorer, dan relayer — sehingga<br />wallet tidak pernah membaca satu jaringan sambil menautkan ke jaringan lain.</p>
+<p>Hapus jaringan dengan ✕ di sebelahnya. Bila Anda menghapus yang sedang dipakai, wallet<br />kembali ke preset.</p>
+<p><strong>Apa yang dilihat dApp.</strong> Situs yang Anda hubungkan bisa membaca nama, ikon, URL explorer jaringan kustom,<br />dan fakta bahwa Anda yang menambahkannya. Situs <strong>tidak bisa</strong> membaca URL RPC atau relayer-nya — alamat<br />node rumah atau kunci penyedia tetap berada di wallet. Karena namanya terlihat, hindari<br />menamai jaringan dengan sesuatu yang bersifat pribadi.</p>
+<h3 id="nodes-without-https">Node tanpa HTTPS</h3>
+<p>Node <code>https://</code> tidak perlu penanganan khusus. Node yang hanya dapat dijangkau lewat <code>http://</code> polos<br />adalah hal yang berbeda, karena semua yang wallet minta kepadanya — setiap pencarian saldo dan riwayat,<br />setiap transaksi yang dikirim — berjalan dalam bentuk terbuka, di mana siapa pun di jalur jaringan<br />bisa membacanya <em>dan mengubah jawabannya</em>. Karena itu wallet bertanya dulu.</p>
+<ul>
+<li><strong>Loopback tidak perlu izin.</strong> <code>localhost</code>, <code>127.0.0.1</code>, <code>[::1]</code> dan sejenisnya tidak pernah<br />keluar dari mesin Anda, sehingga node lokal langsung bisa dipakai.</li>
+<li><strong>Alamat <code>http://</code> lainnya harus dipercayai secara eksplisit.</strong> Tempel URL-nya dan panel<br />menjelaskan risikonya dengan tombol <strong>Trust <code>http://…</code></strong> di sebelahnya. Kepercayaan disimpan<br />per origin (skema, host, dan port), sehingga memercayai satu node tidak memercayai node lain, dan<br />port berbeda pada host yang sama adalah keputusan terpisah.</li>
+<li><strong>Trusted plaintext endpoints</strong> mendaftar yang telah Anda percayai, dengan <strong>Remove</strong> untuk<br />menariknya kembali.</li>
+</ul>
+<p>Dua batasan bukan milik kami untuk dicabut, dan panel menyebutkan mana pun yang menghalangi:</p>
+<ul>
+<li><strong>Wallet yang dilayani lewat <code>https://</code> tidak bisa mengambil <code>http://</code> sama sekali.</strong> Browser memblokirnya<br />(disebut mixed content), dan memercayai originnya tidak akan mengubahnya. Letakkan node<br />di balik TLS, gunakan proxy, atau buka wallet dari build plain-http atau localhost.</li>
+<li><strong>Build bawaan hanya mengizinkan <code>https://</code> dan loopback.</strong> Kebijakan keamanannya ditetapkan<br />saat build dan tidak bisa dilonggarkan saat berjalan. Pengguna sendiri yang butuh http polos bisa<br />build dengan <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code>; daftar kepercayaan di atas tetap berlaku di atasnya.</li>
+</ul>
+<p>URL explorer bebas dari semua aturan ini — ia hanya tautan yang Anda klik, bukan<br />sesuatu yang diambil wallet.</p>
+<h3 id="rpc-proxy">Proxy RPC</h3>
+<p><strong>RPC proxy (opsional)</strong> mengarahkan panggilan melalui URL pilihan Anda: URL RPC<br />ditambahkan ke belakangnya, di-percent-encode, dan browser hanya pernah terhubung ke proxy. Ini<br />solusi praktis untuk node tanpa TLS atau tanpa header CORS, dan memenuhi aturan di atas<br />karena koneksi yang dibuat browser adalah ke proxy.</p>
+<p>Proxy melihat setiap permintaan yang wallet buat, jadi <strong>jalankan milik Anda sendiri</strong>. Ia tidak bisa menandatangani apa pun<br />atau menyentuh kunci Anda, tetapi bisa mengintip dan bisa berbohong.</p>
+<h3 id="when-something-is-off">Bila ada yang tidak beres</h3>
+<p>Bila endpoint RPC tidak bisa dipakai sesuai konfigurasi, <strong>⚠️ Insecure RPC</strong> muncul di header;<br />pilih untuk langsung menuju pengaturannya. Error jaringan juga menyebut alasannya, sehingga "Failed to fetch" polos pun memberi tahu apa yang harus diperbaiki.</p>
+<hr />
+<h2 id="backup-and-recovery">Backup dan pemulihan</h2>
+<h3 id="exporting">Mengekspor</h3>
+<p><strong>Settings → Backup → Export</strong> mengunduh file <code>.oct</code> terenkripsi. File itu dilindungi<br />PIN Anda, tetapi perlakukan sebagai berkas sensitif.</p>
+<h3 id="restoring">Memulihkan</h3>
+<p>Gunakan <strong>Import → Wallet file</strong> dan masukkan PIN yang berlaku saat file diekspor.</p>
+<h3 id="multiple-accounts">Banyak akun</h3>
+<p><strong>Settings → Accounts</strong> menurunkan akun tambahan dari recovery phrase yang sama. Satu<br />phrase memulihkan semuanya.</p>
+<p>Dua hal yang <strong>tidak</strong> dipulihkan oleh phrase, karena memang tidak diturunkan darinya:</p>
+<ul>
+<li><strong>Akun watch-only</strong> — mereka hanyalah alamat yang Anda minta wallet pantau. Catat<br />secara terpisah bila ingin memilikinya kembali setelah instal ulang.</li>
+<li><strong>Kontak</strong> — ekspor dengan <strong>⤓</strong> di Settings → Contacts bila berarti bagi Anda.</li>
+</ul>
+<p>Keduanya tidak memegang dana, sehingga kehilangannya merugikan kenyamanan, bukan uang.</p>
+<hr />
+<h2 id="troubleshooting">Penyelesaian masalah</h2>
+<h3 id="the-page-is-blank-or-stuck-loading">Halaman kosong atau macet saat memuat</h3>
+<p>Muat ulang. Bila berlanjut, kartu error dengan tombol <strong>Retry</strong> seharusnya muncul. Laporkan<br />pesan yang tertampilkan di sana.</p>
+<h3 id="encrypted-balance-is-unavailable">Saldo terenkripsi tidak tersedia</h3>
+<p>Settings → PVAC menampilkan salah satu dari berikut:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Pesan</th><th>Artinya</th><th>Perbaikan</th></tr></thead>
+<tbody>
+<tr><td><em>The WASM module has not been compiled</em></td><td><code>pvac.js</code> tidak dilayani</td><td>Jalankan <code>npm run build:wasm</code></td></tr>
+<tr><td><em>Content-Security-Policy is blocking WebAssembly</em></td><td>CSP tidak memuat <code>'wasm-unsafe-eval'</code></td><td>Tambahkan ke <code>script-src</code> di <code>index.html</code></td></tr>
+<tr><td><em>The compiled module is out of date</em></td><td>Build lebih lama dari fungsi yang dibutuhkan</td><td>Build ulang dengan <code>npm run build:wasm</code></td></tr>
+<tr><td><em>FHE key generation failed</em></td><td>Modul termuat tapi penguncian kunci gagal</td><td>Periksa konsol browser dan laporkan</td></tr>
+</tbody>
+</table>
+</div>
+<p>Tekan <strong>↻ Reload PVAC</strong> setelah menerapkan perbaikan — tanpa perlu restart.</p>
+<h3 id="failed-to-load-history-network-errors">"Failed to load history" / error jaringan</h3>
+<p>Biasanya node RPC tidak terjangkau atau memblokir CORS. Periksa URL RPC di<br /><strong>Settings</strong>, dan lihat <a href="https://github.com/maragung/OrionWallet#cors">catatan CORS</a>. Bila error menyebut alasan —<br />plaintext, mixed content, atau batasan build — lihat<br /><a href="#network-settings">Pengaturan jaringan</a>; <strong>RPC proxy</strong> mengatasi kasus CORS.</p>
+<h3 id="the-header-shows-insecure-rpc">Header menampilkan "⚠️ Insecure RPC"</h3>
+<p>Endpoint RPC yang terpasang berupa <code>http://</code> polos dan tidak bisa dipakai apa adanya. Pilih<br />lencana itu untuk membuka pengaturannya, tempat penyebab dan perbaikan persisnya dijelaskan. Lihat<br /><a href="#network-settings">Pengaturan jaringan</a>.</p>
+<h3 id="the-camera-wont-open-when-i-select-scan">Kamera tidak terbuka saat saya memilih 📷 Scan</h3>
+<ul>
+<li>Berikan izin kamera saat browser meminta; bila Anda menutup permintaannya, izinkan kembali di<br />izin situs dan coba lagi.</li>
+<li>Akses kamera memerlukan halaman yang aman. Berfungsi di <code>https://</code> dan di <code>localhost</code>, tetapi tidak di<br />halaman <code>http://</code> polos pada host lain.</li>
+<li>Bila aplikasi lain memegang kamera, tutup dulu. Anda selalu bisa menempel alamat sebagai gantinya.</li>
+</ul>
+<h3 id="unlock-with-passkey-isnt-offered">"Unlock with passkey" tidak ditawarkan</h3>
+<p>Bisa jadi tidak ada passkey terdaftar di browser ini, atau perangkat tidak mampu melakukan syarat passkey unlock.<br /><strong>Settings → 🔑 Security → Passkey Unlock</strong> menjelaskannya. Passkey bersifat per perangkat<br />dan per browser, jadi yang terdaftar di tempat lain tidak muncul di sini. PIN selalu berfungsi.</p>
+<h3 id="i-forgot-my-pin">Saya lupa PIN</h3>
+<p>Pasang ulang wallet dengan recovery phrase Anda dan tetapkan PIN baru. Tanpa phrase,<br />dana tidak bisa dipulihkan — oleh siapa pun.</p>
+<h3 id="could-not-read-your-saved-wallets-could-not-read-your-accounts">"Could not read your saved wallets" / "Could not read your accounts"</h3>
+<p>Wallet tidak bisa membuka database lokalnya. Tidak ada yang terhapus — hampir selalu<br />ini tab Orion lain, atau sisa popup <strong>Connect</strong>, yang masih memegang database terbuka.<br />Setelah pembaruan, browser tidak akan meng-upgrade database selama tab lama masih<br />terikat padanya.</p>
+<p>Tutup tab dan popup Orion yang lain, lalu pilih <strong>↻ Try again</strong>. Bila pesannya tetap,<br />tutup semua tab Orion dan buka kembali wallet dalam satu tab.</p>
+<p>Layar buka sengaja membedakan dua keadaan itu: <em>No stored wallet found</em> berarti<br />database benar-benar kosong, sedangkan <em>Could not read your saved wallets</em> berarti akun Anda<br />ada tetapi sewaktu-waktu tidak terjangkau. <strong>Jangan membuat wallet baru</strong> selagi melihat<br />pesan kedua itu.</p>
+<h3 id="my-wallet-vanished-after-an-update">Wallet saya hilang setelah pembaruan</h3>
+<p>Data dimigrasikan otomatis dari build lama saat pertama dijalankan. Bila akun Anda<br />hilang, <strong>jangan membuat wallet baru</strong> — itu bisa menimpa data lama. Laporkan<br />masalahnya, dan pulihkan dari recovery phrase sementara.</p>
+<h3 id="dapp-says-session-expired">dApp mengatakan "Session expired"</h3>
+<p>Ini berarti sesi wallet habis waktunya (idle 30 menit / absolut 8 jam). Sambung ulang dengan<br />menekan <strong>Connect</strong> di dApp. Data wallet Anda tetap utuh — Anda hanya perlu<br />menyetujui koneksinya kembali.</p>
+<hr />
+<h2 id="keeping-your-funds-safe">Menjaga keamanan dana Anda</h2>
+<p><strong>Lakukan</strong></p>
+<ul>
+<li>Simpan recovery phrase secara offline, di kertas, idealnya di lebih dari satu tempat</li>
+<li>Periksa alamat penerima sebelum mengirim</li>
+<li>Periksa asal yang ditampilkan di permintaan koneksi dApp</li>
+<li>Mulai dengan transaksi uji bernilai kecil saat mengirim ke alamat baru</li>
+<li>Simpan penerima sebagai kontak, dan periksa namanya — nama yang dikenali lebih baik daripada membaca base58</li>
+<li>Gunakan akun watch-only untuk memantau penyimpanan dingin, alih-alih membuka yang sebenarnya</li>
+</ul>
+<p><strong>Jangan pernah</strong></p>
+<ul>
+<li>Memasukkan recovery phrase di situs web mana pun. Orion Wallet tidak akan pernah memintanya setelah penyiapan</li>
+<li>Menyimpan phrase dalam tangkapan layar, catatan password manager, drive cloud, atau chat</li>
+<li>Membagikan private key atau file <code>.oct</code> Anda</li>
+<li>Memakai wallet berisi dana sungguhan di komputer bersama atau yang tidak dipercaya</li>
+</ul>
+<p>Orion Wallet <strong>belum diaudit secara independen</strong>. Mohon tinjau<br /><a href="SECURITY.html">dokumen Keamanan</a> sebelum menyimpan nilai yang besar.</p>
+</body>
+</html>

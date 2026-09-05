@@ -42,6 +42,15 @@ const en: Translations = {
   'nav.tokens': 'Tokens',
   'nav.settings': 'Settings',
   'nav.docs': 'Docs',
+
+  // Docs panel (chrome only — document bodies are per-language files under /docs/<lang>/)
+  'docs.title': 'Documentation',
+  'docs.sub': 'The guide, the developer reference and the security notes, served from this build.',
+  'docs.tabGuide': 'User Guide',
+  'docs.tabDeveloper': 'Developer',
+  'docs.tabSecurity': 'Security',
+  'docs.untranslated':
+    'This document has not been translated into your language yet — showing the English original.',
   'nav.wallet': 'Wallet',
   'nav.privacy': 'Privacy',
   'nav.contracts': 'Contracts',
@@ -373,6 +382,14 @@ const zh: Translations = {
   'nav.circles': '圈子',
   'nav.settings': '设置',
   'nav.docs': '文档',
+
+  // Docs panel (chrome only — document bodies are per-language files under /docs/<lang>/)
+  'docs.title': '文档',
+  'docs.sub': '用户指南、开发者参考与安全说明，随本构建一起提供。',
+  'docs.tabGuide': '用户指南',
+  'docs.tabDeveloper': '开发者',
+  'docs.tabSecurity': '安全',
+  'docs.untranslated': '此文档尚未翻译成您的语言——正在显示英文原文。',
   'nav.home': '首页',
   'unlock.title': '欢迎回来',
   'unlock.subtitle': '解锁您的 Octra 钱包以继续',
@@ -461,6 +478,16 @@ const hi: Translations = {
   'nav.circles': 'सर्कल',
   'nav.settings': 'सेटिंग्स',
   'nav.docs': 'दस्तावेज़',
+
+  // Docs panel (chrome only — document bodies are per-language files under /docs/<lang>/)
+  'docs.title': 'दस्तावेज़ीकरण',
+  'docs.sub':
+    'उपयोगकर्ता गाइड, डेवलपर संदर्भ और सुरक्षा टिप्पणियाँ, इसी बिल्ड से प्रदान की जाती हैं।',
+  'docs.tabGuide': 'उपयोगकर्ता गाइड',
+  'docs.tabDeveloper': 'डेवलपर',
+  'docs.tabSecurity': 'सुरक्षा',
+  'docs.untranslated':
+    'यह दस्तावेज़ अभी आपकी भाषा में अनुवादित नहीं हुआ है — अंग्रेज़ी मूल प्रदर्शित है।',
   'nav.home': 'होम',
   'unlock.title': 'वापसी पर स्वागत है',
   'unlock.subtitle': 'जारी रखने के लिए अपना Octra वॉलेट अनलॉक करें',
@@ -548,6 +575,16 @@ const es: Translations = {
   'nav.circles': 'Círculos',
   'nav.settings': 'Ajustes',
   'nav.docs': 'Documentación',
+
+  // Docs panel (chrome only — document bodies are per-language files under /docs/<lang>/)
+  'docs.title': 'Documentación',
+  'docs.sub':
+    'La guía, la referencia para desarrolladores y las notas de seguridad, servidas desde esta compilación.',
+  'docs.tabGuide': 'Guía del usuario',
+  'docs.tabDeveloper': 'Desarrollador',
+  'docs.tabSecurity': 'Seguridad',
+  'docs.untranslated':
+    'Este documento aún no se ha traducido a tu idioma; se muestra el original en inglés.',
   'nav.home': 'Inicio',
   'unlock.title': 'Bienvenido de Nuevo',
   'unlock.subtitle': 'Desbloquea tu wallet Octra para continuar',
@@ -635,6 +672,16 @@ const fr: Translations = {
   'nav.circles': 'Cercles',
   'nav.settings': 'Paramètres',
   'nav.docs': 'Documentation',
+
+  // Docs panel (chrome only — document bodies are per-language files under /docs/<lang>/)
+  'docs.title': 'Documentation',
+  'docs.sub':
+    'Le guide, la référence développeur et les notes de sécurité, servis depuis cette build.',
+  'docs.tabGuide': "Guide de l'utilisateur",
+  'docs.tabDeveloper': 'Développeur',
+  'docs.tabSecurity': 'Sécurité',
+  'docs.untranslated':
+    "Ce document n'est pas encore traduit dans votre langue — l'original anglais est affiché.",
   'nav.home': 'Accueil',
   'unlock.title': 'Bon Retour',
   'unlock.subtitle': 'Déverrouillez votre wallet Octra pour continuer',
@@ -721,6 +768,14 @@ const ar: Translations = {
   'nav.circles': 'الدوائر',
   'nav.settings': 'الإعدادات',
   'nav.docs': 'المستندات',
+
+  // Docs panel (chrome only — document bodies are per-language files under /docs/<lang>/)
+  'docs.title': 'الوثائق',
+  'docs.sub': 'الدليل ومرجع المطور وملاحظات الأمان، تُقدَّم من هذا الإصدار.',
+  'docs.tabGuide': 'دليل المستخدم',
+  'docs.tabDeveloper': 'المطور',
+  'docs.tabSecurity': 'الأمان',
+  'docs.untranslated': 'لم تُترجم هذه الوثيقة إلى لغتك بعد — يُعرض النص الإنجليزي الأصلي.',
   'nav.home': 'الرئيسية',
   'unlock.title': 'مرحبا بعودتك',
   'unlock.subtitle': 'افتح محفظة Octra للمتابعة',
@@ -788,6 +843,15 @@ const bn: Translations = {
   'nav.send': 'পাঠান',
   'nav.settings': 'সেটিংস',
   'nav.docs': 'নথি',
+
+  // Docs panel (chrome only — document bodies are per-language files under /docs/<lang>/)
+  'docs.title': 'ডকুমেন্টেশন',
+  'docs.sub':
+    'ব্যবহারকারীর নির্দেশিকা, ডেভেলপার রেফারেন্স এবং নিরাপত্তা নোট — এই বিল্ড থেকেই দেওয়া হয়।',
+  'docs.tabGuide': 'ব্যবহারকারীর নির্দেশিকা',
+  'docs.tabDeveloper': 'ডেভেলপার',
+  'docs.tabSecurity': 'নিরাপত্তা',
+  'docs.untranslated': 'এই নথিটি এখনও আপনার ভাষায় অনুবাদ করা হয়নি — ইংরেজি মূলটি দেখানো হচ্ছে।',
   'unlock.title': 'ফিরে আসায় স্বাগতম',
   'balance.public': 'পাবলিক ব্যালেন্স',
   'send.title': 'OCT পাঠান',
@@ -835,6 +899,15 @@ const ru: Translations = {
   'nav.send': 'Отправить',
   'nav.settings': 'Настройки',
   'nav.docs': 'Документация',
+
+  // Docs panel (chrome only — document bodies are per-language files under /docs/<lang>/)
+  'docs.title': 'Документация',
+  'docs.sub':
+    'Руководство пользователя, справочник разработчика и заметки о безопасности — в составе этой сборки.',
+  'docs.tabGuide': 'Руководство пользователя',
+  'docs.tabDeveloper': 'Разработчику',
+  'docs.tabSecurity': 'Безопасность',
+  'docs.untranslated': 'Этот документ ещё не переведён на ваш язык — показан английский оригинал.',
   'unlock.title': 'С возвращением',
   'balance.public': 'Публичный баланс',
   'send.title': 'Отправить OCT',
@@ -882,6 +955,16 @@ const pt: Translations = {
   'nav.send': 'Enviar',
   'nav.settings': 'Configurações',
   'nav.docs': 'Documentação',
+
+  // Docs panel (chrome only — document bodies are per-language files under /docs/<lang>/)
+  'docs.title': 'Documentação',
+  'docs.sub':
+    'O guia, a referência para desenvolvedores e as notas de segurança, servidos desta build.',
+  'docs.tabGuide': 'Guia do usuário',
+  'docs.tabDeveloper': 'Desenvolvedor',
+  'docs.tabSecurity': 'Segurança',
+  'docs.untranslated':
+    'Este documento ainda não foi traduzido para o seu idioma — a versão original em inglês está sendo exibida.',
   'unlock.title': 'Bem-vindo de volta',
   'balance.public': 'Saldo Público',
   'send.title': 'Enviar OCT',
@@ -929,6 +1012,16 @@ const id: Translations = {
   'nav.send': 'Kirim',
   'nav.settings': 'Pengaturan',
   'nav.docs': 'Dokumentasi',
+
+  // Docs panel (chrome only — document bodies are per-language files under /docs/<lang>/)
+  'docs.title': 'Dokumentasi',
+  'docs.sub':
+    'Panduan pengguna, referensi pengembang, dan catatan keamanan — disajikan langsung dari build ini.',
+  'docs.tabGuide': 'Panduan Pengguna',
+  'docs.tabDeveloper': 'Pengembang',
+  'docs.tabSecurity': 'Keamanan',
+  'docs.untranslated':
+    'Dokumen ini belum diterjemahkan ke bahasa yang Anda pilih — menampilkan versi asli bahasa Inggris.',
   'unlock.title': 'Selamat Datang Kembali',
   'balance.public': 'Saldo Publik',
   'send.title': 'Kirim OCT',
@@ -976,6 +1069,15 @@ const ur: Translations = {
   'nav.send': 'بھیجیں',
   'nav.settings': 'ترتیبات',
   'nav.docs': 'دستاویزات',
+
+  // Docs panel (chrome only — document bodies are per-language files under /docs/<lang>/)
+  'docs.title': 'دستاویزات',
+  'docs.sub': 'صارف گائیڈ، ڈویلپر حوالہ جات اور سیکیورٹی نوٹس — اسی بلڈ سے فراہم کیے جاتے ہیں۔',
+  'docs.tabGuide': 'صارف گائیڈ',
+  'docs.tabDeveloper': 'ڈویلپر',
+  'docs.tabSecurity': 'سیکیورٹی',
+  'docs.untranslated':
+    'یہ دستاویز ابھی آپ کی منتخب کردہ زبان میں ترجمہ نہیں ہوئی — اصل انگریزی متن دکھایا جا رہا ہے۔',
   'unlock.title': 'واپس خوش آمدید',
   'balance.public': 'عوامی بیلنس',
   'send.title': 'OCT بھیجیں',
@@ -1023,6 +1125,16 @@ const de: Translations = {
   'nav.send': 'Senden',
   'nav.settings': 'Einstellungen',
   'nav.docs': 'Dokumentation',
+
+  // Docs panel (chrome only — document bodies are per-language files under /docs/<lang>/)
+  'docs.title': 'Dokumentation',
+  'docs.sub':
+    'Die Anleitung, die Entwicklerreferenz und die Sicherheitshinweise — direkt aus diesem Build.',
+  'docs.tabGuide': 'Benutzerhandbuch',
+  'docs.tabDeveloper': 'Entwickler',
+  'docs.tabSecurity': 'Sicherheit',
+  'docs.untranslated':
+    'Dieses Dokument ist noch nicht in die gewählte Sprache übersetzt — die englische Originalfassung wird angezeigt.',
   'unlock.title': 'Willkommen zurück',
   'balance.public': 'Öffentliches Guthaben',
   'send.title': 'OCT senden',
@@ -1071,6 +1183,15 @@ const ja: Translations = {
   'nav.send': '送信',
   'nav.settings': '設定',
   'nav.docs': 'ドキュメント',
+
+  // Docs panel (chrome only — document bodies are per-language files under /docs/<lang>/)
+  'docs.title': 'ドキュメント',
+  'docs.sub': 'ユーザーガイド、開発者リファレンス、セキュリティノートをこのビルドから提供します。',
+  'docs.tabGuide': 'ユーザーガイド',
+  'docs.tabDeveloper': '開発者',
+  'docs.tabSecurity': 'セキュリティ',
+  'docs.untranslated':
+    'このドキュメントはまだ選択した言語に翻訳されていません。英語の原文を表示しています。',
   'unlock.title': 'おかえりなさい',
   'balance.public': '公開残高',
   'send.title': 'OCTを送信',
@@ -1118,6 +1239,16 @@ const sw: Translations = {
   'nav.send': 'Tuma',
   'nav.settings': 'Mipangilio',
   'nav.docs': 'Nyaraka',
+
+  // Docs panel (chrome only — document bodies are per-language files under /docs/<lang>/)
+  'docs.title': 'Nyaraka',
+  'docs.sub':
+    'Mwongozo wa mtumiaji, rejea ya wasanidi programu na vidokezo vya usalama — hutolewa kutoka ujenzi huu.',
+  'docs.tabGuide': 'Mwongozo wa Mtumiaji',
+  'docs.tabDeveloper': 'Msanidi Programu',
+  'docs.tabSecurity': 'Usalama',
+  'docs.untranslated':
+    'Hati hii bado haijatafsiriwa kwa lugha uliyochagua — toleo la asili la Kiingereza linaonyeshwa.',
   'unlock.title': 'Karibu Tena',
   'balance.public': 'Salio la Umma',
   'send.title': 'Tuma OCT',
@@ -1165,6 +1296,16 @@ const tr: Translations = {
   'nav.send': 'Gönder',
   'nav.settings': 'Ayarlar',
   'nav.docs': 'Dokümanlar',
+
+  // Docs panel (chrome only — document bodies are per-language files under /docs/<lang>/)
+  'docs.title': 'Dokümantasyon',
+  'docs.sub':
+    'Kullanıcı kılavuzu, geliştirici başvurusu ve güvenlik notları — bu derlemeden sunulur.',
+  'docs.tabGuide': 'Kullanıcı Kılavuzu',
+  'docs.tabDeveloper': 'Geliştirici',
+  'docs.tabSecurity': 'Güvenlik',
+  'docs.untranslated':
+    'Bu belge henüz seçtiğiniz dile çevrilmedi — İngilizce özgün sürüm gösteriliyor.',
   'unlock.title': 'Tekrar Hoş Geldiniz',
   'balance.public': 'Genel Bakiye',
   'send.title': 'OCT Gönder',
@@ -1211,6 +1352,15 @@ const ko: Translations = {
   'nav.send': '보내기',
   'nav.settings': '설정',
   'nav.docs': '문서',
+
+  // Docs panel (chrome only — document bodies are per-language files under /docs/<lang>/)
+  'docs.title': '문서',
+  'docs.sub': '사용자 가이드, 개발자 참조 문서와 보안 노트를 이 빌드에서 직접 제공합니다.',
+  'docs.tabGuide': '사용자 가이드',
+  'docs.tabDeveloper': '개발자',
+  'docs.tabSecurity': '보안',
+  'docs.untranslated':
+    '이 문서는 아직 선택하신 언어로 번역되지 않았습니다 — 영어 원문이 표시됩니다.',
   'unlock.title': '다시 오신 것을 환영합니다',
   'balance.public': '공개 잔액',
   'send.title': 'OCT 보내기',
@@ -1258,6 +1408,16 @@ const ta: Translations = {
   'nav.send': 'அனுப்பு',
   'nav.settings': 'அமைப்புகள்',
   'nav.docs': 'ஆவணங்கள்',
+
+  // Docs panel (chrome only — document bodies are per-language files under /docs/<lang>/)
+  'docs.title': 'ஆவணப்பணி',
+  'docs.sub':
+    'பயனர் வழிகாட்டி, டெவலப்பர் தொடர்பு ஆவணம் மற்றும் பாதுகாப்பு குறிப்புகள் — இந்த உருவாக்கத்திலிருந்தே வழங்கப்படுகின்றன.',
+  'docs.tabGuide': 'பயனர் வழிகாட்டி',
+  'docs.tabDeveloper': 'டெவலப்பர்',
+  'docs.tabSecurity': 'பாதுகாப்பு',
+  'docs.untranslated':
+    'இந்த ஆவணம் இன்னும் நீங்கள் தேர்ந்தெடுத்த மொழியில் மொழிபெயர்க்கப்படவில்லை — ஆங்கில மூலம் காட்டப்படுகிறது.',
   'unlock.title': 'மீண்டும் வரவேற்கிறோம்',
   'balance.public': 'பொது இருப்பு',
   'send.title': 'OCT அனுப்பு',
@@ -1305,6 +1465,16 @@ const it: Translations = {
   'nav.send': 'Invia',
   'nav.settings': 'Impostazioni',
   'nav.docs': 'Documentazione',
+
+  // Docs panel (chrome only — document bodies are per-language files under /docs/<lang>/)
+  'docs.title': 'Documentazione',
+  'docs.sub':
+    'La guida, il riferimento per gli sviluppatori e le note di sicurezza, servite da questa build.',
+  'docs.tabGuide': "Guida dell'utente",
+  'docs.tabDeveloper': 'Sviluppatore',
+  'docs.tabSecurity': 'Sicurezza',
+  'docs.untranslated':
+    'Questo documento non è ancora stato tradotto nella lingua selezionata — viene mostrato l’originale in inglese.',
   'unlock.title': 'Bentornato',
   'balance.public': 'Saldo Pubblico',
   'send.title': 'Invia OCT',
@@ -1351,6 +1521,15 @@ const th: Translations = {
   'nav.send': 'ส่ง',
   'nav.settings': 'การตั้งค่า',
   'nav.docs': 'เอกสาร',
+
+  // Docs panel (chrome only — document bodies are per-language files under /docs/<lang>/)
+  'docs.title': 'เอกสาร',
+  'docs.sub':
+    'คู่มือผู้ใช้ เอกสารอ้างอิงสำหรับนักพัฒนา และบันทึกด้านความปลอดภัย ให้บริการจากบิลด์นี้',
+  'docs.tabGuide': 'คู่มือผู้ใช้',
+  'docs.tabDeveloper': 'นักพัฒนา',
+  'docs.tabSecurity': 'ความปลอดภัย',
+  'docs.untranslated': 'เอกสารนี้ยังไม่ได้แปลเป็นภาษาที่คุณเลือก — กำลังแสดงต้นฉบับภาษาอังกฤษ',
   'unlock.title': 'ยินดีต้อนรับกลับ',
   'balance.public': 'ยอดคงเหลือสาธารณะ',
   'send.title': 'ส่ง OCT',
@@ -1398,6 +1577,16 @@ const vi: Translations = {
   'nav.send': 'Gửi',
   'nav.settings': 'Cài đặt',
   'nav.docs': 'Tài liệu',
+
+  // Docs panel (chrome only — document bodies are per-language files under /docs/<lang>/)
+  'docs.title': 'Tài liệu',
+  'docs.sub':
+    'Hướng dẫn sử dụng, tài liệu tham khảo cho nhà phát triển và ghi chú bảo mật — được phục vụ từ bản dựng này.',
+  'docs.tabGuide': 'Hướng dẫn sử dụng',
+  'docs.tabDeveloper': 'Nhà phát triển',
+  'docs.tabSecurity': 'Bảo mật',
+  'docs.untranslated':
+    'Tài liệu này chưa được dịch sang ngôn ngữ bạn chọn — đang hiển thị bản gốc tiếng Anh.',
   'unlock.title': 'Chào mừng trở lại',
   'balance.public': 'Số dư công khai',
   'send.title': 'Gửi OCT',

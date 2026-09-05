@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>डेवलपर गाइड — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="orion-wallet-developer-guide">Orion Wallet — डेवलपर गाइड</h1>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — सोर्स कोड, इश्यूज़ और रिलीज़।</blockquote>
+<h2 id="contents">विषय-सूची</h2>
+<ul>
+<li><a href="#setup">सेटअप</a></li>
+<li><a href="#project-layout">प्रोजेक्ट लेआउट</a></li>
+<li><a href="#architecture">आर्किटेक्चर</a></li>
+<li><a href="#build-system">बिल्ड सिस्टम</a></li>
+<li><a href="#the-pvac-wasm-pipeline">PVAC WASM पाइपलाइन</a></li>
+<li><a href="#state-management">स्टेट प्रबंधन</a></li>
+<li><a href="#error-handling">एरर हैंडलिंग</a></li>
+<li><a href="#loading-states">लोडिंग स्थितियाँ</a></li>
+<li><a href="#storage-and-migrations">स्टोरेज और माइग्रेशन</a></li>
+<li><a href="#wallet-sdk">Wallet SDK</a></li>
+<li><a href="#dapp-integration">dApp इंटीग्रेशन</a></li>
+<li><a href="#session-management">सेशन प्रबंधन</a></li>
+<li><a href="#testing">टेस्टिंग</a></li>
+<li><a href="#release-checklist">रिलीज़ चेकलिस्ट</a></li>
+<li><a href="#known-issues">ज्ञात समस्याएँ</a></li>
+</ul>
+<hr />
+<h2 id="setup">सेटअप</h2>
+<pre><code class="language-bash">npm install --legacy-peer-deps
+npm run dev</code></pre>
+<p><code>--legacy-peer-deps</code> अनिवार्य है: ESLint 9 और <code>@eslint/js</code> 10 परस्पर विरोधी पीयर<br />रेंज घोषित करते हैं। <code>vercel.json</code> वही फ़्लैग उपयोग करता है, इसलिए CI और स्थानीय इंस्टॉल एक-दूसरे से मेल खाते हैं।</p>
+<p>Node 20+ अनुशंसित है।</p>
+<hr />
+<h2 id="project-layout">प्रोजेक्ट लेआउट</h2>
+<pre><code class="language-">src/
+├── api/          High-level operations (wallet-api, send, encrypt)
+├── components/   React components, one panel per tab
+├── connect/      dApp approval popup (/connect route)
+├── crypto/       Primitives: ed25519, x25519, sha256, aes, bip39, hd, base58/64
+├── hooks/        useTheme, usePanelLoading
+├── i18n/         Translations and the provider
+├── pvac/         FHE bridge: stub + WASM implementation
+├── rpc/          JSON-RPC client
+├── sdk/          Provider injected into dApps + transport
+├── stealth/      Stealth address derivation
+├── store/        Zustand store
+├── tx/           Canonical JSON, signing, ABI helpers
+├── utils/        Clipboard, progress reporting, CSV export
+└── wallet/       Keystore, IndexedDB storage, PIN, passkey unlock, watch-only
+                  guard, endpoint policy, payment URIs, mnemonic backup check
+
+public/
+  demo/           Standalone dApp integration demo (dapp.html)
+  docs/           Static HTML documentation pages
+  wasm/           Compiled PVAC module (pvac.js + pvac.wasm)
+
+tests/unit/       Vitest
+tests/e2e/        Playwright
+docs/             This documentation</code></pre>
+<hr />
+<h2 id="architecture">आर्किटेक्चर</h2>
+<p>पूरी तरह क्लाइंट-साइड; कोई बैकएंड नहीं है। डेटा एक ही दिशा में बहता है:</p>
+<pre><code class="language-">React components  (src/components/)
+       │  read state, dispatch actions
+       ▼
+Zustand store  (src/store/wallet-store.ts)
+       │
+       ▼
+API layer  (src/api/)          ← orchestrates crypto + RPC
+       │
+       ├──► Crypto core  (src/crypto/)   WebCrypto, tweetnacl, @noble
+       ├──► PVAC FHE     (src/pvac/)     WebAssembly
+       ├──► Transaction  (src/tx/)       canonical JSON + signing
+       └──► RPC client   (src/rpc/)      fetch
+                                           │ HTTPS
+                                           ▼
+                                    Octra RPC node</code></pre>
+<h3 id="design-constraints">डिज़ाइन बाध्यताएँ</h3>
+<p><strong>कैनोनिकल JSON बाइट-सटीक होना चाहिए।</strong> <code>src/tx/canonical-json.ts</code> <code>nlohmann::json</code> की<br />की-ऑर्डरिंग और फ़ॉर्मेटिंग को ठीक-ठीक पुनरुत्पादित करता है। हस्ताक्षर इन्हीं बाइट्स पर परिकलित होते हैं,<br />इसलिए कोई भी विचलन ऐसा हस्ताक्षर बनाता है जिसे नेटवर्क अस्वीकार कर देता है। इस सीरियलाइज़र को "साफ़-सुथरा" न करें।</p>
+<p><strong>नामकरण: प्रोडक्ट बनाम प्रोटोकॉल।</strong> "Orion Wallet" प्रोडक्ट है। <code>octra_*</code> RPC मेथड,<br /><code>oct</code> एड्रेस प्रीफ़िक्स, <code>OCT</code> टिकर, और "Octra Network" प्रोटोकॉल आइडेंटिफ़ायर हैं<br />और इनका नाम कभी नहीं बदला जाना चाहिए।</p>
+<hr />
+<h2 id="build-system">बिल्ड सिस्टम</h2>
+<p>TypeScript कॉन्फ़िग फ़ाइलें <strong>सत्य का एकमात्र स्रोत</strong> हैं:</p>
+<ul>
+<li><code>vite.config.ts</code></li>
+<li><code>vitest.config.ts</code></li>
+<li><code>playwright.config.ts</code></li>
+</ul>
+<blockquote><strong>इनके लिए <code>.js</code> सहोदर फ़ाइलें न जोड़ें।</strong> Vite <code>vite.config.js</code> को<br /><code>vite.config.ts</code> से पहले रिज़ॉल्व करता है, इसलिए कोई बासी ट्रांसपाइल की गई प्रति चुपचाप असली कॉन्फ़िग को<br />ढँक देती है और <code>.ts</code> फ़ाइल में किए गए संपादन कुछ नहीं करते। वे तीनों फ़ाइलनाम <code>.gitignore</code> में हैं।<br /><code>eslint.config.js</code> असली फ़्लैट कॉन्फ़िग है और इसे जान-बूझकर रखा गया है।</blockquote>
+<p>उन्हें केवल अनदेखा करना अपने-आप में पर्याप्त नहीं था, क्योंकि कुछ भी उन्हें <em>बनने</em> से नहीं रोकता था:<br /><code>tsconfig.node.json</code> एक <code>composite</code> प्रोजेक्ट है, जो डिक्लेरेशन एमिट को बाध्य करता है, और बिना किसी<br /><code>outDir</code> के कोई भी <code>tsc -b</code> <code>vite.config.js</code> को सीधे सोर्स के बगल में लिख देता था। ऐसा दो बार हुआ।<br />अब उस प्रोजेक्ट का एमिट <code>node_modules/.tmp/tsconfig-node/</code> में जाता है, जहाँ यह कुछ भी नहीं ढँक सकता।<br />यदि आप उस प्रोजेक्ट में कोई कॉन्फ़िग फ़ाइल जोड़ते हैं, तो <code>outDir</code> को वैसा ही रहने दें।</p>
+<h3 id="environment-flags">एनवायरनमेंट फ़्लैग</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>फ़्लैग</th><th>प्रभाव</th></tr></thead>
+<tbody>
+<tr><td><code>VITE_ALLOW_HTTP_ENDPOINTS=1</code></td><td>बिल्ड के समय <code>connect-src</code> CSP डायरेक्टिव में <code>http:</code> जोड़ता है, ताकि कोई सेल्फ़-होस्टेड बिल्ड किसी plain-http RPC नोड तक पहुँच सके। हर ऑरिजिन के लिए उपयोगकर्ता की सहमति फिर भी लागू रहती है — देखें <code>src/wallet/endpoint-policy.ts</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>केवल बिल्ड के समय सेट होता है। इसे <code>vite.config.ts</code> में <code>allowHttpEndpointsCsp</code> प्लगइन द्वारा पढ़ा जाता है<br />और यह <code>index.html</code> को फिर से लिखता है; इसका कोई रनटाइम प्रभाव नहीं है, क्योंकि दस्तावेज़ पार्स हो जाने के<br />बाद किसी मेटा-टैग CSP को चौड़ा नहीं किया जा सकता।</p>
+<h3 id="headers">हेडर</h3>
+<p>COOP/COEP को <code>same-origin</code> / <code>require-corp</code> पर सेट किया गया है (भविष्य की WASM थ्रेडिंग के लिए आरक्षित),<br /><code>/connect</code> पर <code>unsafe-none</code> ओवरराइड के साथ ताकि पॉपअप का <code>postMessage</code> + MessagePort<br />ट्रांसफ़र काम करे। डेव हेडर <code>vite.config.ts</code> में रहते हैं; प्रोडक्शन हेडर <code>vercel.json</code> में।<br /><strong>दोनों को समक्रमिक रखें।</strong></p>
+<h3 id="content-security-policy">Content-Security-Policy</h3>
+<p><code>index.html</code> में परिभाषित। <code>script-src</code> में <code>'wasm-unsafe-eval'</code> शामिल होना ही चाहिए — इसके बिना<br />Chromium <code>WebAssembly.instantiate()</code> को अस्वीकार कर देता है, और ठीक यही वह वजह थी जिससे PVAC मॉड्यूल<br />चुपचाप लोड होने में विफल हो जाता था। वह डायरेक्टिव केवल WebAssembly कम्पाइलेशन की अनुमति देता है; यह<br />JavaScript <code>eval()</code> को दोबारा सक्षम नहीं करता।</p>
+<p><code>connect-src</code> है <code>'self' https:</code> तथा लूपबैक (<code>http://localhost:*</code>, <code>http://127.0.0.1:*</code>,<br /><code>http://[::1]:*</code>) ताकि स्थानीय रूप से चलने वाला नोड सामान्यतः प्लेनटेक्स्ट खोले बिना काम करे।<br /><code>http://</code> पर बाकी कुछ भी <code>src/wallet/endpoint-policy.ts</code> द्वारा नियंत्रित होता है, जो निर्णय लेने वाली<br />एकमात्र जगह है — URL और एक स्पष्ट संदर्भ का एक शुद्ध फ़ंक्शन, ताकि स्टोर, Settings UI<br />और टेस्ट आपस में असहमत न हो सकें। कहीं और तदर्थ URL जाँचें न जोड़ें। तीन स्वतंत्र<br />ब्लॉकर लागू होते हैं (मिक्स्ड कंटेंट → CSP → उपयोगकर्ता सहमति) और फ़ैसला सबसे<br />बुनियादी वाले को पहले बताता है, ताकि उपयोगकर्ता को कभी यह न कहा जाए कि allowlist ठीक करें जबकि मना तो<br />ब्राउज़र कर रहा है।</p>
+<hr />
+<h2 id="the-pvac-wasm-pipeline">PVAC WASM पाइपलाइन</h2>
+<h3 id="building">बिल्डिंग</h3>
+<pre><code class="language-bash">git clone https://github.com/emscripten-core/emsdk.git /tmp/emsdk
+cd /tmp/emsdk &amp;&amp; ./emsdk install latest &amp;&amp; ./emsdk activate latest
+source /tmp/emsdk/emsdk_env.sh
+
+git clone https://github.com/octra-labs/webcli ../webcli-source
+python3 scripts/patch-pvac-aes.py ../webcli-source/pvac   # software AES fallback
+npm run build:wasm</code></pre>
+<p><code>patch-pvac-aes.py</code> आवश्यक है क्योंकि हार्डवेयर AES (AES-NI या ARM क्रिप्टो एक्सटेंशन) के बिना PVAC<br />कठोरता से <code>#error</code> देता है, जो WebAssembly प्रदान नहीं करता। यह पैच एक पोर्टेबल सॉफ़्टवेयर<br />कार्यान्वयन जोड़ता है जो बिट-समान है पर लगभग 5–10× धीमा है। यह योगात्मक है:<br />हार्डवेयर पथ अछूते रहते हैं, और एक बैकअप <code>.hpp.bak</code> लिखा जाता है।</p>
+<h3 id="loading">लोडिंग</h3>
+<p><code>src/pvac/wasm-bridge.ts</code> मॉड्यूल को तीन चरणों में लोड करता है:</p>
+<ol>
+<li><strong>Probe</strong> — ग्लू URL पर <code>HEAD</code>, ताकि "not built" (404) को "blocked by CSP" से<br />अलग पहचाना जा सके। इसके बिना दोनों एक जैसी अपारदर्शी इंपोर्ट विफलता के रूप में सामने आते हैं।</li>
+<li><strong>Import</strong> — <code>/* @vite-ignore */</code> के साथ किसी absolute URL का डायनैमिक <code>import()</code>। यह absolute<br />होना ही चाहिए: कोई बेयर स्पेसिफ़ायर रिज़ॉल्व नहीं हो पाता, और <code>./wasm/pvac.js</code> <code>/assets/</code> के सापेक्ष<br />रिज़ॉल्व होकर 404 देता है।</li>
+<li><strong>Verify</strong> — ब्रिज को स्वैप करने से पहले पुष्टि करें कि सभी 13 आवश्यक <code>_pvac_*</code> एक्सपोर्ट मौजूद हैं।<br />पहले के बिल्ड सीरियलाइज़ेशन फ़ंक्शन छोड़ देते थे, जिससे एन्क्रिप्ट/डिक्रिप्ट इस तरह टूटता था कि<br />नोड इसे केवल "malformed transaction" के रूप में रिपोर्ट करता था।</li>
+</ol>
+<p>विफलताओं को <code>PvacFailureReason</code> के रूप में वर्गीकृत किया जाता है: <code>not-built</code>, <code>csp-blocked</code>,<br /><code>missing-exports</code>, <code>init-failed</code>, <code>unknown</code>। प्रत्येक Settings में दिखाए गए एक ठोस उपाय से मैप होता है।<br />विफलता पर सिंगलटन प्रॉमिस रीसेट हो जाता है ताकि <strong>↻ Reload PVAC</strong> किसी कैश की गई अस्वीकृति को<br />दोहराने के बजाय पुनः प्रयास कर सके।</p>
+<h3 id="memory-rules">मेमोरी नियम</h3>
+<p>C API मैनुअल-मेमोरी वाला है। हर <code>_malloc</code> को एक <code>_free</code> चाहिए; हर <code>serialize_*</code> एक<br />बफ़र लौटाता है जिसे <code>_pvac_free_bytes</code> से रिलीज़ करना ज़रूरी है। <code>keygen</code>/<code>enc_*</code> से मिले हैंडल को<br />उनके संगत <code>_pvac_free_*</code> की ज़रूरत होती है। <code>try/finally</code> का उपयोग करें — पैटर्न के लिए <code>WasmPvacBridge</code> देखें।</p>
+<hr />
+<h2 id="state-management">स्टेट प्रबंधन</h2>
+<p>Zustand, <code>src/store/wallet-store.ts</code> में। यह वॉलेट, RPC क्लाइंट, सेटिंग्स, PVAC<br />स्थिति, टोस्ट, और ग्लोबल लोडिंग फ़्लैग का स्वामी है।</p>
+<p>ग्लोबल लोडिंग फ़्लैग (<code>isLoading</code>) एक फ़ुल-स्क्रीन ब्लर ओवरले चलाता है और <strong>केवल पूरे-ऐप के<br />ट्रांज़िशन</strong> के लिए आरक्षित है, जैसे वॉलेट अनलॉक। प्रति-पैनल काम के लिए इसके बजाय<br /><code>usePanelLoading</code> का उपयोग होना चाहिए — नीचे देखें।</p>
+<hr />
+<h2 id="error-handling">एरर हैंडलिंग</h2>
+<p><code>src/components/ErrorBoundary.tsx</code> <code>Layout.tsx</code> में हर पैनल को रैप करती है, जो सक्रिय टैब के<br />अनुसार की-गई होती है ताकि नेविगेशन पर कोई ट्रिप हुई बाउंड्री रीसेट हो जाए, साथ ही <code>main.tsx</code> में रूट पर एक बाउंड्री।</p>
+<p>यह दिखने से ज़्यादा मायने रखता है। <code>index.html</code> में यह है:</p>
+<pre><code class="language-css">#root:empty::before { content: 'Loading Orion Wallet…'; }</code></pre>
+<p>किसी बाउंड्री के बिना, रेंडर-समय पर कोई भी थ्रो React 18 से पूरे ट्री को अनमाउंट करा देता है, <code>#root</code><br />खाली हो जाता है, और वह फ़ॉलबैक रेंडर होता है — जिससे एक खाली सफ़ेद पेज बनता है जो हमेशा के लिए लोड होने पर<br />अटका हुआ दिखता है। बाउंड्री शेल को जीवित रखती है और एक पुनः-प्रयास योग्य एरर कार्ड दिखाती है।</p>
+<p><strong>परिणाम:</strong> रेंडर के दौरान बुलाए जाने वाले फ़ंक्शन विकृत इनपुट पर थ्रो नहीं करने चाहिए।<br /><code>src/tx/builder.ts</code> में <code>formatAmount</code> <code>unknown</code> स्वीकार करता है और एक प्लेसहोल्डर पर उतर आता है,<br />क्योंकि न तो RPC प्रतिक्रियाएँ और न ही स्थानीय tx कैश स्कीमा-सत्यापित होते हैं। अविश्वसनीय पंक्तियों को<br />रेंडर करने से पहले सामान्यीकृत करें — <code>HistoryView</code> इस पैटर्न को दिखाता है।</p>
+<hr />
+<h2 id="loading-states">लोडिंग स्थितियाँ</h2>
+<p>पैनल-स्कोप वाले काम के लिए <code>usePanelLoading</code> (<code>src/hooks/usePanelLoading.ts</code>) का उपयोग करें:</p>
+<pre><code class="language-typescript">const panelLoading = usePanelLoading();
+
+await panelLoading.run('Loading history', async () =&gt; {
+  const data = await fetchSomething();
+  if (!panelLoading.isMounted()) return;   // guard late setState
+  setData(data);
+}, 'Fetching from the network…');</code></pre>
+<p>फिर <code>&lt;ProcessingModal open={panelLoading.loading} … dismissible onClose={panelLoading.hide} /&gt;</code> रेंडर करें।</p>
+<p>दो गुण मायने रखते हैं: मोडल <strong>बंद किया जा सकने वाला</strong> है (काम पृष्ठभूमि में जारी रहता है, इसलिए कोई<br />धीमा नेटवर्क उपयोगकर्ता को कभी नहीं फँसाता), और स्टेट राइट <code>isMounted()</code> पर नियंत्रित होते हैं ताकि<br />बीच-प्रवाह में कहीं और जाने पर कोई मोडल स्क्रीन पर अटका न रह जाए।</p>
+<hr />
+<h2 id="storage-and-migrations">स्टोरेज और माइग्रेशन</h2>
+<p><code>idb</code> के ज़रिए IndexedDB, डेटाबेस <code>orion-wallet</code>, संस्करण 6। स्टोर <code>src/wallet/storage.ts</code> में<br /><code>OBJECT_STORES</code> ऐरे में एक बार घोषित किए जाते हैं; नए स्टोर वहीं जोड़ें ताकि निर्माण और<br />माइग्रेशन सुसंगत रहें — वह ऐरे <code>wipeEverything()</code> को भी चलाता है, इसलिए कहीं और जोड़ा गया कोई स्टोर<br />वाइप से बच जाएगा।</p>
+<p>माइग्रेशन <strong>केवल योगात्मक</strong> होते हैं: <code>DB_VERSION</code> बढ़ाएँ, ऐरे में जोड़ें, और नई प्रविष्टियों के<br />बगल में एक टिप्पणी में संस्करण नोट करें। मौजूदा स्टोर कभी भी न तो नाम बदले जाते हैं और न हटाए जाते हैं।<br />अब तक के संस्करण: v2 SDK स्टोर, v3 OCS01 टोकन, v4 <code>oct://</code> बुकमार्क, v5<br /><code>unlock-session-keys</code>, v6 <code>contacts</code> + <code>passkey-unlock</code>।</p>
+<h3 id="the-rebrand-migration">रीब्रांड माइग्रेशन</h3>
+<p>डेटाबेस का नाम <code>webcli-react</code> से बदलने पर हर मौजूदा वॉलेट अनाथ हो जाता, क्योंकि<br />IndexedDB डेटा को डेटाबेस नाम के अनुसार स्कोप करता है। <code>migrateLegacyDatabase</code> पहली बार लॉन्च पर सभी<br />स्टोर को आगे कॉपी कर देता है। यह है:</p>
+<ul>
+<li><strong>idempotent</strong> — लक्ष्य में कोई भी वॉलेट होते ही छोड़ दिया जाता है</li>
+<li><strong>non-destructive</strong> — रोलबैक के लिए लेगेसी डेटाबेस को अक्षुण्ण छोड़ा जाता है</li>
+<li><strong>non-fatal</strong> — विफलताएँ लॉग होती हैं, कभी थ्रो नहीं होतीं; कोई माइग्रेशन बग स्टार्टअप को नहीं रोकना चाहिए</li>
+</ul>
+<p>याद रखें कि E2E हेल्पर्स में <code>clearIndexedDB</code> को <strong>दोनों</strong> डेटाबेस हटाने ही चाहिए, वरना<br />माइग्रेशन लेगेसी डेटा को सीधे वापस कॉपी कर देता है और "clean state" साफ़ नहीं रहता।</p>
+<hr />
+<h2 id="wallet-sdk">Wallet SDK</h2>
+<p><code>src/sdk/</code> dApp-मुखी प्रोवाइडर है; <code>src/connect/</code> <code>/connect</code> पर परोसा जाने वाला अनुमोदन पॉपअप है।</p>
+<h3 id="method-namespaces">मेथड नेमस्पेस</h3>
+<p>वॉलेट दो समतुल्य नेमस्पेस का उत्तर देता है:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>जेनेरिक</th><th>Orion-ब्रांडेड</th><th>ऑपरेशन</th></tr></thead>
+<tbody>
+<tr><td><code>wallet_connect</code></td><td><code>orion_wallet_connect</code></td><td>कनेक्शन आरंभ करें</td></tr>
+<tr><td><code>wallet_signMessage</code></td><td><code>orion_wallet_signMessage</code></td><td>एक सादा संदेश हस्ताक्षरित करें</td></tr>
+<tr><td><code>wallet_signTypedData</code></td><td><code>orion_wallet_signTypedData</code></td><td>संरचित डेटा हस्ताक्षरित करें</td></tr>
+<tr><td><code>wallet_approveContract</code></td><td><code>orion_wallet_approveContract</code></td><td>किसी कॉन्ट्रैक्ट कॉल को पूर्व-अनुमोदित करें</td></tr>
+<tr><td><code>wallet_signContract</code></td><td><code>orion_wallet_signContract</code></td><td>एक कॉन्ट्रैक्ट लेनदेन हस्ताक्षरित करें</td></tr>
+<tr><td><code>wallet_getAccounts</code></td><td><code>orion_wallet_getAccounts</code></td><td>अकाउंट सूचीबद्ध करें</td></tr>
+<tr><td><code>wallet_getBalance</code></td><td><code>orion_wallet_getBalance</code></td><td>बैलेंस पढ़ें</td></tr>
+<tr><td><code>wallet_getNetworkInfo</code></td><td><code>orion_wallet_getNetworkInfo</code></td><td>सक्रिय नेटवर्क को एक रिकॉर्ड के रूप में पढ़ें</td></tr>
+<tr><td><code>wallet_getNetworks</code></td><td><code>orion_wallet_getNetworks</code></td><td>वॉलेट द्वारा प्रस्तुत हर नेटवर्क सूचीबद्ध करें</td></tr>
+<tr><td>…</td><td>…</td><td>…</td></tr>
+</tbody>
+</table>
+</div>
+<p>दोनों स्वीकार किए जाते हैं और एक-समान निष्पादित होते हैं। <code>orion_wallet_*</code> नाम उन dApps के लिए हैं जो<br />स्पष्ट रूप से Orion Wallet को लक्षित करना चाहते हैं; जेनेरिक <code>wallet_*</code> नाम समर्थित बने रहते हैं ताकि<br />मौजूदा इंटीग्रेशन काम करते रहें।</p>
+<p><code>src/sdk/protocol.ts</code> में <code>canonicalizeMethod</code> डिस्पैच से पहले हर मेथड नाम को उसके कैनोनिकल<br /><code>wallet_*</code> रूप में घटा देता है, इसलिए दोनों नेमस्पेस कभी भी समक्रमण से बाहर नहीं जा सकते।</p>
+<h3 id="connection-lifecycle">कनेक्शन जीवनचक्र</h3>
+<p><strong>हैंडशेक (प्रति सेशन एक बार):</strong></p>
+<ol>
+<li>dApp <code>provider.connect()</code> कॉल करता है → <code>PopupTransport</code> <code>/connect?v=1&amp;rid=…&amp;origin=…</code> खोलता है</li>
+<li>वॉलेट <code>ConnectApp</code> रेंडर करता है, ज़रूरत पड़ने पर उपयोगकर्ता अनलॉक करता है</li>
+<li>वॉलेट <code>window.postMessage</code> पर <code>hello</code> + MessagePort भेजता है, ऑरिजिन-सत्यापित</li>
+<li>dApp पोर्ट पर <code>challenge</code> को प्रतिध्वनित करता है (anti-replay)</li>
+<li><code>ConnectHandler</code> ack सत्यापित करता है, <code>CONNECT</code> RPC परोसता है → एड्रेस, अकाउंट, नेटवर्क लौटाता है</li>
+</ol>
+<p><strong>कनेक्ट के बाद:</strong></p>
+<ul>
+<li><strong>पॉपअप बंद हो सकता है</strong>, पर MessagePort खुला रहता है — यह विंडो से स्वतंत्र है</li>
+<li>सेशन IndexedDB (<code>sdk-sessions</code>) में idle + absolute TTL के साथ बना रहता है</li>
+<li>रीड मेथड (<code>getBalance</code>, <code>getAccounts</code>) सेशन-मौन होते हैं</li>
+<li>साइनिंग मेथड <strong>हमेशा</strong> एक नया अनुमोदन प्रॉम्प्ट खोलते हैं</li>
+</ul>
+<p><strong>"connect काम करता है, बाकी कुछ नहीं" का समाधान:</strong></p>
+<p>मूल रूप से <code>PopupTransport.isConnected()</code> <code>popup.closed</code> जाँचता था, इसलिए अनुमोदन विंडो बंद<br />होने के बाद हर कॉल "Transport is not connected" के साथ विफल हो जाती थी। अब यह केवल पोर्ट जाँचता है,<br />जो पॉपअप से अधिक समय तक जीवित रहता है। वॉलेट अनुमोदन के बाद पॉपअप बंद कर देता है, पर<br />कनेक्शन जीवित रहता है।</p>
+<h3 id="permission-model">अनुमति मॉडल</h3>
+<p><strong>कनेक्ट-समय:</strong> केवल रीड-ओनली स्कोप (<code>viewAccounts</code>, <code>viewBalance</code>, <code>viewNetwork</code>)।</p>
+<p><strong>साइनिंग स्कोप</strong> (<code>signMessage</code>, <code>signContract</code>, आदि) पहली सफल अनुमोदन पर <strong>आलस्यपूर्वक<br />प्रदान</strong> किए जाते हैं। समाधान से पहले, वे <code>DEFAULT_PERMISSIONS</code> से अनुपस्थित थे और<br />डिस्पैचर प्रॉम्प्ट प्रकट होने से पहले ही हर साइनिंग कॉल को <code>UNAUTHORIZED</code> के साथ अस्वीकार कर देता था —<br />लक्षण का दूसरा मूल कारण।</p>
+<p>अब:</p>
+<ul>
+<li>अनुमति जाँच बिना-प्रदत्त साइनिंग स्कोप को अनुमोदन प्रॉम्प्ट तक बढ़ने देती है</li>
+<li>अनुमोदन पर, <code>grantPermission</code> स्कोप को सेशन में स्थायी कर देता है</li>
+<li>बाद की कॉल अनुमति जाँच को छोड़ देती हैं पर <strong>फिर भी अनुमोदन आवश्यक</strong> है — कोई स्कोप प्रदान करना केवल यह दर्ज करता है कि उपयोगकर्ता सहमत है कि dApp पूछ सकता है</li>
+</ul>
+<p>निरसन स्पष्ट है: <code>revokePermission</code> स्कोप को <code>permissions</code> से हटाता है और उसे<br /><code>deniedPermissions</code> में दर्ज करता है, जिसे डिस्पैचर सीधे अस्वीकार कर देता है।</p>
+<h3 id="security-invariants">सुरक्षा अपरिवर्तनीय नियम</h3>
+<p>इन्हें कमज़ोर न करें:</p>
+<ul>
+<li><strong>ऑरिजिन सत्यापन</strong> हर इनबाउंड <code>postMessage</code> पर (<code>PopupTransport.ts</code>, <code>rpc-handler.ts</code>)</li>
+<li><strong>Anti-replay:</strong> CSPRNG challenge + dApp nonce + प्रति-सेशन मोनोटोनिक nonce। <code>makeId</code> केवल<br />संदेश सहसंबंध के लिए है और इसे कभी भी सुरक्षा मान के रूप में उपयोग नहीं करना चाहिए</li>
+<li><strong>अनुमतियाँ</strong> प्रति-ऑरिजिन होती हैं, <code>sdk-sessions</code> में स्थायी रहती हैं, और स्पष्ट रूप से प्रदान/निरस्त की जाती हैं</li>
+<li><strong>MessagePort स्वतंत्रता:</strong> पोर्ट पॉपअप से अधिक समय तक जीवित रहता है। एक बार ट्रांसफ़र हो जाने पर,<br />वॉलेट कनेक्शन तोड़े बिना अनुमोदन विंडो बंद कर सकता है</li>
+<li><strong>निषिद्ध मेथड</strong> क्लाइंट-साइड (<code>WalletProvider</code>) और वॉलेट-साइड (<code>rpc-handler</code>) दोनों पर अस्वीकार<br />किए जाते हैं, इसलिए लेनदेन निष्पादन कभी भी SDK तक नहीं भाग सकता, यहाँ तक कि निम्न-स्तरीय <code>request()</code> एस्केप हैच के ज़रिए भी नहीं</li>
+<li><strong><code>localStorage</code></strong> केवल एक सेशन-रीस्टोर संकेत रखता है (एड्रेस, नेटवर्क) — कभी रहस्य नहीं</li>
+</ul>
+<hr />
+<h2 id="dapp-integration">dApp इंटीग्रेशन</h2>
+<h3 id="quick-start">क्विक स्टार्ट</h3>
+<pre><code class="language-javascript">import { WalletProvider } from '@orion-wallet/sdk';
+
+const provider = new WalletProvider({
+  walletUrl: 'https://orionwallet.example/connect',
+  capabilities: [
+    'signMessage',
+    'signTypedData',
+    'approveContract',
+    'signContract',
+    'multiAccount',
+    'events',
+    'sessionRestore',
+    'customNetworks',
+  ],
+});
+
+const result = await provider.connect();</code></pre>
+<h3 id="session-management">सेशन प्रबंधन</h3>
+<p>Orion सेशन <strong>30 मिनट निष्क्रिय</strong> या <strong>8 घंटे निरपेक्ष</strong> के बाद समाप्त हो जाते हैं। SDK<br />अंतर्निहित सेशन-स्वास्थ्य जाँच और ऑटो-रीकनेक्ट प्रदान करता है:</p>
+<pre><code class="language-javascript">// Check session health before every signing operation
+if (!provider.isSessionAlive()) {
+  await provider.refreshSession();
+}
+
+// Listen for session expiry events
+provider.on('sessionExpired', () =&gt; {
+  setConnected(false);
+});</code></pre>
+<h3 id="networks-including-the-users-own">नेटवर्क, उपयोगकर्ता के अपने सहित</h3>
+<p>उपयोगकर्ता Settings → Network में अपना खुद का नेटवर्क जोड़ सकता है (उनका अपना नोड, एक devnet फ़ोर्क, एक<br />भुगतान वाला RPC)। वे नेटवर्क प्रथम-श्रेणी के होते हैं: वे प्रीसेट के साथ-साथ कनेक्ट पॉपअप के सिलेक्टर में<br />दिखते हैं, और एक कनेक्टेड dApp उन्हें देख सकता है।</p>
+<pre><code class="language-javascript">// Which network am I on? A record, not just an id string.
+const active = await provider.getNetworkInfo();
+// { id: 'home-node', name: 'Home node', explorerUrl: 'https://octrascan.io',
+//   icon: '🏠', custom: true }
+
+// Everything the wallet offers — presets first, user-added ones after.
+const all = await provider.getNetworks();
+const userAdded = all.filter((n) =&gt; n.custom);
+
+// Cached from the connect reply, no round-trip; null before connect.
+provider.networkInfo();
+
+provider.on('networkChanged', ({ network, chainId, networkInfo }) =&gt; {
+  // networkInfo is present on wallets that granted `customNetworks`.
+  setChain(networkInfo?.name ?? network);
+});</code></pre>
+<p>इस पर निर्भर होने से पहले <strong><code>customNetworks</code></strong> क्षमता पर फ़ीचर-डिटेक्ट करें — पुराने<br />वॉलेट बिल्ड केवल सादे <code>wallet_getNetwork</code> का उत्तर देते हैं, जो एक id स्ट्रिंग लौटाता है।</p>
+<p><strong><code>NetworkInfo</code> जान-बूझकर न कोई <code>rpcUrl</code> रखता है और न कोई <code>relayerUrl</code>।</strong> उपयोगकर्ता-जोड़ा<br />नेटवर्क अक्सर एक निजी एंडपॉइंट होता है — एक LAN एड्रेस, एक टनल, क्वेरी स्ट्रिंग में API की के साथ एक<br />प्रोवाइडर URL — और उसे उपयोगकर्ता द्वारा कनेक्ट की गई हर साइट को सौंपना उनके इन्फ़्रास्ट्रक्चर को<br />लीक कर देता। किसी dApp को इसकी ज़रूरत नहीं: हर रीड वॉलेट से होकर जाता है<br />(<code>wallet_getBalance</code> और उसके साथी) और निष्पादन कभी वॉलेट UI से बाहर नहीं जाता। तार पर जो<br />पार होता है वही है जिसकी किसी dApp को वैध रूप से ज़रूरत है — वह किस नेटवर्क से बात कर रहा है, क्या<br />मालिक ने उसे हाथ से जोड़ा (<code>custom</code>), और लेनदेन को कहाँ लिंक करना है (<code>explorerUrl</code>)।</p>
+<p>कोई <strong><code>wallet_switchNetwork</code> नहीं</strong> है। स्विचिंग वॉलेट के अपने UI में ही रहती है — पॉपअप का<br />सिलेक्टर या मुख्य विंडो की नेटवर्क पिल — इस नियम के अनुरूप कि स्टेट परिवर्तन कभी किसी dApp से<br />उत्पन्न नहीं होते। किसी अन्य नेटवर्क की ज़रूरत वाला dApp उपयोगकर्ता से स्विच करने को कहता है, फिर<br /><code>networkChanged</code> की प्रतीक्षा करता है।</p>
+<p><code>networkChanged</code> उन <strong>दोनों</strong> जगहों से एमिट होता है जहाँ स्विच हो सकता है: कनेक्ट पॉपअप और<br />मुख्य विंडो। पॉपअप बंद होने पर सेशन मुख्य विंडो को सौंप दिए जाते हैं, इसलिए जब तक<br />अधिकांश उपयोगकर्ता नेटवर्क पिल को छूते हैं तब तक पॉपअप कब का जा चुका होता है — <code>Layout.tsx</code> अपनाए गए<br />हैंडलर को एमिट करता है ताकि किसी कनेक्टेड dApp को एक बासी नेटवर्क दिखाता न छोड़ा जाए।</p>
+<p>दो स्वतंत्र क्लास <code>WalletHost</code> को कार्यान्वित करती हैं — <code>src/connect/host.ts</code> (मुख्य विंडो) और<br /><code>src/connect/ConnectApp.tsx</code> में एक इनलाइन होस्ट (पॉपअप)। इंटरफ़ेस में जोड़ी गई कोई भी चीज़<br />दोनों में कार्यान्वित होनी चाहिए, साथ ही <code>tests/unit/connect-handler.test.ts</code> में फ़िक्स्चर में भी।</p>
+<h3 id="connection-flow-diagram">कनेक्शन फ़्लो आरेख</h3>
+<pre><code class="language-">dApp                          Orion Wallet
+  │                              │
+  │  provider.connect()          │
+  │  ──────────────────────────► │
+  │  │  opens popup ───────────► │  User approves
+  │  │  hello + MessagePort ◄── │  ──────────────────►
+  │  │  challenge echo ────────► │
+  │  │  CONNECT RPC ──────────► │  Returns address
+  │  │  ◄────────────────────── │
+  │  ◄────────────────────────── │
+  │                              │
+  │  provider.signContract()     │
+  │  ──────────────────────────► │  Opens approval prompt
+  │  │  signContract RPC ──────► │  User approves
+  │  │  ◄────────────────────── │  Returns signed tx
+  │  ◄────────────────────────── │
+  │                              │
+  │  (session expires after      │
+  │   30 min idle / 8h absolute) │
+  │                              │
+  │  provider.isSessionAlive()   │  Returns false
+  │  ──────────────────────────► │
+  │                              │
+  │  provider.refreshSession()   │
+  │  ──────────────────────────► │  Reopens popup
+  │  │  (reconnects) ◄───────── │
+  │  ◄────────────────────────── │</code></pre>
+<h3 id="prohibited-methods">निषिद्ध मेथड</h3>
+<p>SDK इन मेथड को ट्रांसपोर्ट तक पहुँचने से पहले स्थानीय रूप से ब्लॉक करता है। वॉलेट सर्वर-साइड पर भी<br />पुनः जाँच करता है, इसलिए लेनदेन निष्पादन कभी नहीं भाग सकता:</p>
+<ul>
+<li><code>wallet_sendTransaction</code> / <code>sendTransaction</code></li>
+<li><code>wallet_broadcastTransaction</code> / <code>broadcastTransaction</code></li>
+<li><code>wallet_transfer</code> / <code>transfer</code></li>
+<li><code>wallet_swap</code> / <code>swap</code></li>
+<li><code>wallet_bridge</code> / <code>bridge</code></li>
+</ul>
+<hr />
+<h2 id="session-management-1">सेशन प्रबंधन</h2>
+<p>Orion Wallet सेशन SDK द्वारा स्वचालित रूप से प्रबंधित होते हैं। सेशन इसके बाद समाप्त होते हैं:</p>
+<ul>
+<li><strong>निष्क्रिय टाइमआउट:</strong> 30 मिनट की निष्क्रियता</li>
+<li><strong>निरपेक्ष टाइमआउट:</strong> कनेक्शन से 8 घंटे</li>
+</ul>
+<p>dApp किसी भी समय सेशन स्वास्थ्य जाँच सकता है:</p>
+<pre><code class="language-javascript">if (!provider.isSessionAlive()) {
+  await provider.refreshSession();
+}</code></pre>
+<p>जब कोई सेशन समाप्त होता है, वॉलेट एक <code>sessionExpired</code> इवेंट एमिट करता है। dApp को<br />इस इवेंट को सुनना चाहिए और उपयोगकर्ता को पुनः कनेक्ट करने का संकेत देना चाहिए:</p>
+<pre><code class="language-javascript">provider.on('sessionExpired', () =&gt; {
+  // Prompt user to reconnect
+  setConnected(false);
+});</code></pre>
+<p>सेशन रीस्टोर स्वचालित रूप से संभाला जाता है — वॉलेट सेशन संकेत को IndexedDB में<br />सुरक्षित रखता है, इसलिए समाप्ति के बाद पुनः कनेक्ट करने के लिए उपयोगकर्ता को अपना वॉलेट फिर से इंपोर्ट करने की ज़रूरत नहीं होती।</p>
+<hr />
+<h2 id="testing">टेस्टिंग</h2>
+<pre><code class="language-bash">npm test                 # 676 unit tests, 56 files
+npm run test:coverage    # V8 coverage, 60% threshold
+npm run test:e2e         # 7 Playwright specs (needs npm run build first)
+npm run autofix          # typecheck → format → lint --fix → test → build
+npm run check            # same, read-only (CI)</code></pre>
+<p>यूनिट टेस्ट jsdom के अंतर्गत <code>fake-indexeddb</code> के साथ चलते हैं। कंपोनेंट टेस्ट किसी DOM टेस्टिंग<br />लाइब्रेरी के बजाय <code>renderToStaticMarkup</code> का उपयोग करते हैं — देखें<br /><code>tests/unit/processing-modal.test.tsx</code>।</p>
+<p>WebAuthn का कोई jsdom कार्यान्वयन नहीं है, इसलिए <code>tests/unit/passkey.test.ts</code> एक<br /><code>FakeAuthenticator</code> इंस्टॉल करता है जो PRF एक्सटेंशन का मॉडल बनाता है (उसमें ऐसा प्रमाणक भी शामिल है जिसमें यह नहीं है,<br />एक खारिज किया गया प्रॉम्प्ट, और एक घुमाया गया सीक्रेट)। यह अभिकथन करता है कि संग्रहीत रिकॉर्ड में क्या <em>नहीं</em><br />होना चाहिए, जो वही गुण है जो वास्तव में मायने रखता है।</p>
+<p>E2E नोट: Playwright विफलताओं की एक दीवार पर विश्वास करने से पहले, मशीन जाँचें, diff नहीं।<br />दो एनवायरनमेंट सीमाएँ ऐसी विफलताएँ पैदा करती हैं जो बिल्कुल असली रिग्रेशन जैसी दिखती हैं:</p>
+<ul>
+<li><strong>Temp space.</strong> Chromium हर ब्राउज़र प्रोफ़ाइल को <code>TMPDIR</code> (<code>/tmp</code> डिफ़ॉल्ट रूप से) के अंतर्गत रखता है। यदि<br />वह फ़ाइलसिस्टम भरा हो — जो तब आसानी से होता है जब <code>/tmp</code> दूसरी प्रक्रियाओं के साथ साझा एक छोटा tmpfs हो —<br />तो कॉन्टेक्स्ट लॉन्च पर मर जाते हैं और असंबंधित टेस्ट मिलीसेकंडों में विफल हो जाते हैं, या 30 सेकंड के टाइमआउट तक<br />लटके रहते हैं। पहले <code>df -h /tmp</code>; किसी विशाल फ़ाइलसिस्टम पर <code>TMPDIR=$HOME/.cache/e2e-tmp</code> के साथ फिर से<br />चलाएँ और वही स्पेक टाइमआउट होने से ~4 सेकंड में पास होने तक पहुँच जाते हैं।</li>
+<li><strong>Memory.</strong> प्रति वर्कर लगभग 2 GB खाली मेमोरी। जब यह समाप्त हो जाती है तो Chromium टेस्ट के बीच<br />मार दिया जाता है और Playwright <code>Target crashed</code> रिपोर्ट करता है; <code>--workers=1</code> के साथ फिर से चलाएँ।</li>
+</ul>
+<p><code>playwright.config.ts</code> <code>reuseExistingServer: !isCI</code> सेट करता है, इसलिए पोर्ट 4173 पर बचा हुआ<br /><code>npm run preview</code> चुपचाप पुनः उपयोग हो जाता है — जिसमें किसी <em>अलग</em> चेकआउट से शुरू किया गया भी शामिल है। दो<br />ट्री की तुलना करते समय, रन के बीच लिसनर को मारें (<code>ss -lptn | grep 4173</code>) वरना दूसरा<br />रन पहले वाले के बिल्ड का परीक्षण करता है।</p>
+<p>किसी बग को ठीक करते समय, एक ऐसा टेस्ट जोड़ें जो केवल फ़िक्स ही नहीं, बल्कि विफलता के तरीके को दस्तावेज़ करे।<br /><code>tests/unit/history-view.test.ts</code> और <code>error-boundary.test.tsx</code> इसका पालन करते हैं: प्रत्येक उस<br />लक्षण का नाम देता है जिसकी पुनरावृत्ति को वह रोकता है।</p>
+<hr />
+<h2 id="release-checklist">रिलीज़ चेकलिस्ट</h2>
+<ol>
+<li><code>npm run autofix</code> — पूरी तरह हरा होना चाहिए</li>
+<li>किसी ताज़ा <code>npm run build</code> के विरुद्ध <code>npm run test:e2e</code></li>
+<li><code>npm audit --omit=dev</code> — प्रोडक्शन को शून्य कमज़ोरियाँ रिपोर्ट करनी चाहिए</li>
+<li>पुष्टि करें कि PVAC किसी प्रोडक्शन प्रीव्यू (<code>npm run preview</code>) में लोड होता है, केवल dev में नहीं</li>
+<li>मौजूदा वॉलेट डेटा के साथ किसी pre-rebrand बिल्ड से माइग्रेशन पथ का परीक्षण करें</li>
+<li>पुष्टि करें कि <code>vite.config.ts</code> सर्वर हेडर अब भी <code>vercel.json</code> से मेल खाते हैं</li>
+</ol>
+<hr />
+<h2 id="known-issues">ज्ञात समस्याएँ</h2>
+<p><strong>Dev-डिपेंडेंसी परामर्श।</strong> <code>npm audit</code> vitest, vite, esbuild,<br />और संबंधित पैकेजों में कमज़ोरियाँ रिपोर्ट करता है। हर बची हुई फ़िक्स के लिए एक मेजर अपग्रेड चाहिए (vite 5→8, vitest 2→4)।<br />ये केवल बिल्ड-टूलिंग हैं और उपयोगकर्ताओं तक नहीं जातीं; प्रोडक्शन ऑडिट साफ़ हैं। देखें<br /><a href="SECURITY.html#dependency-status">SECURITY.html</a>।</p>
+<p><strong><code>storage.ts</code> चंकिंग चेतावनी।</strong> बिल्ड चेतावनी देता है कि <code>storage.ts</code> स्थैतिक और<br />डायनैमिक दोनों रूप से इंपोर्ट होती है, इसलिए इसे अपने अलग चंक में विभाजित नहीं किया जा सकता। हानिरहित है, पर इसका मतलब यह है कि<br /><code>HistoryView</code> और <code>WalletExportImport</code> में डायनैमिक इंपोर्ट कोई कोड-स्प्लिटिंग<br />लाभ नहीं देते।</p>
+<p><strong>सॉफ़्टवेयर AES प्रदर्शन।</strong> WASM AES फ़ॉलबैक नेटिव से 5–10× धीमा है। भारी PVAC<br />ऑपरेशन मुख्य थ्रेड को ब्लॉक करते हैं; उन्हें किसी Web Worker में ले जाना तार्किक अगला कदम है।</p>
+</body>
+</html>

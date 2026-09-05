@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>دليل المستخدم — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="orion-wallet-user-guide">Orion Wallet — دليل المستخدم</h1>
+<p>تعمل محفظة Orion Wallet بالكامل داخل متصفحك. تُنشأ مفاتيحك محليًا، وتُشفَّر برمز PIN الخاص بك،<br />وتُخزَّن على جهازك فقط. لا يُرسل أي شيء إلى أي خادم.</p>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — الكود المصدري، والمشكلات، والإصدارات.</blockquote>
+<hr />
+<h2 id="contents">المحتويات</h2>
+<ul>
+<li><a href="#getting-started">البدء</a></li>
+<li><a href="#creating-a-wallet">إنشاء محفظة</a></li>
+<li><a href="#importing-an-existing-wallet">استيراد محفظة قائمة</a></li>
+<li><a href="#everyday-use">الاستخدام اليومي</a></li>
+<li><a href="#contacts-address-book">جهات الاتصال (دفتر العناوين)</a></li>
+<li><a href="#watch-only-accounts">الحسابات للعرض فقط</a></li>
+<li><a href="#encrypted-balance-fhe">الرصيد المشفَّر (FHE)</a></li>
+<li><a href="#stealth-transfers">التحويلات الخفية (Stealth)</a></li>
+<li><a href="#connecting-to-a-dapp">الاتصال بتطبيق dApp</a></li>
+<li><a href="#locking-and-unlocking">القفل وفتح القفل</a></li>
+<li><a href="#session-expiry">انتهاء الجلسة</a></li>
+<li><a href="#network-settings">إعدادات الشبكة</a></li>
+<li><a href="#backup-and-recovery">النسخ الاحتياطي والاسترداد</a></li>
+<li><a href="#troubleshooting">استكشاف الأخطاء وإصلاحها</a></li>
+<li><a href="#keeping-your-funds-safe">الحفاظ على أمان أموالك</a></li>
+</ul>
+<hr />
+<h2 id="getting-started">البدء</h2>
+<h3 id="requirements">المتطلبات</h3>
+<ul>
+<li>إصدار حديث من Chrome أو Edge أو Firefox أو Safari</li>
+<li>تفعيل JavaScript</li>
+<li>حوالي 4 غيغابايت من ذاكرة الوصول العشوائي إذا كنت تخطط لاستخدام ميزات الرصيد المشفَّر</li>
+</ul>
+<h3 id="running-it">تشغيلها</h3>
+<p>استخدم نشرًا مستضافًا، أو شغّلها محليًا:</p>
+<pre><code class="language-bash">npm install --legacy-peer-deps
+npm run dev</code></pre>
+<p>ثم افتح &lt;http://localhost:5173&gt;.</p>
+<hr />
+<h2 id="creating-a-wallet">إنشاء محفظة</h2>
+<ol>
+<li>اختر <strong>Create New Wallet</strong>، وسمِّ الحساب، واختر رمز PIN. يشفِّر رمز PIN المحفظة على هذا الجهاز.</li>
+<li><strong>دوِّن عبارة الاسترداد الخاصة بك.</strong> ستُعرض عليك 12 كلمة. انسخها على الورق بالترتيب الدقيق الذي تظهر به.</li>
+<li>اختر <strong>I've Written It Down</strong>. تطلب منك المحفظة بعد ذلك إعادة كتابة <strong>3 من الكلمات</strong>، تُختار عشوائيًا، لإثبات أن العبارة غادرت الشاشة فعلًا. <strong>Show Phrase Again</strong><br />يعيد عرضها إذا احتجت إلى نظرة أخرى؛ والإجابة الخاطئة تتيح لك إعادة المحاولة فقط.</li>
+<li>بمجرد أن تتحقق الكلمات، تنفتح المحفظة.</li>
+</ol>
+<blockquote><strong>إن إنشاء المحفظة لا يفتحها — بل اجتياز اختبار الكلمات هو ما يفتحها.</strong> وحتى ذلك الحين يمكنك<br />المغادرة دون أن تفقد شيئًا، لأن العبارة لم يُعتمد عليها بعد.</blockquote>
+<blockquote><strong>عبارة الاسترداد هي الطريقة الوحيدة لاستعادة محفظتك.</strong> أي شخص يمتلكها يتحكم في أموالك. احفظها خارج الإنترنت. لا تصوّرها أبدًا، ولا تكتبها في أي موقع ويب،<br />ولا تلصقها في محادثة أو بريد إلكتروني.</blockquote>
+<h3 id="pin-versus-recovery-phrase">رمز PIN مقابل عبارة الاسترداد</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>عبارة الاسترداد</th><th>PIN</th></tr></thead>
+<tbody>
+<tr><td>الغرض</td><td>تستعيد محفظتك في أي مكان</td><td>تفتح قفلها على هذا الجهاز فقط</td></tr>
+<tr><td>إذا فُقدت</td><td>الأموال غير قابلة للاسترداد</td><td>استردَّ من عبارة الاسترداد</td></tr>
+<tr><td>أين تُخزَّن</td><td>خارج الإنترنت، بحوزتك أنت</td><td>لا تُخزَّن أبدًا — أنت وحدك من يعرفها</td></tr>
+</tbody>
+</table>
+</div>
+<hr />
+<h2 id="importing-an-existing-wallet">استيراد محفظة قائمة</h2>
+<p>اختر <strong>Import</strong> ثم اختر واحدًا مما يلي:</p>
+<ul>
+<li><strong>Recovery phrase</strong> — أدخل كلماتك الـ12/24</li>
+<li><strong>Private key</strong> — الصق مفتاحًا خاصًا بترميز base64</li>
+<li><strong>Wallet file</strong> — ارفع ملفًا مشفَّرًا بامتداد <code>.oct</code> وأدخل رمز PIN الخاص به</li>
+</ul>
+<hr />
+<h2 id="everyday-use">الاستخدام اليومي</h2>
+<h3 id="checking-your-balance">التحقق من رصيدك</h3>
+<p>تعرض علامة التبويب <strong>Balance</strong> رصيدك العام، وإذا كان PVAC مفعّلًا، رصيدك المشفَّر أيضًا.</p>
+<h3 id="receiving">استلام</h3>
+<p>افتح <strong>Receive</strong> لعرض عنوانك ورمز QR. عنوانك عام وآمن<br />لمشاركته.</p>
+<p>يمكنك أيضًا <strong>طلب مبلغ محدد</strong>. يحمل رمز QR عندها المبلغ إلى جانب<br />العنوان (بصيغة <code>octra:&lt;address&gt;?amount=&lt;OCT&gt;</code>)، فتملأ المحفظة التي تمسحه كليهما مسبقًا.<br />وإن لم يُطلب مبلغ، يبقى الرمز عنوانًا مجردًا يمكن لأي قارئ قراءته.</p>
+<h3 id="sending">الإرسال</h3>
+<ol>
+<li>افتح <strong>Send</strong>.</li>
+<li>حدِّد المستلم بالطريقة التي تناسبك:</li>
+</ol>
+<ul>
+<li>الصق العنوان (يبدأ بـ<code>oct</code>).</li>
+<li>اختر اسمًا محفوظًا من <strong>📇 Contacts…</strong>.</li>
+<li>اختر <strong>📷 Scan</strong> لقراءة رمز QR بكاميرتك. يطلب المتصفح إذن الكاميرا في المرة الأولى؛ وتُعالَج الصورة داخل الصفحة ولا تُرفع أبدًا.<br />ومسح رمز يحمل مبلغًا يملأ المبلغ أيضًا.</li>
+</ul>
+<ol>
+<li>أدخل المبلغ.</li>
+<li>راجع الرسوم وnonce ثم أكِّد برمز PIN.</li>
+</ol>
+<p>عندما يطابق العنوان جهة اتصال محفوظة، يعرض النموذج الاسم بجانبه — والاسم الذي<br />تتعرف عليه فحص أفضل بكثير من سلسلة base58. أما بالنسبة لعنوان جديد، فيخزّنه <strong>＋ Save to<br />contacts</strong> تحت تسمية تختارها، ليكون الدفع التالي اختيارًا لا لصقًا.</p>
+<p>تحقق دائمًا من أول وآخر حرف في عنوان المستلم قبل التأكيد.<br />لا يمكن عكس المعاملات.</p>
+<h3 id="history">السجل</h3>
+<p>يعرض <strong>History</strong> المعاملات الأخيرة. وعندما تكون الشبكة غير قابلة للوصول، تُعرض الإدخالات المخزنة<br />مؤقتًا وتُعلَّم بـ<code>⚠ Cached</code>.</p>
+<p><strong>⤓</strong> يصدّر الجدول إلى ملف CSV (الوقت، التجزئة، النوع، من، إلى، الاتجاه، المبلغ، الرسوم،<br />الحالة) لجدول بيانات أو لسجلاتك الخاصة. وهو يصدّر <strong>الصفوف المحمَّلة حاليًا</strong> —<br />ما تراه هو ما تحصل عليه — لذا استخدم <strong>Load more</strong> أولًا إذا أردت نطاقًا أطول. يكتب<br />متصفحك الملف إلى مجلد التنزيلات لديك؛ ولا يُرسل أي شيء إلى أي مكان.</p>
+<hr />
+<h2 id="contacts-address-book">جهات الاتصال (دفتر العناوين)</h2>
+<p>يحتفظ <strong>Settings → 📇 Contacts</strong> بقائمة عناوين تحت أسماء تختارها. لكل إدخال عنوان، واسم،<br />وملاحظة اختيارية — مكان مناسب لتسجيل "memo required" أو لتحديد البورصة التي ينتمي إليها عنوان إيداع.</p>
+<p>لماذا تهتم؟ العنوان الذي لا يمكنك قراءته هو عنوان لا يمكنك التحقق منه. وبمجرد حفظ مستلم،<br />يعرض نموذج Send المستلمين بالاسم ويعلّم العنوان عند لصقه مجددًا، بحيث يبرز العنوان المستبدل أو المبتور<br />بدلًا من أن ينزلق دون أن تلاحظه.</p>
+<ul>
+<li><strong>Add</strong> إدخالًا هنا، أو استخدم <strong>＋ Save to contacts</strong> مباشرة من نموذج Send.</li>
+<li><strong>✎</strong> يعيد تسمية إدخال، و<strong>🗑</strong> يزيله. لا يؤثر إزالة جهة اتصال على أي شيء على السلسلة.</li>
+<li><strong>⤓</strong> يصدّر القائمة بصيغة CSV، لتُحفظ مع سجلاتك الأخرى أو تُنقل إلى متصفح آخر.</li>
+</ul>
+<p>تعيش جهات الاتصال في هذا المتصفح فقط، إلى جانب بقية بيانات محفظتك. وهي لا تُرفع،<br />وتُمحى مع كل شيء آخر إذا مسحت المحفظة.</p>
+<hr />
+<h2 id="watch-only-accounts">الحسابات للعرض فقط</h2>
+<p>يتتبّع حساب العرض فقط عنوانًا لا تملك مفاتيحه — تخزينًا باردًا، أو محفظة عتادية<br />(hardware wallet)، أو عنوان إيداع في بورصة، أو عنوان شخص آخر تراقبه.</p>
+<p>أضف واحدًا من <strong>Settings → 👥 Accounts → 👁 Watch Address</strong>: الصق العنوان، وسمِّه،<br />وسينضم إلى قائمة حساباتك.</p>
+<p>ما يمكنه فعله: عرض الرصيد، وسرد السجل، وتصدير CSV، والتبديل إليه دون PIN —<br />فلا يوجد keystore لفك تشفيره، وبالتالي لا يوجد ما يُفتح.</p>
+<p>ما لا يمكنه فعله: <strong>توقيع أي شيء.</strong> الإرسال، والتشفير/فك التشفير، والتحويلات الخفية، واستدعاءات<br />العقود، وطلبات توقيع dApp — كلها تُرفض، ويوضح نموذج Send ذلك قبل أن تملأه لا بعده.<br />وتُعلَّم الحسابات للعرض فقط بعلامة 👁 في قائمة الحسابات وفي الترويسة،<br />لتعرف دائمًا أي نوع تنظر إليه.</p>
+<p>لتحويل حساب للعرض فقط إلى حساب حقيقي، استورد عبارة الاسترداد أو المفتاح الخاص لذلك العنوان.<br />إضافة المفاتيح هي الطريقة الوحيدة؛ لا يوجد اختصار.</p>
+<hr />
+<h2 id="encrypted-balance-fhe">الرصيد المشفَّر (FHE)</h2>
+<p>يمكن لمحفظة Orion Wallet الاحتفاظ بجزء من رصيدك مشفَّرًا باستخدام التشفير المتجانس بالكامل<br />(fully homomorphic encryption)، بحيث لا يكون المبلغ مرئيًا علنًا على السلسلة.</p>
+<p>هذا اختياري. كل شيء آخر يعمل سواء كان مفعّلًا أم لا.</p>
+<h3 id="enabling-it">تفعيله</h3>
+<p>انتقل إلى <strong>Settings → PVAC</strong>. يجب أن يكون المؤشران أخضرين معًا:</p>
+<ul>
+<li><strong>WASM Module</strong> — الوحدة التشفيرية محمَّلة</li>
+<li><strong>Bridge Initialized</strong> — تم توليد مفتاحها من بذرة محفظتك</li>
+</ul>
+<p>إذا لم يكن أي منهما جاهزًا، تشرح اللوحة السبب الدقيق والحل.</p>
+<h3 id="encrypting-and-decrypting">التشفير وفك التشفير</h3>
+<p>استخدم <strong>Encrypt</strong> لنقل الأموال بين رصيدك العام ورصيدك المشفَّر. هذه العمليات<br />مكلفة حسابيًا وقد تستغرق عدة ثوانٍ؛ ويعرض حوار تقدّم كل مرحلة.</p>
+<hr />
+<h2 id="stealth-transfers">التحويلات الخفية (Stealth)</h2>
+<p>ترسل التحويلات الخفية الأموال إلى عنوان يُستخدم لمرة واحدة ومشتق من المفتاح العام للمستلم،<br />بحيث لا يكون الدفع مرتبطًا علنًا بعنوانه الرئيسي.</p>
+<p>افتح <strong>Stealth</strong>، وأدخل المستلم والمبلغ، وأكِّد. يطالب المستلم بالأموال من علامة التبويب Stealth الخاصة به.</p>
+<hr />
+<h2 id="connecting-to-a-dapp">الاتصال بتطبيق dApp</h2>
+<p>عندما يطلب موقع ويب اتصالًا، تظهر نافذة منبثقة تعرض الأصل (origin) الطالب.</p>
+<p>قبل الموافقة:</p>
+<ul>
+<li><strong>افحص الأصل بعناية.</strong> تأكد من أن النطاق هو الموقع الذي قصدته تمامًا.</li>
+<li>وافق فقط على الأذونات التي تتوقعها.</li>
+<li>"Trust this site" يتجاوز الطلبات المستقبلية للطلبات ذات القراءة فقط — استخدمه بحذر.</li>
+<li>افحص مُحدِّد <strong>network</strong> في النافذة المنبثقة. فهو يسرد كل شبكة لديك، بما فيها تلك<br />التي أضفتها بنفسك، لتتمكن من الاتصال بالشبكة الصحيحة دون مغادرة النافذة المنبثقة.</li>
+</ul>
+<p>راجع الاتصالات وألغِها في أي وقت من <strong>Settings → Connected Sites</strong>.</p>
+<hr />
+<h2 id="locking-and-unlocking">القفل وفتح القفل</h2>
+<p>يفك رمز PIN تشفير المحفظة. وتبقى المفاتيح المفكوكة متاحة بعد ذلك ما دامت<br />جلسة فتح القفل مستمرة — ولن يُطلب منك رمز PIN مجددًا حتى تنتهي.</p>
+<ul>
+<li><strong>تحديث الصفحة يُبقيك مفتوح القفل.</strong> تُعاد إعادة إغلاق المفاتيح لعلامة التبويب التي أنت فيها،<br />فيستأنف التحديث الجلسة بدلًا من إعادتك إلى شاشة PIN.<br />سترى لفترة وجيزة "Restoring your session…" أثناء حدوث ذلك.</li>
+<li><strong>إغلاق علامة التبويب ينهي الجلسة.</strong> النسخة المعاد إغلاقها مقيّدة بتلك التبويبة الواحدة<br />وتختفي معها، لذا تبدأ أي تبويبة أو نافذة جديدة بقفل.</li>
+<li><strong>🔒 في الترويسة يقفل فورًا</strong> ويدمر النسخة المعاد إغلاقها — والتحديث بعد<br />القفل يطلب رمز PIN، كما ينبغي.</li>
+<li><strong>الخمول يقفل المحفظة</strong> بعد 30 دقيقة افتراضيًا، ولا تُحمل أي عملية فتح قفل واحدة<br />أكثر من 8 ساعات مهما كان النشاط.</li>
+</ul>
+<p>لا ينفع أي من نصفي الجلسة المعاد إغلاقها وحده: المفاتيح المشفَّرة تحتفظ بها التبويبة،<br />بينما يحتفظ المتصفح بالمفتاح الذي يفتحها بصيغة لا يمكن لأي صفحة —<br />بما فيها هذه الصفحة — قراءتها.</p>
+<p>تحت <strong>Settings → Security → Session &amp; Auto-Lock</strong>:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>الإعداد</th><th>الافتراضي</th><th>ما يفعله</th></tr></thead>
+<tbody>
+<tr><td>Stay unlocked after a page refresh</td><td>On</td><td>أطفئه لطلب رمز PIN عند كل تحديث</td></tr>
+<tr><td>Auto-lock after inactivity</td><td>30 دقيقة</td><td>5 / 15 / 30 / 60 دقيقة، أو أبدًا (حتى تُغلق التبويبة)</td></tr>
+</tbody>
+</table>
+</div>
+<p>ينطبق كلاهما في آنٍ واحد، بما في ذلك على الجلسة المفتوحة لديك حاليًا. على حاسوب مشترك أو<br />غير موثوق، أطفئ الإعداد الأول وأقفل المحفظة عند ابتعادك.</p>
+<h3 id="unlocking-with-a-passkey">فتح القفل بمفتاح مرور (passkey)</h3>
+<p>إذا كان جهازك مزودًا بقارئ بصمات أو Face ID أو Windows Hello أو مفتاح أمان، فيمكنك<br />فتح القفل به بدلًا من كتابة رمز PIN.</p>
+<p>فعِّله من <strong>Settings → 🔑 Security → Passkey Unlock → Enable passkey unlock</strong>. يطلب جهازك منك<br />التسجيل — وقد يطلب منك <strong>مرتين</strong>، مرة لإنشاء مفتاح المرور ومرة لاستخدامه. تعرض شاشة فتح القفل بعد ذلك<br /><strong>👆 Unlock with passkey</strong> فوق خانة رمز PIN.</p>
+<p>جدير بالمعرفة:</p>
+<ul>
+<li><strong>رمز PIN ما زال موجودًا وما زال مهمًا.</strong> يفتح مفتاح المرور المحفظة؛ لكنه لا يحل محل رمز PIN.<br />تصدير المفاتيح، وكشف عبارة الاسترداد، وتغيير رمز PIN، واشتقاق حسابات جديدة —<br />كلها ما تزال تطلب رمز PIN. احتفظ برمز PIN — ففقدانه لا يُعالج بامتلاك مفتاح مرور.</li>
+<li><strong>إنه مرتبط بهذا الجهاز وهذا المتصفح.</strong> لا تنتقل مفاتيح المرور مع بيانات محفظتك.<br />على جهاز آخر، افتح القفل برمز PIN وسجّل مفتاح مرور هناك إذا أردت.</li>
+<li><strong>بصمتك لا تصل إلى المحفظة أبدًا.</strong> يتحقق الجهاز منك محليًا ويسلّم الصفحة<br />سرًّا مشتقًا من مفتاح المرور؛ وهذا السر هو ما يفتح المحفظة.</li>
+<li><strong>التوفر يعتمد على جهازك ومتصفحك.</strong> إذا لم يستطع جهازك تنفيذ ما يتطلبه هذا،<br />ستقول لوحة Security ذلك ويبقى الخيار معطّلًا — ويستمر رمز PIN بالعمل تمامًا كما كان.</li>
+<li><strong>أطفئ فتح القفل بمفتاح المرور</strong> من اللوحة نفسها. يحذف ذلك النسخة المخزنة فورًا؛<br />لكنه لا يحذف مفتاح المرور من جهازك، ويمكنك إزالته من إعدادات نظام التشغيل أو المتصفح.</li>
+</ul>
+<p>إذا توقف مفتاح المرور عن فتح المحفظة — بسبب بيانات اعتماد أُديرت أو أُعيد تسجيلها، أو جهاز<br />مستعاد — تخبر المحفظة بذلك، وتتخلص من النسخة القديمة، وتطلب رمز PIN. لا يُفقد شيء؛<br />ويمكنك تسجيل مفتاح مرور جديد بعد ذلك.</p>
+<p>لا يمكن تسجيل فتح القفل بمفتاح المرور بينما يكون حساب العرض فقط نشطًا — فهو لا يحمل مفاتيح،<br />فلا يوجد ما يغلقه مفتاح المرور. تقول لوحة Security ذلك بدل زر التفعيل.</p>
+<hr />
+<h2 id="session-expiry">انتهاء الجلسة</h2>
+<p>تنطبق النوافذ الزمنية نفسها على اتصالات dApp، التي تنتهي تلقائيًا:</p>
+<ul>
+<li><strong>مهلة الخمول:</strong> 30 دقيقة من عدم النشاط</li>
+<li><strong>المهلة المطلقة:</strong> 8 ساعات من لحظة الاتصال</li>
+</ul>
+<p>عند انتهاء الجلسة، تغلق المحفظة الاتصال ويُبلَّغ تطبيق dApp.<br />وعلى dApp بعد ذلك أن يطلب منك إعادة الاتصال.</p>
+<h3 id="what-happens-when-your-session-expires">ماذا يحدث عند انتهاء جلستك</h3>
+<ol>
+<li>تصدر المحفظة حدث <code>sessionExpired</code> إلى تطبيق dApp.</li>
+<li>يكتشف تطبيق dApp الجلسة المنتهية ويعرض مطالبة "Reconnect".</li>
+<li>تنقر على <strong>Connect</strong> لفتح النافذة المنبثقة للمحفظة مجددًا.</li>
+<li>تستعيد المحفظة جلستك ويستأنف تطبيق dApp عمله.</li>
+</ol>
+<h3 id="if-a-dapp-doesnt-reconnect-automatically">إذا لم يُعد تطبيق dApp الاتصال تلقائيًا</h3>
+<ul>
+<li>انقر زر <strong>Connect</strong> في تطبيق dApp.</li>
+<li>تُفتح النافذة المنبثقة للمحفظة — وافق على الاتصال.</li>
+<li>بيانات جلستك السابقة محفوظة، لذا لا تحتاج إلى إعادة استيراد محفظتك.</li>
+</ul>
+<hr />
+<h2 id="network-settings">إعدادات الشبكة</h2>
+<p>يحوي <strong>Settings → ⚙️ General</strong> عنوان RPC الذي تخاطبه المحفظة، والمتصفح (explorer) الذي ترتبط به،<br />ووكيلًا اختياريًا. غيّر عنوان RPC واختر <strong>Save URLs</strong> لتوجيه المحفظة<br />إلى عقدة مختلفة.</p>
+<h3 id="adding-your-own-network">إضافة شبكتك الخاصة</h3>
+<p>تأتي Devnet وMainnet مع المحفظة. لإضافة شبكة أخرى — عقدتك الخاصة، أو فرع devnet، أو<br />RPC مدفوع — مرر إلى <strong>Custom Networks</strong> في اللوحة نفسها واملأ الحقول:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>الحقل</th><th>مطلوب</th><th>ملاحظات</th></tr></thead>
+<tbody>
+<tr><td>Network name</td><td>نعم</td><td>يظهر في كل مكان تظهر فيه الشبكة، بما في ذلك لتطبيقات dApp</td></tr>
+<tr><td>RPC URL</td><td>نعم</td><td><code>http://</code> أو <code>https://</code></td></tr>
+<tr><td>Explorer URL</td><td>لا</td><td>افتراضيًا إلى عنوان RPC</td></tr>
+<tr><td>Relayer URL</td><td>لا</td><td>مطلوب فقط للتحويلات الخفية</td></tr>
+</tbody>
+</table>
+</div>
+<p>اختر <strong>Add network</strong> وستنضم إلى القائمة. ومنذ تلك اللحظة هي خيار عادي:</p>
+<ul>
+<li>تعمل <strong>حبة الشبكة</strong> (network pill) في الشريط العلوي على التبديل إليها مثل أي إعداد مسبق،</li>
+<li>تسردها <strong>النافذة المنبثقة للاتصال</strong> عندما يطلب موقع اتصالًا، موسومة <em>(custom)</em>،</li>
+<li>ويمكن لتطبيق dApp متصل قراءة اسمها ومتصفحها ليسمّي الأشياء بشكل صحيح.</li>
+</ul>
+<p>يحدّث تبديل الشبكة نقاط النهاية الثلاث معًا — RPC والمتصفح وrelayer — بحيث لا تنتهي المحفظة<br />أبدًا وهي تقرأ شبكة بينما ترتبط بأخرى.</p>
+<p>أزل شبكة بزر ✕ بجانبها. إذا حذفت الشبكة التي أنت عليها حاليًا، تتراجع المحفظة إلى إعداد مسبق.</p>
+<p><strong>ما يراه تطبيق dApp.</strong> يمكن للمواقع التي تتصل بها قراءة اسم الشبكة المخصصة وأيقونتها وعنوان<br />متصفحها، وحقيقة أنك أضفتها. لكنها <strong>لا تستطيع</strong> قراءة عنوان RPC أو relayer الخاص بها — فعنوان عقدة<br />منزلية أو مفتاح موفر يبقى داخل المحفظة. وبما أن الاسم مرئي، تجنّب تسمية شبكة باسم شيء شخصي.</p>
+<h3 id="nodes-without-https">عُقد بدون HTTPS</h3>
+<p>لا تحتاج عقدة <code>https://</code> إلى معالجة خاصة. أما العقدة التي لا يمكن الوصول إليها إلا عبر <code>http://</code><br />الصريح فمسألة مختلفة، لأن كل ما تطلبه المحفظة منها — كل فحص رصيد وسجل، وكل معاملة ترسلها —<br />ينتقل بنص صريح، حيث يمكن لأي شخص على مسار الشبكة قراءته <em>وتغيير الإجابات</em>. لذا تسأل المحفظة أولًا.</p>
+<ul>
+<li><strong>الحلقة المحلية (loopback) لا تحتاج إلى إذن.</strong> <code>localhost</code> و<code>127.0.0.1</code> و<code>[::1]</code> وما شابهها<br />لا تغادر جهازك أبدًا، لذا تعمل العقدة المحلية مباشرة دون أي إعداد.</li>
+<li><strong>أي عنوان <code>http://</code> آخر يجب الوثوق به صراحةً.</strong> الصق العنوان وستشرح اللوحة<br />ما هو على المحك مع زر <strong>Trust <code>http://…</code></strong> بجانبه. تُخزَّن الثقة لكل أصل<br />(المخطط والمضيف والمنفذ)، لذا فإن الوثوق بعقدة لا يجعلك تثق بأخرى،<br />والمنفذ المختلف على المضيف نفسه قرار منفصل.</li>
+<li><strong>نقاط النهاية الصريحة الموثوقة</strong> تسرد ما وثقت به، مع <strong>Remove</strong> لإلغائها.</li>
+</ul>
+<p>حدّان ليس من حقنا رفعهما، وتسمّي اللوحة أيّهما يعترض الطريق:</p>
+<ul>
+<li><strong>محفظة تُقدَّم عبر <code>https://</code> لا يمكنها جلب <code>http://</code> أصلًا.</strong> تحظر المتصفحات ذلك<br />(يُسمى mixed content)، والوثوق بالأصل لن يغيّره. ضع العقدة خلف TLS، أو استخدم وكيلًا،<br />أو افتح المحفظة من بناء بنص صريح أو من localhost.</li>
+<li><strong>البناء المُصدَّر يسمح فقط بـ<code>https://</code> والحلقة المحلية.</strong> سياسة أمنه مثبتة<br />وقت البناء ولا يمكن توسيعها أثناء التشغيل. ومن يستضيف بنفسه ويحتاج http صريحًا يمكنه البناء<br />مع <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code>؛ وما تزال قائمة الثقة أعلاه تنطبق فوق ذلك.</li>
+</ul>
+<p>عنوان المتصفح (explorer) معفى من كل هذا — فهو دائمًا مجرد رابط تنقر عليه،<br />وليس شيئًا تجلبه المحفظة.</p>
+<h3 id="rpc-proxy">وكيل RPC</h3>
+<p><strong>RPC proxy (optional)</strong> يوجّه الاستدعاءات عبر عنوان من اختيارك: يُلحق به عنوان RPC<br />بترميز percent، ولا يتصل المتصفح إلا بالوكيل. وهو الحل العملي لعقدة بلا TLS أو بلا ترويسات CORS،<br />ويحقّق القواعد أعلاه لأن الاتصال الذي يجريه المتصفح هو بالوكيل.</p>
+<p>يرى الوكيل كل طلب تطلبه المحفظة، لذا <strong>شغّل وكيلك الخاص</strong>. لا يمكنه توقيع أي شيء<br />أو الوصول إلى مفاتيحك، لكنه يستطيع المراقبة ويستطيع الكذب.</p>
+<h3 id="when-something-is-off">عندما يكون هناك خلل</h3>
+<p>إذا تعذّر استخدام نقطة نهاية RPC كما هي مضبوطة، يظهر <strong>⚠️ Insecure RPC</strong> في الترويسة؛<br />اختره للانتقال مباشرة إلى الإعداد. تحمل أخطاء الشبكة أيضًا السبب، لذا فإن "Failed to fetch"<br />المجرّدة تخبرك بما يجب إصلاحه.</p>
+<hr />
+<h2 id="backup-and-recovery">النسخ الاحتياطي والاسترداد</h2>
+<h3 id="exporting">التصدير</h3>
+<p>ينزّل <strong>Settings → Backup → Export</strong> ملفًا مشفَّرًا بامتداد <code>.oct</code>. وهو محمي<br />برمز PIN الخاص بك، لكن تعامل معه باعتباره حساسًا.</p>
+<h3 id="restoring">الاسترداد</h3>
+<p>استخدم <strong>Import → Wallet file</strong> وقدّم رمز PIN الذي كان مستخدمًا وقت تصدير الملف.</p>
+<h3 id="multiple-accounts">حسابات متعددة</h3>
+<p>يشتق <strong>Settings → Accounts</strong> حسابات إضافية من عبارة الاسترداد نفسها. عبارة واحدة<br />تستعيدها جميعًا.</p>
+<p>شيئان لا تستعيدهما العبارة، لأنهما لم يُشتقّا منها أبدًا:</p>
+<ul>
+<li><strong>الحسابات للعرض فقط</strong> — هي مجرد عناوين طلبت من المحفظة تتبّعها. دوّنها<br />بشكل منفصل إذا أردت استعادتها بعد إعادة تثبيت.</li>
+<li><strong>جهات الاتصال</strong> — صدّرها بزر <strong>⤓</strong> تحت Settings → Contacts إذا كانت تهمك.</li>
+</ul>
+<p>لا يحمل أي منهما أموالًا، لذا فإن فقدانهما يكلفك راحة البال لا المال.</p>
+<hr />
+<h2 id="troubleshooting">استكشاف الأخطاء وإصلاحها</h2>
+<h3 id="the-page-is-blank-or-stuck-loading">الصفحة فارغة أو عالقة في التحميل</h3>
+<p>حدّث الصفحة. إذا استمرت المشكلة، فينبغي أن تظهر بطاقة خطأ بزر <strong>Retry</strong>. أبلغ عن الرسالة المعروضة هناك.</p>
+<h3 id="encrypted-balance-is-unavailable">الرصيد المشفَّر غير متاح</h3>
+<p>تعرض Settings → PVAC أحد ما يلي:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>الرسالة</th><th>المعنى</th><th>الإصلاح</th></tr></thead>
+<tbody>
+<tr><td><em>The WASM module has not been compiled</em></td><td><code>pvac.js</code> لا يُقدَّم</td><td>شغّل <code>npm run build:wasm</code></td></tr>
+<tr><td><em>Content-Security-Policy is blocking WebAssembly</em></td><td>CSP تفتقر إلى <code>'wasm-unsafe-eval'</code></td><td>أضِفها إلى <code>script-src</code> في <code>index.html</code></td></tr>
+<tr><td><em>The compiled module is out of date</em></td><td>البناء يسبق الدوال المطلوبة</td><td>أعد البناء بـ<code>npm run build:wasm</code></td></tr>
+<tr><td><em>FHE key generation failed</em></td><td>الوحدة حُمّلت لكن توليد المفتاح فشل</td><td>افحص وحدة التحكم في المتصفح وأبلغ عنها</td></tr>
+</tbody>
+</table>
+</div>
+<p>اضغط <strong>↻ Reload PVAC</strong> بعد تطبيق الإصلاح — لا حاجة لإعادة تشغيل.</p>
+<h3 id="failed-to-load-history-network-errors">"Failed to load history" / أخطاء الشبكة</h3>
+<p>غالبًا ما تكون عقدة RPC غير قابلة للوصول أو تحظر CORS. تحقق من عنوان RPC تحت<br /><strong>Settings</strong>، وراجع <a href="../README.html#cors">ملاحظات CORS</a>. إذا سمّى الخطأ سببًا —<br />نصًا صريحًا، أو mixed content، أو قيد بناء — فراجع<br /><a href="#network-settings">إعدادات الشبكة</a>؛ و<strong>RPC proxy</strong> يصلح حالة CORS.</p>
+<h3 id="the-header-shows-insecure-rpc">تعرض الترويسة "⚠️ Insecure RPC"</h3>
+<p>نقطة نهاية RPC المضبوطة هي <code>http://</code> صريحة وغير قابلة للاستخدام كما هي. اختر الشارة<br />لفتح الإعداد، حيث يُوضَّح السبب الدقيق والإصلاح. راجع <a href="#network-settings">إعدادات الشبكة</a>.</p>
+<h3 id="the-camera-wont-open-when-i-select-scan">لا تفتح الكاميرا عند اختيار 📷 Scan</h3>
+<ul>
+<li>امنح إذن الكاميرا عندما يطلبه المتصفح؛ وإذا تجاهلته، فأعد السماح به في أذونات الموقع وحاول مجددًا.</li>
+<li>يتطلب الوصول إلى الكاميرا صفحة آمنة. يعمل على <code>https://</code> وعلى <code>localhost</code>، لكن ليس على<br />صفحة <code>http://</code> صريحة على مضيف آخر.</li>
+<li>إذا كان تطبيق آخر يستخدم الكاميرا، فأغلقه أولًا. يمكنك دائمًا لصق العنوان بدلًا من ذلك.</li>
+</ul>
+<h3 id="unlock-with-passkey-isnt-offered">لا يُعرض "Unlock with passkey"</h3>
+<p>إما أنه لا يوجد مفتاح مرور مسجل في هذا المتصفح، أو أن الجهاز لا يمكنه تنفيذ ما يتطلبه فتح القفل<br />بمفتاح المرور. يوضح <strong>Settings → 🔑 Security → Passkey Unlock</strong> أيّهما. مفاتيح المرور خاصة بكل جهاز<br />وكل متصفح، لذا فإن المفتاح المسجل في مكان آخر لا يظهر هنا. رمز PIN يعمل دائمًا.</p>
+<h3 id="i-forgot-my-pin">نسيت رمز PIN</h3>
+<p>أعد تثبيت المحفظة باستخدام عبارة الاسترداد الخاصة بك وضَع رمز PIN جديدًا. بدون العبارة،<br />لا يمكن استرداد الأموال — من أي شخص.</p>
+<h3 id="could-not-read-your-saved-wallets-could-not-read-your-accounts">"Could not read your saved wallets" / "Could not read your accounts"</h3>
+<p>لم تتمكن المحفظة من فتح قاعدة بياناتها المحلية. لم يُحذف شيء — هذا دائمًا تقريبًا تبويبة Orion أخرى،<br />أو نافذة منبثقة <strong>Connect</strong> متبقية، ما تزال تمسك قاعدة البيانات مفتوحة. بعد التحديث لن يرقّي المتصفح<br />قاعدة البيانات بينما تبقى تبويبة أقدم مرتبطة بها.</p>
+<p>أغلق تبويبات Orion والنوافذ المنبثقة الأخرى، ثم اختر <strong>↻ Try again</strong>. إذا بقيت الرسالة،<br />فأغلق كل تبويبات Orion وأعد فتح المحفظة في تبويبة واحدة.</p>
+<p>تميّز شاشة فتح القفل بين الحالتين عمدًا: فـ<em>No stored wallet found</em> تعني أن قاعدة البيانات فارغة فعلًا،<br />بينما تعني <em>Could not read your saved wallets</em> أن حساباتك موجودة لكنها غير قابلة للوصول مؤقتًا.<br /><strong>لا تنشئ محفظة جديدة</strong> بينما ترى الرسالة الثانية.</p>
+<h3 id="my-wallet-vanished-after-an-update">اختفت محفظتي بعد تحديث</h3>
+<p>تُرحَّل البيانات تلقائيًا من البناءات الأقدم عند أول تشغيل. إذا كانت حساباتك مفقودة،<br /><strong>لا تنشئ محفظة جديدة</strong> — فقد يستبدل ذلك البيانات القديمة. أبلغ عن المشكلة،<br />واستعد من عبارة الاسترداد في هذه الأثناء.</p>
+<h3 id="dapp-says-session-expired">يقول dApp "Session expired"</h3>
+<p>هذا يعني أن جلسة المحفظة انتهت (30 دقيقة خمول / 8 ساعات مطلقة). أعد الاتصال بالنقر على<br /><strong>Connect</strong> في dApp. بيانات محفظتك محفوظة — تحتاج فقط إلى إعادة الموافقة على الاتصال.</p>
+<hr />
+<h2 id="keeping-your-funds-safe">الحفاظ على أمان أموالك</h2>
+<p><strong>افعل</strong></p>
+<ul>
+<li>احتفظ بعبارة الاسترداد خارج الإنترنت، على الورق، ويفضّل في أكثر من مكان</li>
+<li>تحقق من عناوين المستلمين قبل الإرسال</li>
+<li>تحقق من الأصل المعروض في مطالبات اتصال dApp</li>
+<li>ابدأ بمعاملة اختبارية صغيرة عند الإرسال إلى عنوان جديد</li>
+<li>احفظ المستفيدين كجهات اتصال، وتحقق من الاسم — فالاسم الذي تتعرف عليه أفضل من قراءة base58</li>
+<li>استخدم حساب عرض فقط لمراقبة التخزين البارد، بدلًا من فتح قفل الحساب الحقيقي</li>
+</ul>
+<p><strong>لا تفعل أبدًا</strong></p>
+<ul>
+<li>أدخل عبارة الاسترداد في أي موقع ويب. لن تطلبها Orion Wallet بعد الإعداد أبدًا</li>
+<li>خزّن العبارة في لقطة شاشة، أو ملاحظة في مدير كلمات مرور، أو محرك أقراص سحابي، أو محادثة</li>
+<li>شارك مفتاحك الخاص أو ملف <code>.oct</code></li>
+<li>استخدم محفظة تحمل أموالًا حقيقية على حاسوب مشترك أو غير موثوق</li>
+</ul>
+<p>لم تخضع Orion Wallet <strong>لتدقيق مستقل</strong>. راجع <a href="SECURITY.html">وثيقة الأمان</a> قبل تخزين قيمة كبيرة.</p>
+</body>
+</html>

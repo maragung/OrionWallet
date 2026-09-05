@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>নিরাপত্তা — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="security">নিরাপত্তা</h1>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — সোর্স কোড, ইস্যু এবং রিলিজ।<br /><strong>দুর্বলতা রিপোর্ট করুন:</strong> <a href="https://github.com/maragung/OrionWallet/security/advisories/new">GitHub Security Advisories</a></blockquote>
+<h2 id="audit-status">অডিট অবস্থা</h2>
+<p><strong>Orion Wallet কোনো স্বাধীন তৃতীয়-পক্ষের নিরাপত্তা অডিটের মধ্য দিয়ে যায়নি।</strong></p>
+<p>ক্রিপ্টোগ্রাফিক ডিজাইনটি রেফারেন্স <code>octra-labs/webcli</code> ইমপ্লিমেন্টেশন অনুসরণ করে, এবং<br />প্রাইমিটিভগুলো সু-পর্যালোচিত লাইব্রেরি থেকে আসে। কিন্তু ইন্টিগ্রেশনটি নিজে অডিট করা হয়নি।<br />উল্লেখযোগ্য মূল্য সংরক্ষণের আগে দয়া করে এটি বিবেচনা করুন।</p>
+<hr />
+<h2 id="reporting-a-vulnerability">দুর্বলতা রিপোর্ট করা</h2>
+<p><strong>নিরাপত্তা সমস্যার জন্য পাবলিক ইস্যু খুলবেন না।</strong></p>
+<p>রক্ষণাবেক্ষণকারীদের কাছে ব্যক্তিগতভাবে রিপোর্ট করুন, যার মধ্যে থাকবে:</p>
+<ul>
+<li>সমস্যার বিবরণ এবং এর প্রভাব</li>
+<li>পুনরুৎপাদনের ধাপ</li>
+<li>আক্রান্ত সংস্করণ বা কমিট</li>
+<li>কোনো প্রস্তাবিত প্রতিকার</li>
+</ul>
+<p>পাবলিক প্রকাশের আগে ফিক্সের জন্য যুক্তিসঙ্গত সময় দিন। রিপোর্টগুলো স্বাগত<br />এবং আপনি অন্যথা না চাইলে কৃতিত্ব দেওয়া হয়।</p>
+<hr />
+<h2 id="threat-model">হুমকির মডেল</h2>
+<h3 id="what-orion-wallet-protects-against">Orion Wallet যেসব থেকে রক্ষা করে</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>হুমকি</th><th>প্রতিকার</th></tr></thead>
+<tbody>
+<tr><td>কী সার্ভারে ফাঁস হওয়া</td><td>কোনো ব্যাকেন্ড নেই। কী কখনো ব্রাউজার ছেড়ে যায় না</td></tr>
+<tr><td>বিশ্রামে থাকা কীস্টোর চুরি</td><td>AES-256-GCM, PIN থেকে PBKDF2 দিয়ে প্রাপ্ত কী</td></tr>
+<tr><td>ক্ষতিকর dApp অনুরোধ</td><td>স্পষ্ট অনুমোদন প্রম্পটসহ প্রতি-অরিজিন পারমিশন</td></tr>
+<tr><td>ক্রস-অরিজিন বার্তা জালিয়াতি</td><td>প্রতিটি ইনবাউন্ড বার্তায় অরিজিন যাচাই</td></tr>
+<tr><td>বার্তা রিপ্লে</td><td>প্রতি সেশনে CSPRNG চ্যালেঞ্জ ও nonce</td></tr>
+<tr><td>ইনজেক্টেড মার্কআপের মাধ্যমে XSS</td><td>কোনো <code>innerHTML</code> / <code>dangerouslySetInnerHTML</code> নেই; CSP উৎস সীমাবদ্ধ করে</td></tr>
+<tr><td>ত্রুটিপূর্ণ RPC ডেটায় অ্যাপ ক্র্যাশ</td><td>প্রতিরক্ষামূলক নরমালাইজেশন ও error boundary</td></tr>
+<tr><td>রিকভারি ফ্রেজ আসলে কখনো লেখা হয়নি</td><td>তৈরির সময় এলোমেলো ৩টি শব্দ পুনঃটাইপ করা বাধ্যতামূলক</td></tr>
+<tr><td>কী নেই এমন অ্যাকাউন্ট থেকে সাইনিং</td><td><code>assertCanSign</code> UI-তে নয়, API সীমানাতেই প্রত্যাখ্যান করে</td></tr>
+<tr><td>নীরবে শোনা RPC ট্রাফিক</td><td>প্লেইনটেক্সট এন্ডপয়েন্টে স্পষ্ট প্রতি-অরিজিন সম্মতি লাগে</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="what-it-cannot-protect-against">যা থেকে এটি রক্ষা করতে পারে না</h3>
+<p>এসব নিয়ে নিজের কাছে স্পষ্ট থাকুন:</p>
+<ul>
+<li><strong>আপসকৃত ডিভাইস।</strong> ম্যালওয়্যার, কীলগার বা প্রতিকূল ব্রাউজার এক্সটেনশন আপনার টাইপ করার সময় PIN পড়ে নিতে</li>
+</ul>
+<p>পারে এবং মেমরি থেকে ডিক্রিপ্ট করা কী বের করে নিতে পারে।</p>
+<ul>
+<li><strong>হারানো রিকভারি ফ্রেজ।</strong> কোনো পুনরুদ্ধার ব্যবস্থা নেই। কেউ এটি ফিরিয়ে আনতে পারবে না।</li>
+<li><strong>ফিশিং।</strong> জাল সাইটে রিকভারি ফ্রেজ দিলে টাকা চলে যাবে। সেটআপের পর Orion Wallet</li>
+</ul>
+<p>কখনো আপনার ফ্রেজ চায় না।</p>
+<ul>
+<li><strong>আপসকৃত RPC নোড।</strong> ক্ষতিকর নোড মিথ্যা ব্যালেন্স দেখাতে বা লেনদেন আটকে রাখতে</li>
+</ul>
+<p>পারে। এটি সিগনেচার জাল করতে বা কী চুরি করতে পারে না।</p>
+<ul>
+<li><strong>সাপ্লাই-চেইন আপস</strong> npm ডিপেন্ডেন্সি বা হোস্টিং প্রোভাইডারের।</li>
+<li><strong>ফিজিক্যাল অ্যাক্সেস</strong> আনলক করা ডিভাইসে, ওয়ালেট খোলা অবস্থায়।</li>
+</ul>
+<hr />
+<h2 id="cryptographic-design">ক্রিপ্টোগ্রাফিক ডিজাইন</h2>
+<h3 id="key-derivation-and-storage">কী ডেরিভেশন ও সংরক্ষণ</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>উদ্দেশ্য</th><th>অ্যালগরিদম</th></tr></thead>
+<tbody>
+<tr><td>মেমোনিক</td><td>BIP39</td></tr>
+<tr><td>HD ডেরিভেশন</td><td>Ed25519, SLIP-0010 ধাঁচের</td></tr>
+<tr><td>সাইনিং</td><td>Ed25519 (tweetnacl)</td></tr>
+<tr><td>ECDH (স্টিলথ)</td><td>X25519 (@noble/curves)</td></tr>
+<tr><td>কীস্টোর এনক্রিপশন</td><td>AES-256-GCM (WebCrypto)</td></tr>
+<tr><td>PIN → কী</td><td>PBKDF2-HMAC-SHA256</td></tr>
+<tr><td>র্যান্ডমনেস</td><td><code>crypto.getRandomValues</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>কীস্টোর ফরম্যাট C++ অরিজিনালের সাথে মেলে: <code>OCT1</code> ম্যাজিক, ভার্সন, PBKDF2 ইটারেশন<br />কাউন্ট, সল্ট, nonce, তারপর অথেনটিকেশন ট্যাগসহ AES-GCM সাইফারটেক্সট।</p>
+<h3 id="pin-handling">PIN-এর ব্যবহার</h3>
+<p>PIN <strong>কখনো সংরক্ষিত হয় না</strong>, কোনো রূপেই। আনলক করার সময় এটি ডিক্রিপশন কী তৈরি করে<br />এবং তারপর বাতিল হয়ে যায়। "PIN মনে রাখো" বলে কিছু নেই — নকশা অনুযায়ী। ফলে, ভুলে যাওয়া<br />PIN শুধুমাত্র রিকভারি ফ্রেজ থেকে পুনরুদ্ধার করেই সমাধান করা যায়।</p>
+<h3 id="unlock-session">আনলক সেশন</h3>
+<p>PIN সংরক্ষিত হয় না, তবে আনলক করার <em>ফলাফল</em> সংরক্ষিত থাকে — যতক্ষণ সেশন চলে:<br />পৃষ্ঠা রিফ্রেশ করলে ব্যবহারকারীকে PIN স্ক্রিনে ফেলে দেওয়া উচিত নয়। <code>src/wallet/unlock-session.ts</code><br />ডিক্রিপ্ট করা ওয়ালেট AES-256-GCM দিয়ে সিল করে এবং তা দুটি স্টোরে ভাগ করে:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>অর্ধেক</th><th>কোথায়</th><th>জীবনকাল</th></tr></thead>
+<tbody>
+<tr><td>সাইফারটেক্সট (<code>orion:unlock-session</code>)</td><td><code>sessionStorage</code></td><td>একটি ট্যাব। ট্যাব বন্ধ হলেই মুছে যায়</td></tr>
+<tr><td>সিলিং কী</td><td>IndexedDB <code>unlock-session-keys</code>, একটি <strong>non-extractable</strong> <code>CryptoKey</code> হিসেবে</td><td>লক করলে মুছে যায়; পরিত্যক্তগুলো বয়স অনুযায়ী ছাঁটাই হয়</td></tr>
+</tbody>
+</table>
+</div>
+<p>দুটি অর্ধেকের একটিও একা ব্যবহারযোগ্য নয়। IndexedDB ট্যাব বন্ধ হলেও টিকে থাকে কিন্তু সাইফারটেক্সট ধরে না;<br /><code>sessionStorage</code> সাইফারটেক্সট ধরে কিন্তু কী ধরে না, এবং দ্বিতীয় ট্যাব বা অন্য অরিজিন তা পড়তে পারে না।<br />কীটি <code>extractable: false</code> দিয়ে তৈরি হয়, তাই এই অরিজিন এটি <em>ব্যবহার</em> করতে পারে কিন্তু এর<br />বাইট পড়ে বের করতে পারে না — আমাদের নিজের কোডও নয়, পৃষ্ঠায় চালাতে সক্ষম যেকোনো কিছুও নয়। সেশনটি<br />প্রতিটি পুনরুদ্ধারে ঘোরে (নতুন কী, নতুন nonce), এবং <code>createdAt</code> সামনে বহন করে যাতে রিফ্রেশ<br />পরম ক্যাপ বাড়াতে না পারে।</p>
+<p>মেয়াদ: <strong>৩০ মিনিট নিষ্ক্রিয়তা</strong> (কনফিগারযোগ্য, <code>autoLockMinutes</code>; <code>0</code> নিষ্ক্রিয় করে) এবং মূল আনলক<br />থেকে <strong>৮ ঘণ্টার পরম ক্যাপ</strong>। দুটোই পুনরুদ্ধারে প্রয়োগ হয়, এবং নিষ্ক্রিয়তার উইন্ডো <code>useAutoLock</code><br />দিয়ে লাইভেও প্রয়োগ করা হয়, তাই খোলা রেখে দেওয়া ট্যাব নিজে নিজেই লক হয়।</p>
+<p>এটি যার বিরুদ্ধে <em>না</em> রক্ষা করে — সৎ অংশ:</p>
+<ul>
+<li><strong>ট্যাবে স্ক্রিপ্ট এক্সিকিউশন।</strong> লাইভ সেশনের সময় পৃষ্ঠায় চলমান কোড ব্রাউজারকে সেশন</li>
+</ul>
+<p>ডিক্রিপ্ট করে কী দিয়ে সাইন করতে বলতে পারে, ঠিক ওয়ালেটের মতোই। এটি সিলিং কী বের করে নিতে পারে না,<br />তাই আপসটি ট্যাব দিয়েই শেষ হয়; এটি অন্য কোথাও ব্যবহারযোগ্য চুরি করা কী হয়ে ওঠে না।</p>
+<ul>
+<li><strong>আপসকৃত ডিভাইস।</strong> উপরের হুমকির মডেল থেকে অপরিবর্তিত: স্থানীয় ম্যালওয়্যার IndexedDB ও</li>
+</ul>
+<p><code>sessionStorage</code> একসাথে পড়তে পারে।</p>
+<ul>
+<li><strong>অনিরাপদ কনটেক্সট।</strong> <code>crypto.subtle</code> ছাড়া (সাধারণ <code>http://</code>, নিচে দেখুন), সিলিং কী</li>
+</ul>
+<p>IndexedDB-তে কাঁচা বাইটে নেমে যায় এবং non-extractability গ্যারান্টি হারিয়ে যায়। বিভাজন<br />ও মেয়াদ এখনো বহাল থাকে।</p>
+<p>সম্পূর্ণ অপ্ট-আউট করতে, <strong>Settings → Security → Stay unlocked after a page refresh</strong><br />(<code>keepUnlocked: false</code>) বন্ধ করুন। কিছুই লেখা হয় না, এবং প্রতিটি রিলোডে PIN চাওয়া হয় — এই ফিচার<br />আগে থাকার আগের আচরণ। স্পষ্ট লক (🔒) দুটি অর্ধেকই সঙ্গে সঙ্গে ধ্বংস করে।</p>
+<h3 id="passkey-unlock">পাসকি আনলক</h3>
+<p>ঐচ্ছিক, ডিফল্টে বন্ধ এবং সংযোজনমূলক: এটি বিদ্যমান ওয়ালেট খোলার দ্বিতীয় উপায়, কখনো<br />PIN-এর বিকল্প নয়। <code>src/wallet/passkey.ts</code>।</p>
+<p>নিবন্ধন <code>userVerification: 'required'</code>সহ একটি প্ল্যাটফর্ম ক্রিডেনশিয়াল এবং WebAuthn<br /><strong>PRF</strong> এক্সটেনশন তৈরি করে। PRF পৃষ্ঠাকে ক্রিডেনশিয়াল ও সংরক্ষিত 32-বাইট সল্ট থেকে প্রাপ্ত<br />একটি গোপন রহস্য দেয়, যা ব্রাউজার কেবল ব্যবহারকারী যাচাইয়ের পরই দেয়। ওয়ালেট<br /><code>sha256("orion-passkey-unlock-v1" || prf)</code> কে AES-256 কী হিসেবে নেয়, সিরিয়ালাইজড ওয়ালেট<br />AES-256-GCM দিয়ে সিল করে, কী শূন্য করে, এবং সিল করা ব্লবটি ক্রিডেনশিয়াল ID ও সল্টের পাশে<br />IndexedDB-তে সংরক্ষণ করে।</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>সংরক্ষিত</th><th>সংরক্ষিত নয়</th></tr></thead>
+<tbody>
+<tr><td>ক্রিডেনশিয়াল ID, PRF সল্ট, IV, ওয়ালেটের সাইফারটেক্সট</td><td>PRF আউটপুট, ডেরাইভড কী, PIN, কোনো প্লেইনটেক্সট কী-ম্যাটেরিয়াল</td></tr>
+</tbody>
+</table>
+</div>
+<p>স্পষ্টভাবে বলার মতো পরিণতি:</p>
+<ul>
+<li><strong>PRF আবশ্যক, কখনো অবনমিত নয়।</strong> অথেনটিকেটর এটি সমর্থন না করলে,</li>
+</ul>
+<p>নিবন্ধন থ্রো করে এবং কিছুই সংরক্ষণ করে না। বিকল্প — সাইফারটেক্সটের পাশে পাঠযোগ্য কী রাখা —<br />রেকর্ডটিকে স্ব-ডিক্রিপ্টিং করে দিত, যা ফিচারটি না দেওয়ার চেয়েও খারাপ।</p>
+<ul>
+<li><strong>রেকর্ডটি নিজে থেকে নিষ্ক্রিয়।</strong> সেই অথেনটিকেটরে সফল ব্যবহারকারী-যাচাইকৃত অঙ্গভঙ্গি ছাড়া</li>
+</ul>
+<p>ডিস্কে যা আছে তা থেকে কী ডেরাইভ করার কোনো উপায় নেই।</p>
+<ul>
+<li><strong>এটি ওয়ালেট সিল করে, PIN নয়।</strong> PIN-ই একমাত্র জিনিস যা কী এক্সপোর্ট করে,</li>
+</ul>
+<p>ফ্রেজ প্রকাশ করে, PIN পরিবর্তন করে বা অ্যাকাউন্ট ডেরাইভ করে। তাই পাসকি আনলক<br />সেগুলোতে এসকেলেট করতে ব্যবহার করা যায় না, এবং সংরক্ষিত রেকর্ড একটি সংরক্ষিত PIN-এর<br />চেয়ে কঠোরভাবে কম ফাঁস করে।</p>
+<ul>
+<li><strong>PIN আনলকের মতোই সেশন মডেল।</strong> পাসকি আনলক একই আনলক সেশন তৈরি করে</li>
+</ul>
+<p>একই নিষ্ক্রিয়তা ও পরম ক্যাপসহ; এটি কোনোটিই বাড়ায় না।</p>
+<ul>
+<li><strong>ডিভাইস ও ব্রাউজারে সীমাবদ্ধ।</strong> অরিজিনের <code>rpId</code>-তে আবদ্ধ এবং স্থানীয়ভাবে সংরক্ষিত। এটি</li>
+</ul>
+<p>ওয়ালেট এক্সপোর্টের অংশ নয় এবং রিকভারি ফ্রেজ থেকে ডেরাইভড নয়।</p>
+<ul>
+<li><strong>অচল ক্রিডেনশিয়াল ব্যর্থ-বন্ধ হয়।</strong> ডিক্রিপশন ব্যর্থ হলে — ঘোরানো বা পুনঃনিবন্ধিত</li>
+</ul>
+<p>ক্রিডেনশিয়াল, পুনরুদ্ধার করা ডিভাইস — রেকর্ড মুছে যায় এবং PIN প্রয়োজন হয়। একটি<br /><em>বাতিল করা বা টাইম-আউট হওয়া অঙ্গভঙ্গি</em> ইচ্ছাকৃতভাবে তা <strong>মুছে</strong> দেয় না, যাতে বাতিল করা<br />প্রম্পট নীরবে ফিচারটি নিষ্ক্রিয় না করে।</p>
+<ul>
+<li><strong>Watch-only অ্যাকাউন্টের জন্য অস্বীকৃত।</strong> সিল করার মতো কোনো কী-ম্যাটেরিয়াল নেই।</li>
+</ul>
+<p>যা থেকে এটি রক্ষা করে না তা অপরিবর্তিত: আপসকৃত ডিভাইস, এবং লাইভ সেশনে স্ক্রিপ্ট এক্সিকিউশন,<br />উপরের আনলক সেশনের মতোই। তবে এটি একটি প্রকৃত ঝুঁকি দূর করে —<br />প্রতিটি আনলকে টাইপ করা ও পর্যবেক্ষিত হওয়া PIN।</p>
+<h3 id="watch-only-accounts">Watch-only অ্যাকাউন্ট</h3>
+<p>কীস্টোর ছাড়াই শুধু ঠিকানা দিয়ে একটি অ্যাকাউন্ট যোগ করা যায়। ইনভেরিয়েন্ট হলো: এমন অ্যাকাউন্ট<br />কখনো সাইন করতে পারে না, এবং এটি সাইনিং যেখানে ঘটে সেখানেই প্রয়োগ করা হয়, UI-তে নয়:<br /><code>assertCanSign</code> (<code>src/wallet/watch-only.ts</code>) সেন্ড, এনক্রিপ্ট, স্টিলথ, কন্ট্রাক্ট<br />এবং dApp-অনুরোধ পথ থেকে ডাকা হয়, এবং কর্ম ও সমাধান দুটোরই নাম দিয়ে থ্রো করে।</p>
+<p>এটি নির্মাণগতভাবে ব্যর্থ-বন্ধ: চেকটি এমন যেকোনো ওয়ালেট প্রত্যাখ্যান করে যার সিক্রেট কী পূর্ণ<br />64-বাইট Ed25519 কী নয়, তাই ছাঁটাই করা বা অনুপস্থিত কী প্রত্যাখ্যাত হয় এমনকি <code>watchOnly</code><br />ফ্ল্যাগটি কোনোভাবে হারিয়ে গেলেও। ফ্ল্যাগটি <code>serializeWallet</code>/<code>deserializeWallet</code> এর<br />মাধ্যমে বহন করা হয়, তাই আনলক সেশন থেকে পুনরুদ্ধার করা ওয়ালেট এখনো watch-only থাকে।</p>
+<h3 id="randomness">র্যান্ডমনেস</h3>
+<p>সব নিরাপত্তা-সম্পর্কিত মান <code>src/crypto/random.ts</code> এর মাধ্যমে <code>crypto.getRandomValues</code> ব্যবহার করে।</p>
+<p><code>src/sdk/protocol.ts</code> এর <code>makeId</code> একটি <code>Math.random</code> ফলব্যাক রাখে। এটি <strong>শুধুমাত্র</strong> বার্তা<br />পারস্পরিক-সম্পর্ক ID-র জন্য ব্যবহৃত হয়, কখনো নিরাপত্তা মানের জন্য নয়, এবং সেভাবে চিহ্নিত। চ্যালেঞ্জ,<br />nonce, কী বা সল্টের জন্য এটি পুনরায় ব্যবহার করবেন না।</p>
+<hr />
+<h2 id="browser-security-posture">ব্রাউজার নিরাপত্তা অবস্থান</h2>
+<h3 id="content-security-policy">Content-Security-Policy</h3>
+<p><code>index.html</code> এ সেট করা:</p>
+<pre><code class="language-">default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob:; font-src 'self' data:;
+connect-src 'self' https: http://localhost:* http://127.0.0.1:* http://[::1]:*;
+frame-src 'self' https:; worker-src 'self' blob:; object-src 'none';
+base-uri 'self'; form-action 'self';</code></pre>
+<p>তিনটি এন্ট্রি ব্যাখ্যার দাবি রাখে:</p>
+<ul>
+<li><strong><code>'wasm-unsafe-eval'</code></strong> PVAC FHE মডিউলের জন্য প্রয়োজন। Chromium এটি ছাড়া</li>
+</ul>
+<p><code>WebAssembly.instantiate()</code> ব্লক করে। এটি শুধুমাত্র WebAssembly কম্পাইলেশন অনুমতি দেয় — এটি JavaScript<br /><code>eval()</code> পুনরায় চালু করে <strong>না</strong>।</p>
+<ul>
+<li><strong>স্টাইলের জন্য <code>'unsafe-inline'</code></strong> প্রি-পেইন্ট ক্রিটিকাল CSS-এর জন্য দরকার, যা unstyled</li>
+</ul>
+<p>কনটেন্টের ফ্ল্যাশ এড়ায়। এটি কেবল স্টাইলে প্রযোজ্য, কখনো স্ক্রিপ্টে নয়।</p>
+<ul>
+<li><strong><code>connect-src</code> এ Loopback</strong> নীতিকে সাধারণভাবে প্লেইনটেক্সটে প্রশস্ত না করেই স্থানীয়ভাবে চলমান</li>
+</ul>
+<p>নোড ব্যবহার করতে দেয়। <code>localhost</code> / <code>127.0.0.0/8</code> / <code>[::1]</code> এর ট্রাফিক কখনো মেশিন<br />ছেড়ে যায় না, তাই ওয়্যারে আটকানোর মতো কিছুই থাকে না।</p>
+<h3 id="plaintext-http-rpc-endpoints">প্লেইনটেক্সট (http) RPC এন্ডপয়েন্ট</h3>
+<p>সাধারণ <code>http://</code> তে অন্য যেকোনো কিছু ডিফল্টে প্রত্যাখ্যাত হয়, এবং <code>src/wallet/endpoint-policy.ts</code><br />হল একমাত্র স্থান যা সিদ্ধান্ত নেয়। এটি URL প্লাস একটি স্পষ্ট কনটেক্সটের একটি বিশুদ্ধ ফাংশন,<br />তাই স্টোর, Settings UI এবং টেস্ট কোনো বিষয়ে দ্বিমত পোষণ করতে পারে না যে কী অনুমোদিত।</p>
+<p>তিনটি স্বাধীন ব্লকার প্রযোজ্য, এবং রায় সবচেয়ে মৌলিকটি আগে নাম দেয় যাতে মিশ্র কনটেন্টই আসল কারণ<br />হলে ব্যবহারকারীকে কখনো allowlist ঠিক করতে না বলা হয়:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>ব্লকার</th><th>কে প্রয়োগ করে</th><th>কীভাবে উঠে</th></tr></thead>
+<tbody>
+<tr><td>মিশ্র কনটেন্ট</td><td>ব্রাউজার, শর্তহীনভাবে</td><td>ওঠে না। TLS বা প্রক্সি ব্যবহার করুন</td></tr>
+<tr><td>Content-Security-Policy</td><td>শিপড meta-ট্যাগ CSP</td><td><code>VITE_ALLOW_HTTP_ENDPOINTS=1</code> দিয়ে পুনর্নির্মাণ</td></tr>
+<tr><td>ব্যবহারকারীর সম্মতি</td><td>সেটিংসে <code>allowedInsecureOrigins</code></td><td>Settings → Network তে অরিজিনকে <strong>Trust</strong> করুন</td></tr>
+</tbody>
+</table>
+</div>
+<p>ডিজাইন সম্পর্কে নোট:</p>
+<ul>
+<li>CSP একটি meta ট্যাগ, তাই এটি <strong>রানটাইমে প্রশস্ত করা যায় না</strong> — কোনো সেটিং এটি দিতে</li>
+</ul>
+<p>পারত না, এই কারণেই এটি একটি বিল্ড ফ্ল্যাগ। <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code> বিল্ডের সময়<br /><code>connect-src</code> এ <code>http:</code> যোগ করে এবং আর কিছুই নয়; উপরন্তু ব্যবহারকারীর সম্মতি এখনো লাগে।</p>
+<ul>
+<li>সম্মতি <strong>প্রতি অরিজিনে</strong> — স্কিম, হোস্ট ও পোর্ট। এটি হোস্টনেম মিল নয় এবং URL প্রিফিক্স নয়,</li>
+</ul>
+<p>তাই <code>http://node.lan:8080</code> কে বিশ্বাস করলে সেই হোস্টের অন্য পোর্ট বিশ্বাস হয় না,<br />এবং <code>http://127.0.0.1.evil.com</code> loopback হিসেবে গণ্য হয় না।</p>
+<ul>
+<li><strong>Explorer URL ব্যতিক্রম</strong> কারণ সেগুলো কেবল <code>&lt;a href&gt;</code> নেভিগেশন, কখনো</li>
+</ul>
+<p>fetch নয়। <code>connect-src</code> ও মিশ্র কনটেন্ট তাদের ক্ষেত্রে প্রযোজ্য নয়। <code>relayerUrl</code> সংরক্ষিত কিন্তু<br />কখনো fetch হয় না। শুধুমাত্র <code>rpcUrl</code> এই নীতির আওতায়।</p>
+<ul>
+<li>ব্লক করা এন্ডপয়েন্ট ইচ্ছাকৃতভাবে একটি <code>RpcClient</code> তৈরি করেই: এটি তৈরি করতে অস্বীকার করলে</li>
+</ul>
+<p>ব্যবহারকারী এটি ঠিক করতে Settings-এ পৌঁছাতে পারত না। কারণটি বদলে হেডারে একটি<br /><strong>⚠️ Insecure RPC</strong> ব্যাজ এবং <code>RpcClient.unreachableHint</code> হিসেবে প্রকাশ পায়, যা কেবল ছোড়া<br /><code>TypeError</code> এর সাথে যুক্ত হয় — কখনো প্রকৃত সার্ভার ত্রুটি বা টাইম-আউটে নয়, যা বিভ্রান্তিকর হতো।</p>
+<ul>
+<li><strong><code>rpcProxyUrl</code></strong> সিদ্ধান্তটি প্রক্সিতে সরিয়ে নেয়: এন্ডপয়েন্টটি প্রক্সির নিজস্ব স্কিম দিয়ে</li>
+</ul>
+<p>বিচার করা হয়, কারণ ব্রাউজার আসলে সেটির সাথেই সংযোগ করে। প্রক্সি প্রতিটি অনুরোধ দেখে, তাই UI<br />নিজেরটি চালানোর কথা বলে। এটি কী পৌঁছাতে বা সাইন করতে পারে না।</p>
+<p>প্লেইনটেক্সট RPC একটি গোপনীয়তা <em>এবং</em> অখণ্ডতার ঝুঁকি — পথের একটি নোড প্রতিটি লুকআপ পড়তে<br />এবং উত্তর বদলাতে পারে — কিন্তু কী-আপসের নয়: সিগনেচার স্থানীয়ভাবে তৈরি হয় এবং ওয়ালেট<br />কী-ম্যাটেরিয়ালে যা পায় তা যাচাই করে না।</p>
+<h3 id="cross-origin-isolation">ক্রস-অরিজিন আইসোলেশন</h3>
+<p>COOP/COEP অ্যাপ-ব্যাপী <code>same-origin</code> / <code>require-corp</code>, <code>/connect</code> এ <code>unsafe-none</code><br />ওভাররাইডসহ যাতে অনুমোদনের পপআপ ওপেনারের সাথে MessagePort বিনিময় করতে পারে।<br />এই সংকীর্ণকরণ ইচ্ছাকৃত এবং সেই একক রুটেই সীমাবদ্ধ।</p>
+<hr />
+<h2 id="dapp-connection-security">dApp সংযোগ নিরাপত্তা</h2>
+<p>যখন একটি সাইট সংযোগ চায়:</p>
+<ol>
+<li>পপআপ অনুরোধকারী অরিজিনটি স্পষ্টভাবে দেখায়।</li>
+<li>ব্যবহারকারীকে স্পষ্ট অনুমোদন দিতেই হবে; নতুন অরিজিনের জন্য কোনো নীরব সংযোগ নেই।</li>
+<li>অনুমোদন সেই অরিজিনে সীমাবদ্ধ এবং প্রতি-অরিজিনে সংরক্ষিত।</li>
+<li>সাইনিং অপারেশন সবসময় নিশ্চিতকরণ চায়, এমনকি বিশ্বস্ত সাইটের জন্যও।</li>
+</ol>
+<p>"Trust this site" <strong>read-only</strong> অনুরোধের (ব্যালেন্স, অ্যাকাউন্ট,<br />নেটওয়ার্ক) প্রম্পট দমন করে। এটি কখনো নীরব সাইনিং দেয় না।</p>
+<p>সংযোগগুলো <strong>Settings → Connected Sites</strong> এর অধীনে পর্যালোচনা ও প্রত্যাহার করা যায়।</p>
+<h3 id="what-a-dapp-learns-about-a-custom-network">একটি কাস্টম নেটওয়ার্ক সম্পর্কে dApp কী জানে</h3>
+<p>ব্যবহারকারী যে নেটওয়ার্ক হাতে যোগ করেছেন তা সংযুক্ত সাইটের কাছে দৃশ্যমান (<code>wallet_getNetworkInfo</code>,<br /><code>wallet_getNetworks</code> এবং <code>networkChanged</code> ইভেন্ট), কারণ কোন নেটওয়ার্কে আছে তা না জানলে dApp সঠিক<br />explorer লিংক বা চেইন লেবেল দেখাতে পারে না। ওয়্যার পেরিয়ে যাওয়া রেকর্ডটি একটি ইচ্ছাকৃত উপসেট:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>পাঠানো হয়</th><th>আটকে রাখা হয়</th></tr></thead>
+<tbody>
+<tr><td><code>id</code>, <code>name</code>, <code>explorerUrl</code>, <code>icon</code>, <code>custom</code></td><td><code>rpcUrl</code>, <code>relayerUrl</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>এন্ডপয়েন্টগুলো আটকে রাখা হয় কারণ ব্যবহারকারী-যোগ করা নেটওয়ার্ক সাধারণত একটি ব্যক্তিগত একটি — LAN<br />ঠিকানা, টানেল, query স্ট্রিংয়ে API কীসহ একটি পরিশোধিত প্রোভাইডার URL। একটি সাইটে সংযোগ করলে<br />ব্যবহারকারীর নোড কোথায় থাকে তা প্রকাশ করা বা ক্রিডেনশিয়ালযুক্ত URL হস্তান্তর করা উচিত নয়। কোনো<br />কার্যকারিতা হারায় না: পড়াগুলো ওয়ালেটের মাধ্যমে প্রক্সি হয় এবং লেনদেনগুলো ওয়ালেটই তৈরি ও ব্রডকাস্ট<br />করে, তাই dApp-এর নিজে RPC-তে পৌঁছানোর দরকারই নেই।</p>
+<p>জানার মতো দুটি পরিণতি:</p>
+<ul>
+<li>কাস্টম নেটওয়ার্কের <strong>name</strong> ব্যবহারকারী-নির্বাচিত এবং dApp-কে দেখানো হয়। একটি ব্যক্তিগত</li>
+</ul>
+<p>শনাক্তকারীর নামে নামকরণ করলে সেই শনাক্তকারী আপনি সংযোগ করা প্রতিটি সাইটের কাছে প্রকাশ পায়।</p>
+<ul>
+<li><code>wallet_getNetworks</code> প্রকাশ করে আপনার <strong>কয়টি</strong> নেটওয়ার্ক কনফিগার করা আছে। এটি একটি ছোট</li>
+</ul>
+<p>ফিঙ্গারপ্রিন্টিং পৃষ্ঠ, dApp যাতে "switch to X" নির্দেশনা দিতে পারে সেজন্য মেনে নেওয়া।</p>
+<p>কোনো dApp নেটওয়ার্ক পরিবর্তন করতে পারে না। কোনো <code>wallet_switchNetwork</code> মেথড নেই; সুইচিং<br />কেবল ওয়ালেটের নিজস্ব UI-তে ঘটে, এবং dApp পরে <code>networkChanged</code> এর মাধ্যমে জানতে পারে।</p>
+<hr />
+<h2 id="dependency-status">ডিপেন্ডেন্সি অবস্থা</h2>
+<p>প্রোডাকশন ডিপেন্ডেন্সি: <strong>শূন্য পরিচিত দুর্বলতা</strong> (<code>npm audit --omit=dev</code>)।</p>
+<p>ডেভেলপমেন্ট ডিপেন্ডেন্সিতে vitest, vite, esbuild এবং সম্পর্কিত প্যাকেজে বিজ্ঞপ্তি রয়েছে।<br />প্রতিটি অবশিষ্ট ফিক্সের জন্য একটি মেজর আপগ্রেড দরকার (vite 5→8, vitest 2→4) যা বিল্ড ভাঙার ঝুঁকি নেয়।<br />এই প্যাকেজগুলো বিল্ড টুলিং — এগুলো ব্যবহারকারীদের কাছে যায় না এবং স্থাপিত ওয়ালেটকে প্রভাবিত করতে পারে না।</p>
+<p>এটি একটি ইচ্ছাকৃত ট্রেড-অফ, প্রতিটি রিলিজে পুনর্বিবেচিত। <code>npm audit --omit=dev</code> চালিয়ে<br />শিপড সারফেস পরিষ্কার থাকে তা নিশ্চিত করুন।</p>
+<hr />
+<h2 id="guidance-for-users">ব্যবহারকারীদের জন্য নির্দেশনা</h2>
+<p><strong>করুন</strong></p>
+<ul>
+<li>রিকভারি ফ্রেজ অফলাইনে, কাগজে, একাধিক স্থানে রাখুন</li>
+<li>পাঠানোর আগে প্রাপকের ঠিকানা অক্ষরে অক্ষরে যাচাই করুন</li>
+<li>প্রতিটি dApp সংযোগ প্রম্পটে অরিজিন যাচাই করুন</li>
+<li>নতুন ঠিকানা ব্যবহারের সময় আগে একটি ছোট পরীক্ষামূলক পরিমাণ পাঠান</li>
+<li>ব্রাউজার ও OS আপডেট রাখুন</li>
+</ul>
+<p><strong>কখনোই নয়</strong></p>
+<ul>
+<li>সেটআপের পর যেকোনো ওয়েবসাইটে রিকভারি ফ্রেজ লিখবেন না</li>
+<li>ফ্রেজ ডিজিটালভাবে সংরক্ষণ করবেন না — কোনো স্ক্রিনশট, ক্লাউড নোট বা চ্যাট বার্তা নয়</li>
+<li>আপনার প্রাইভেট কী বা <code>.oct</code> ব্যাকআপ ফাইল ভাগ করবেন না</li>
+<li>ভাগ করা বা অবিশ্বস্ত কম্পিউটারে প্রকৃত অর্থের ওয়ালেট ব্যবহার করবেন না</li>
+</ul>
+<hr />
+<h2 id="for-contributors">কন্ট্রিবিউটরদের জন্য</h2>
+<p>নিরাপত্তা-সংবেদনশীল ইনভেরিয়েন্ট যা দুর্বল করা উচিত নয়:</p>
+<ul>
+<li>প্রতিটি ইনবাউন্ড <code>postMessage</code>-এ অরিজিন যাচাই</li>
+<li>সব নিরাপত্তা মানের জন্য CSPRNG; <code>makeId</code> এটি নয়</li>
+<li><code>localStorage</code>, <code>sessionStorage</code>, লগ বা এরর বার্তায় কোনো গোপন তথ্য নেই</li>
+<li>কোনো <code>innerHTML</code> বা <code>dangerouslySetInnerHTML</code> নেই</li>
+<li>PIN কখনো সংরক্ষিত হয় না</li>
+<li>পাসকি আনলকের জন্য PRF প্রয়োজন; পাঠযোগ্য কী সংরক্ষণে কখনো ফলব্যাক করবেন না</li>
+<li><code>assertCanSign</code> প্রতিটি সাইনিং পথ পাহারা দেয় — একটি watch-only অ্যাকাউন্ট কখনো সাইন করবে না</li>
+<li>প্লেইনটেক্সট এন্ডপয়েন্ট নীতি <code>endpoint-policy.ts</code> এ থাকে; অন্য কোথাও কোনো অ্যাড-হক URL চেক নয়</li>
+<li>ক্যানোনিকাল JSON বাইট-সঠিক থাকে — সিগনেচার এর উপর নির্ভর করে</li>
+</ul>
+<p>ক্রিপ্টো, কী হ্যান্ডলিং, স্টোরেজ বা কানেক্ট ফ্লো স্পর্শ করা যেকোনো পরিবর্তন পুল রিকোয়েস্টে<br />স্পষ্টভাবে তা বলা উচিত।</p>
+</body>
+</html>

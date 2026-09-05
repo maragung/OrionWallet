@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="sw">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mwongozo wa Mtumiaji — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="orion-wallet-user-guide">Orion Wallet — Mwongozo wa Mtumiaji</h1>
+<p>Orion Wallet inaendeshwa kabisa kwenye kivinjari chako. Funguo zako hutengenezwa ndani ya kifaa chako, husimbwa kwa njia fiche<br />kwa kutumia PIN yako, na huhifadhiwa kwenye kifaa chako pekee. Hakuna chochote kinachotumwa kwa seva.</p>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Msimbo chanzo, masuala, na matoleo.</blockquote>
+<hr />
+<h2 id="contents">Yaliyomo</h2>
+<ul>
+<li><a href="#getting-started">Kuanza</a></li>
+<li><a href="#creating-a-wallet">Kuunda pochi</a></li>
+<li><a href="#importing-an-existing-wallet">Kuagiza pochi iliyopo</a></li>
+<li><a href="#everyday-use">Matumizi ya kila siku</a></li>
+<li><a href="#contacts-address-book">Anwani (daftari la anwani)</a></li>
+<li><a href="#watch-only-accounts">Akaunti za kutazama tu</a></li>
+<li><a href="#encrypted-balance-fhe">Salio lililosimbwa kwa njia fiche (FHE)</a></li>
+<li><a href="#stealth-transfers">Uhamisho wa siri</a></li>
+<li><a href="#connecting-to-a-dapp">Kuunganisha kwenye dApp</a></li>
+<li><a href="#locking-and-unlocking">Kufunga na kufungua</a></li>
+<li><a href="#session-expiry">Kumalizika kwa kipindi</a></li>
+<li><a href="#network-settings">Mipangilio ya mtandao</a></li>
+<li><a href="#backup-and-recovery">Hifadhi rudufu na urejeshaji</a></li>
+<li><a href="#troubleshooting">Kutatua matatizo</a></li>
+<li><a href="#keeping-your-funds-safe">Kuweka fedha zako salama</a></li>
+</ul>
+<hr />
+<h2 id="getting-started">Kuanza</h2>
+<h3 id="requirements">Mahitaji</h3>
+<ul>
+<li>Toleo la sasa la Chrome, Edge, Firefox, au Safari</li>
+<li>JavaScript imewezeshwa</li>
+<li>Takriban GB 4 za RAM ikiwa unapanga kutumia vipengele vya salio lililosimbwa kwa njia fiche</li>
+</ul>
+<h3 id="running-it">Kuliendesha</h3>
+<p>Tumia toleo linalopangishwa, au liiendeshe kwenye kifaa chako:</p>
+<pre><code class="language-bash">npm install --legacy-peer-deps
+npm run dev</code></pre>
+<p>Kisha fungua &lt;http://localhost:5173&gt;.</p>
+<hr />
+<h2 id="creating-a-wallet">Kuunda pochi</h2>
+<ol>
+<li>Chagua <strong>Create New Wallet</strong>, lipe akaunti jina, na uchague PIN. PIN husimba kwa njia fiche pochi kwenye kifaa hiki.</li>
+<li><strong>Andika maneno yako ya kurejesha.</strong> Unaonyeshwa maneno 12. Yanakili kwenye karatasi kwa mpangilio halisi uliotolewa.</li>
+<li>Chagua <strong>I've Written It Down</strong>. Pochi kisha inakuomba uandike tena <strong>maneno 3 kati ya hayo</strong>, yaliyochaguliwa kwa nasibu, ili kuthibitisha kwamba maneno hayo kweli yaliondoka kwenye skrini. <strong>Show Phrase Again</strong> huyarudisha ikiwa unahitaji kuyaangalia tena; jibu lisilo sahihi linakuruhusu tu kujaribu tena.</li>
+<li>Mara tu maneno yanapothibitishwa, pochi inafunguka.</li>
+</ol>
+<blockquote><strong>Kuunda pochi hakuifungui — kufaulu kwa ukaguzi wa maneno ndiko kunaifungua.</strong> Hadi hapo bado<br />unaweza kuondoka, na hakuna chochote kinachopotea, kwa sababu maneno hayajategemewa bado.</blockquote>
+<blockquote><strong>Maneno yako ya kurejesha ndiyo njia pekee ya kurejesha pochi yako.</strong> Yeyote anaye nayo<br />anadhibiti fedha zako. Yaweke nje ya mtandao. Usiyapige picha kamwe, usiyachape kwenye tovuti,<br />wala usiyabandike kwenye gumzo au barua pepe.</blockquote>
+<h3 id="pin-versus-recovery-phrase">PIN dhidi ya maneno ya kurejesha</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>Maneno ya kurejesha</th><th>PIN</th></tr></thead>
+<tbody>
+<tr><td>Kusudi</td><td>Hurejesha pochi yako popote</td><td>Hufungua kwenye kifaa hiki pekee</td></tr>
+<tr><td>Yakipotea</td><td>Fedha haziwezi kurejeshwa</td><td>Rejesha kutoka kwenye maneno ya kurejesha</td></tr>
+<tr><td>Yanahifadhiwa wapi</td><td>Nje ya mtandao, kwako</td><td>Hayatahifadhiwa kamwe — wewe pekee ndiye unayoyajua</td></tr>
+</tbody>
+</table>
+</div>
+<hr />
+<h2 id="importing-an-existing-wallet">Kuagiza pochi iliyopo</h2>
+<p>Chagua <strong>Import</strong> na uchague mojawapo:</p>
+<ul>
+<li><strong>Recovery phrase</strong> — weka maneno yako 12/24</li>
+<li><strong>Private key</strong> — bandika ufunguo wa faragha wa base64</li>
+<li><strong>Wallet file</strong> — pakia faili ya <code>.oct</code> iliyosimbwa kwa njia fiche na uingize PIN yake</li>
+</ul>
+<hr />
+<h2 id="everyday-use">Matumizi ya kila siku</h2>
+<h3 id="checking-your-balance">Kuangalia salio lako</h3>
+<p>Kichupo cha <strong>Balance</strong> kinaonyesha salio lako la umma na, ikiwa PVAC imewezeshwa, salio lako lililosimbwa kwa njia fiche.</p>
+<h3 id="receiving">Kupokea</h3>
+<p>Fungua <strong>Receive</strong> ili kuonyesha anwani yako na msimbo wa QR. Anwani yako ni ya umma na ni salama<br />kushirikiwa.</p>
+<p>Unaweza pia <strong>kuomba kiasi maalum</strong>. Msimbo wa QR basi hubeba kiasi pamoja na<br />anwani (kama <code>octra:&lt;address&gt;?amount=&lt;OCT&gt;</code>), ili pochi inayousoma ijaze yote mawili mapema.<br />Usipoomba kiasi chochote, msimbo unabaki kuwa anwani tupu, ambayo kiskana chochote kinaweza kuisoma.</p>
+<h3 id="sending">Kutuma</h3>
+<ol>
+<li>Fungua <strong>Send</strong>.</li>
+<li>Mpe mpokeaji kwa njia yoyote inayokufaa:
+<ul>
+<li>Bandika anwani (inaanzia kwa <code>oct</code>).</li>
+<li>Chagua jina lililohifadhiwa kutoka <strong>📇 Contacts…</strong>.</li>
+<li>Chagua <strong>📷 Scan</strong> ili kusoma msimbo wa QR kwa kamera yako. Kivinjari kinaomba ruhusa ya kamera mara ya kwanza; picha inachakatwa kwenye ukurasa na haipakiwi kamwe. Kuskana msimbo unaobeba kiasi hujaza kiasi hicho pia.</li>
+</ul>
+</li>
+<li>Weka kiasi.</li>
+<li>Kagua ada na nonce, kisha uthibitishe kwa PIN yako.</li>
+</ol>
+<p>Anwani inapolingana na anwani iliyohifadhiwa ya mwasiliani, fomu huonyesha jina karibu nayo — jina<br />unalolitambua ni ukaguzi bora zaidi kuliko mfuatano wa base58. Kwa anwani mpya, <strong>＋ Save to<br />contacts</strong> huiweka chini ya lebo unayochagua, ili malipo yanayofuata yawe kuchagua, si kubandika.</p>
+<p>Thibitisha kila mara herufi za kwanza na za mwisho za anwani ya mpokeaji kabla ya kuthibitisha.<br />Miamala haiwezi kutenguliwa.</p>
+<h3 id="history">Historia</h3>
+<p><strong>History</strong> huorodhesha miamala ya hivi karibuni. Mtandao unapokuwa haufikiwi, viingizo vilivyohifadhiwa<br />vinaonyeshwa na kuwekwa alama <code>⚠ Cached</code>.</p>
+<p><strong>⤓</strong> hushusha jedwali kama faili ya CSV (wakati, hash, aina, kutoka, kwenda, mwelekeo, kiasi, ada,<br />hali) kwa ajili ya lahajedwali au rekodi zako mwenyewe. Inashusha <strong>safu zilizopakiwa sasa</strong> —<br />unachokiona ndicho unachopata — kwa hiyo tumia <strong>Load more</strong> kwanza ikiwa unataka muda mrefu zaidi. Faili<br />inaandikwa na kivinjari chako kwenye folda yako ya vipakuzi; hakuna chochote kinachotumwa popote.</p>
+<hr />
+<h2 id="contacts-address-book">Anwani (daftari la anwani)</h2>
+<p><strong>Settings → 📇 Contacts</strong> huhifadhi orodha ya anwani chini ya majina unayochagua. Kila kiingizo kina<br />anwani, jina, na dokezo la hiari — mahali pazuri kwa "memo required" au kuashiria ni<br />exchange gani anwani ya amana ni yake.</p>
+<p>Kwa nini ujisumbue: anwani usiyoweza kuisoma ni anwani usiyoweza kuikagua. Mlengwa akisha<br />hifadhiwa, fomu ya Send inamtoa kwa jina na kuiwekea lebo anwani unapoibandika tena, ili<br />anwani iliyobadilishwa au iliyokatwa ionekane wazi badala ya kuchanganyika.</p>
+<ul>
+<li><strong>Add</strong> kiingizo hapa, au tumia <strong>＋ Save to contacts</strong> moja kwa moja kutoka kwenye fomu ya Send.</li>
+<li><strong>✎</strong> hubadilisha jina la kiingizo, <strong>🗑</strong> huondoa. Kuondoa mwasiliani hakuathiri chochote kwenye mnyororo.</li>
+<li><strong>⤓</strong> hushusha orodha kama CSV, ili iweze kuwekwa na rekodi zako nyingine au kuhamishwa hadi kwenye kivinjari kingine.</li>
+</ul>
+<p>Anwani zinaishi kwenye kivinjari hiki pekee, pamoja na data nyingine yote ya pochi yako. Hazipakiwi<br />mtandaoni, na hufutwa pamoja na vitu vingine vyote ukifuta pochi.</p>
+<hr />
+<h2 id="watch-only-accounts">Akaunti za kutazama tu</h2>
+<p>Akaunti ya kutazama tu hufuatilia anwani ambayo <strong>huna</strong> funguo zake — hifadhi baridi, pochi ya<br />maunzi, anwani ya amana ya exchange, au anwani ya mtu mwingine unayomfuatilia.</p>
+<p>Ongeza moja chini ya <strong>Settings → 👥 Accounts → 👁 Watch Address</strong>: bandika anwani, ipe<br />jina, na itaingia kwenye orodha yako ya akaunti.</p>
+<p>Kinachoweza kufanya: kuonyesha salio, kuorodhesha historia, kusafirisha CSV, na kubadilishiwa kwake bila<br />PIN — hakuna hazina ya funguo ya kusimbua, kwa hiyo hakuna cha kufungua.</p>
+<p>Kisichoweza kufanya: <strong>kutia sahihi chochote.</strong> Kutuma, kusimba/kusimbua, uhamisho wa siri, miito ya<br />mikataba, na maombi ya kutia sahihi ya dApp yote yanakataliwa, na fomu ya Send inasema hivyo kabla hujajaza<br />badala ya baadaye. Akaunti za kutazama tu zinawekwa alama 👁 kwenye orodha ya akaunti na kwenye<br />kichwa cha ukurasa, ili ujue kila mara ni aina gani unayoiangalia.</p>
+<p>Ili kugeuza akaunti ya kutazama tu kuwa halisi, agiza maneno ya kurejesha au ufunguo wa faragha wa<br />anwani hiyo. Kuongeza funguo ndiyo njia pekee; hakuna njia ya mkato.</p>
+<hr />
+<h2 id="encrypted-balance-fhe">Salio lililosimbwa kwa njia fiche (FHE)</h2>
+<p>Orion Wallet inaweza kuweka sehemu ya salio lako ikiwa imesimbwa kwa njia fiche kwa kutumia usimbaji fiche kamili wa homomofu,<br />ili kiasi kisionekane hadharani kwenye mnyororo.</p>
+<p>Hili ni la hiari. Kila kitu kingine kinafanya kazi iwapo kimewezeshwa au la.</p>
+<h3 id="enabling-it">Kukiwezesha</h3>
+<p>Nenda kwenye <strong>Settings → PVAC</strong>. Viashiria viwili lazima viwe kijani:</p>
+<ul>
+<li><strong>WASM Module</strong> — moduli ya kriptografia imepakiwa</li>
+<li><strong>Bridge Initialized</strong> — imepewa funguo kutoka kwenye mbegu ya pochi yako</li>
+</ul>
+<p>Kama chochote hakiko tayari, paneli inaeleza sababu halisi na suluhisho.</p>
+<h3 id="encrypting-and-decrypting">Kusimba na kusimbua</h3>
+<p>Tumia <strong>Encrypt</strong> kuhamisha fedha kati ya salio lako la umma na lililosimbwa kwa njia fiche. Operesheni<br />hizi ni nzito kwa hesabu na zinaweza kuchukua sekunde kadhaa; kidirisha cha maendeleo<br />kinaonyesha kila hatua.</p>
+<hr />
+<h2 id="stealth-transfers">Uhamisho wa siri</h2>
+<p>Uhamisho wa siri hutuma fedha kwenye anwani ya mara moja inayotokana na ufunguo wa umma wa<br />mpokeaji, ili malipo yasionekane hadharani yakihusishwa na anwani yake kuu.</p>
+<p>Fungua <strong>Stealth</strong>, weka mpokeaji na kiasi, kisha uthibitishe. Mpokeaji hudai<br />fedha hizo kutoka kwenye kichupo chake cha Stealth.</p>
+<hr />
+<h2 id="connecting-to-a-dapp">Kuunganisha kwenye dApp</h2>
+<p>Tovuti inapoomba muunganisho, popup inatokea ikionyesha asili (origin) inayoomba.</p>
+<p>Kabla ya kuidhinisha:</p>
+<ul>
+<li><strong>Kagua asili kwa makini.</strong> Thibitisha kuwa domain ni hasa tovuti uliyokusudia.</li>
+<li>Idhinisha tu ruhusa unazozitarajia.</li>
+<li>"Trust this site" huruka vidokezi vya baadaye kwa maombi ya kusoma tu — itumie kwa uangalifu.</li>
+<li>Kagua kiteua <strong>network</strong> kwenye popup. Kinaorodhesha kila mtandao ulio nao, ukijumuisha<br />ule uliojiongezea mwenyewe, ili uweze kuunganisha kwenye mtandao sahihi bila kuondoka kwenye popup.</li>
+</ul>
+<p>Kagua na uondoe muunganisho wakati wowote chini ya <strong>Settings → Connected Sites</strong>.</p>
+<hr />
+<h2 id="locking-and-unlocking">Kufunga na kufungua</h2>
+<p>PIN yako inasimbua pochi. Funguo zilizosimbuliwa basi zinabaki kupatikana kwa muda wote wa<br />kipindi cha kufungua — haombwi PIN tena hadi kipindi kiishe.</p>
+<ul>
+<li><strong>Kuburudisha ukurasa kunakufanya ubaki umefungua.</strong> Funguo hufungwa tena kwa kichupo cha kivinjari<br />ulichomo, ili upakiaji upya uchukue kipindi tena badala ya kukurudisha kwenye skrini ya PIN.<br />Utaona kwa ufupi "Restoring your session…" wakati huo unatokea.</li>
+<li><strong>Kufunga kichupo kunamaliza kipindi.</strong> Nakala iliyofungwa iko kwenye kichupo kile kimoja na<br />huenda nayo, ili kichupo kipya au dirisha jipya lianze kikiwa kimefungwa.</li>
+<li><strong>🔒 kwenye kichwa cha ukurasa hufunga mara moja</strong> na kuharibu nakala iliyofungwa — upakiaji upya baada ya<br />kufunga unaomba PIN, kama inavyopaswa.</li>
+<li><strong>Kutokuwa na shughuli kunafunga pochi</strong> baada ya dakika 30 kwa chaguo-msingi, na kufungua moja<br />hakupelekwi kamwe zaidi ya saa 8 bila kujali shughuli.</li>
+</ul>
+<p>Hakuna nusu ya kipindi kilichofungwa inayofaa peke yake: funguo zilizosimbwa zinashikiliwa na<br />kichupo, wakati ufunguo unaozifungua unashikiliwa na kivinjari katika muundo ambao hakuna ukurasa —<br />ikiwa ni pamoja na huu — unaoweza kusoma tena.</p>
+<p>Chini ya <strong>Settings → Security → Session &amp; Auto-Lock</strong>:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Mpangilio</th><th>Chaguo-msingi</th><th>Unachofanya</th></tr></thead>
+<tbody>
+<tr><td>Stay unlocked after a page refresh</td><td>On</td><td>Zima ili kuhitaji PIN kila upakiaji upya</td></tr>
+<tr><td>Auto-lock after inactivity</td><td>Dakika 30</td><td>Dakika 5 / 15 / 30 / 60, au kamwe (hadi kichupo kifungwe)</td></tr>
+</tbody>
+</table>
+</div>
+<p>Yote mawili yanatumika kwa wakati mmoja, yakiwemo kwa kipindi ambacho tayari umekifungua. Kwenye kompyuta<br />inayoshirikiwa au isiyoaminika, zima la kwanza na uifunge pochi unapoondoka.</p>
+<h3 id="unlocking-with-a-passkey">Kufungua kwa kutumia passkey</h3>
+<p>Ikiwa kifaa chako kina kisoma alama za vidole, Face ID, Windows Hello, au ufunguo wa usalama, unaweza<br />kufungua kwa hicho badala ya kuandika PIN.</p>
+<p>Washa chini ya <strong>Settings → 🔑 Security → Passkey Unlock → Enable passkey unlock</strong>. Kifaa<br />chako kinakuhimiza kujisajili — kinaweza kukuhimiza <strong>mara mbili</strong>, mara moja kuunda passkey na<br />mara nyingine kuitumia. Skrini ya kufungua basi inatoa <strong>👆 Unlock with passkey</strong> juu ya kisanduku cha PIN.</p>
+<p>Yafaa kujua:</p>
+<ul>
+<li><strong>PIN bado ipo na bado ni muhimu.</strong> Passkey inafungua pochi; haibadili<br />PIN. Kusafirisha funguo, kufichua maneno ya kurejesha, kubadilisha PIN, na<br />kupata akaunti mpya vyote bado vinahitaji PIN. Weka PIN — kuipoteza hakutenguki kwa<br />kuwa na passkey.</li>
+<li><strong>Imeunganishwa na kifaa hiki na kivinjari hiki.</strong> Passkey hazisafiri na data ya pochi<br />yako. Kwenye kifaa kingine, fungua kwa PIN na usajili passkey huko ikiwa unaitaka.</li>
+<li><strong>Alama zako za vidole hazifikii pochi kamwe.</strong> Kifaa kinakuthibitisha ndani na kukabidhi<br />ukurasa siri inayotokana na passkey; siri hiyo ndiyo inayofungua pochi.</li>
+<li><strong>Upatikanaji unategemea kifaa na kivinjari chako.</strong> Chako kisipoweza kufanya kinachohitajika,<br />paneli ya Security inasema hivyo na chaguo linabaki limezimwa — PIN inaendelea kufanya kazi haswa kama<br />hapo awali.</li>
+<li><strong>Zima passkey unlock</strong> kwenye paneli ileile. Hilo hufuta nakala iliyohifadhiwa mara moja;<br />halifuti passkey kwenye kifaa chako, ambayo unaweza kuiondoa kwenye mipangilio ya OS au<br />kivinjari chako.</li>
+</ul>
+<p>Passkey ikiacha kufungua pochi — kitambulisho kilichozungushwa au kusajiliwa upya, au<br />kifaa kilichorejeshwa — pochi inasema hivyo, inatupa nakala iliyochakaa, na kuomba PIN. Hakuna<br />kinachopotea; unaweza kusajili passkey mpya baadaye.</p>
+<p>Passkey unlock haiwezi kusajiliwa wakati akaunti ya kutazama tu ikiwa amilifu — haina funguo,<br />kwa hiyo hakuna chochote kwa passkey kufunga. Paneli ya Security inasema hivyo badala ya kitufe.</p>
+<hr />
+<h2 id="session-expiry">Kumalizika kwa kipindi</h2>
+<p>Viwango vile vile husimamia miunganisho ya dApp, ambayo hukamilika kiotomatiki:</p>
+<ul>
+<li><strong>Idle timeout:</strong> dakika 30 za kutokuwa na shughuli</li>
+<li><strong>Absolute timeout:</strong> saa 8 tangu muunganisho</li>
+</ul>
+<p>Kipindi kinapomalizika, pochi inafunga muunganisho na dApp inaarifiwa.<br />dApp basi inapaswa kukuhimiza kuunganisha tena.</p>
+<h3 id="what-happens-when-your-session-expires">Kinachotokea kipindi chako kinapomalizika</h3>
+<ol>
+<li>Pochi inatoa tukio la <code>sessionExpired</code> kwa dApp.</li>
+<li>dApp inagundua kipindi kilichomalizika na kuonyesha kidokezo cha "Reconnect".</li>
+<li>Unabonyeza <strong>Connect</strong> kufungua popup ya pochi tena.</li>
+<li>Pochi inarejesha kipindi chako na dApp inaendelea.</li>
+</ol>
+<h3 id="if-a-dapp-doesnt-reconnect-automatically">Ikiwa dApp haijiunganishi tena kiotomatiki</h3>
+<ul>
+<li>Bonyeza kitufe cha <strong>Connect</strong> kwenye dApp.</li>
+<li>Popup ya pochi inafunguka — idhinisha muunganisho.</li>
+<li>Data yako ya kipindi cha awali imehifadhiwa, kwa hiyo hauitaji kuagiza pochi yako tena.</li>
+</ul>
+<hr />
+<h2 id="network-settings">Mipangilio ya mtandao</h2>
+<p><strong>Settings → ⚙️ General</strong> ina URL ya RPC ambayo pochi inazungumza nayo, mtafiti (explorer) inayotumia<br />kwa viungo vya nje, na proksi ya hiari. Badilisha URL ya RPC na uchague <strong>Save URLs</strong> kuielekeza pochi<br />kwenye nodi nyingine.</p>
+<h3 id="adding-your-own-network">Kuongeza mtandao wako mwenyewe</h3>
+<p>Devnet na Mainnet husafirishwa pamoja na pochi. Kuongeza mwingine — nodi yako mwenyewe, tawi la<br />devnet, RPC ya kulipia — tembeza hadi <strong>Custom Networks</strong> kwenye paneli ileile na ujaze:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Sehemu</th><th>Inahitajika</th><th>Maelezo</th></tr></thead>
+<tbody>
+<tr><td>Network name</td><td>ndiyo</td><td>Huonyeshwa kila mahali mtandao unapotokea, ikijumuisha kwa dApps</td></tr>
+<tr><td>RPC URL</td><td>ndiyo</td><td><code>http://</code> au <code>https://</code></td></tr>
+<tr><td>Explorer URL</td><td>hapana</td><td>Hutumia URL ya RPC kwa chaguo-msingi</td></tr>
+<tr><td>Relayer URL</td><td>hapana</td><td>Inahitajika tu kwa uhamisho wa siri</td></tr>
+</tbody>
+</table>
+</div>
+<p>Chagua <strong>Add network</strong> na litaingia kwenye orodha. Tangu hapo ni chaguo la kawaida:</p>
+<ul>
+<li>kitufe cha <strong>network pill</strong> kwenye upau wa juu hubadili kwake kama ilivyo kwa yoyote iliyowekwa mapema,</li>
+<li><strong>popup ya kuunganisha</strong> inaorodhesha tovuti inapoomba kuunganisha, ikiwekwa alama _(custom)_,</li>
+<li>na dApp iliyounganishwa inaweza kusoma jina lake na explorer ili iweke lebo kwa usahihi.</li>
+</ul>
+<p>Kubadilisha mtandao kunasasisha viungo vyote vitatu kwa pamoja — RPC, explorer, na relayer — ili<br />pochi isiishie kusoma mtandao mmoja huku ikiunganisha hadi mwingine.</p>
+<p>Ondoa mtandao kwa ✕ iliyo karibu nayo. Ukifuta ule ulio kwake sasa, pochi<br />inarudi kwenye moja iliyowekwa mapema.</p>
+<p><strong>Kile dApp inachokiona.</strong> Tovuti unazounganisha nazo zinaweza kusoma jina la mtandao wa kibinafsi, ikoni, URL ya<br />explorer, na ukweli kwamba wewe umeuongeza. Haziwezi <strong>kusoma</strong> URL yake ya RPC au relayer — anwani ya<br />nodi ya nyumbani au ufunguo wa mtoa huduma hubaki kwenye pochi. Kwa kuwa jina linaonekana, epuka<br />kumtaja mtandao kwa jambo la kibinafsi.</p>
+<h3 id="nodes-without-https">Nodi zisizo na HTTPS</h3>
+<p>Nodi ya <code>https://</code> haihitaji utunzaji maalum. Nodi inayofikiwa tu kwa <code>http://</code> tupu ni<br />jambo tofauti, kwa sababu kila kitu pochi inachokiomba — kila angalizo la salio na historia,<br />kila muamala inaouwasilisha — husafiri waziwazi, ambapo mtu yeyote kwenye njia ya mtandao<br />anaweza kukisoma <em>na kubadilisha majibu</em>. Kwa hiyo pochi inaomba kwanza.</p>
+<ul>
+<li><strong>Loopback haihitaji ruhusa.</strong> <code>localhost</code>, <code>127.0.0.1</code>, <code>[::1]</code> na wenzao kamwe<br />hawaondoki kwenye mashine yako, kwa hiyo nodi ya ndani inafanya kazi moja kwa moja.</li>
+<li><strong>Anwani nyingine yoyote ya <code>http://</code> lazima iaminiwe kwa uwazi.</strong> Bandika URL na paneli<br />itaeleza kilicho hatarini kwa kitufe cha <strong>Trust <code>http://…</code></strong> karibu nayo. Imani huhifadhiwa<br />kwa asili (scheme, host, na port), kwa hiyo kuamini nodi moja hakuamini nyingine, na<br />port tofauti kwenye host hiyohiyo ni uamuzi tofauti.</li>
+<li><strong>Trusted plaintext endpoints</strong> huuorodhesha uliyoyaamini, na <strong>Remove</strong> kuyarudisha<br />nyuma.</li>
+</ul>
+<p>Mipaka miwili sio yetu kuiondoa, na paneli inataja iliyo njiani:</p>
+<ul>
+<li><strong>Pochi inayohudumiwa kupitia <code>https://</code> haiwezi kuchukua <code>http://</code> hata kidogo.</strong> Vivinjari vinazuia hilo<br />(huitwa mixed content), na kuamini asili hakutakibadilisha. Weka nodi<br />nyuma ya TLS, tumia proksi, au fungua pochi kutoka kwenye toleo la plain-http au localhost.</li>
+<li><strong>Toleo linalosafirishwa linaruhusu <code>https://</code> na loopback pekee.</strong> Sera yake ya usalama imewekwa<br />wakati wa kuunda na haiwezi kupanuliwa ikiwa inaendesha. Wenyeji wa kibinafsi wanaohitaji http tupu<br />wanaweza kuunda kwa <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code>; orodha ya imani hapo juu bado inatumika juu yake.</li>
+</ul>
+<p>URL ya explorer imetengwa na haya yote — ni kiungo unachobonyeza tu, si<br />kitu pochi inachokichukua.</p>
+<h3 id="rpc-proxy">Proksi ya RPC</h3>
+<p><strong>RPC proxy (optional)</strong> huelekeza miito kupitia URL unayochagua: URL ya RPC<br />inaambatanishwa nayo, ikiwa na usimbaji wa asilimia, na kivinjari huunganisha kwa proksi pekee. Hilo<br />ndilo suluhisho la vitendo kwa nodi isiyo na TLS au isiyo na vichwa vya CORS, na linakidhi kanuni zilizo<br />hapo juu kwa sababu muunganisho unaofanywa na kivinjari ni kwa proksi.</p>
+<p>Proksi inaona kila ombi pochi inalotuma, kwa hiyo <strong>endesha yako mwenyewe</strong>. Haiwezi kutia sahihi chochote<br />wala kufikia funguo zako, lakini inaweza kutazama na inaweza kusema uongo.</p>
+<h3 id="when-something-is-off">Pale ambapo kuna hitilafu</h3>
+<p>Kama sehemu ya RPC haiwezi kutumika jinsi ilivyosanidiwa, <strong>⚠️ Insecure RPC</strong> inaonekana kwenye kichwa cha<br />ukurasa; ichague kuruka moja kwa moja kwenye mpangilio. Makosa ya mtandao pia hubeba sababu, ili<br />"Failed to fetch" tupu ikwambie nini cha kurekebisha.</p>
+<hr />
+<h2 id="backup-and-recovery">Hifadhi rudufu na urejeshaji</h2>
+<h3 id="exporting">Kusafirisha</h3>
+<p><strong>Settings → Backup → Export</strong> hushusha faili ya <code>.oct</code> iliyosimbwa kwa njia fiche. Inalindwa na<br />PIN yako, lakini iishughulikie kama nyeti.</p>
+<h3 id="restoring">Kurejesha</h3>
+<p>Tumia <strong>Import → Wallet file</strong> na toa PIN iliyokuwa ikitumika wakati faili iliposafirishwa.</p>
+<h3 id="multiple-accounts">Akaunti nyingi</h3>
+<p><strong>Settings → Accounts</strong> hupata akaunti za ziada kutoka kwenye maneno yale yale ya kurejesha. Maneno<br />moja yanarejesha zote.</p>
+<p>Vitu viwili ambavyo maneno hayarejeshi, kwa sababu havikutokana navyo kamwe:</p>
+<ul>
+<li><strong>Akaunti za kutazama tu</strong> — ni anwani tu ulizoiomba pochi izifuatilie. Zibandike<br />kando ikiwa unazitaka tena baada ya kusakinisha upya.</li>
+<li><strong>Anwani (Contacts)</strong> — zisafirishe kwa <strong>⤓</strong> chini ya Settings → Contacts ikiwa zinakuhusu.</li>
+</ul>
+<p>Hakuna kinachoshikilia fedha, kwa hiyo kuzipoteza kunakugharimu urahisi, si pesa.</p>
+<hr />
+<h2 id="troubleshooting">Kutatua matatizo</h2>
+<h3 id="the-page-is-blank-or-stuck-loading">Ukurasa ni tupu au umekwama kupakia</h3>
+<p>Burudisha. Ikiwa unaendelea, kadi ya hitilafu yenye kitufe cha <strong>Retry</strong> inapaswa kutokea. Ripoti<br />ujumbe unaoonyeshwa hapo.</p>
+<h3 id="encrypted-balance-is-unavailable">Salio lililosimbwa kwa njia fiche halipatikani</h3>
+<p>Settings → PVAC inaonyesha mojawapo ya yafuatayo:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Ujumbe</th><th>Maana</th><th>Suluhisho</th></tr></thead>
+<tbody>
+<tr><td><em>The WASM module has not been compiled</em></td><td><code>pvac.js</code> haihudumiwi</td><td>Endesha <code>npm run build:wasm</code></td></tr>
+<tr><td><em>Content-Security-Policy is blocking WebAssembly</em></td><td>CSP haina <code>'wasm-unsafe-eval'</code></td><td>Iongeze kwenye <code>script-src</code> katika <code>index.html</code></td></tr>
+<tr><td><em>The compiled module is out of date</em></td><td>Muundo ni wa kabla ya vitendaji vinavyohitajika</td><td>Jenga upya kwa <code>npm run build:wasm</code></td></tr>
+<tr><td><em>FHE key generation failed</em></td><td>Moduli ilipakia lakini ufunguaji ulishindikana</td><td>Angalia console ya kivinjari na uripoti</td></tr>
+</tbody>
+</table>
+</div>
+<p>Bonyeza <strong>↻ Reload PVAC</strong> baada ya kutumia suluhisho — hakuna haja ya kuanzisha upya.</p>
+<h3 id="failed-to-load-history-network-errors">"Failed to load history" / makosa ya mtandao</h3>
+<p>Kwa kawaida nodi ya RPC haifikiki au inazuia CORS. Thibitisha URL ya RPC chini ya<br /><strong>Settings</strong>, na uone <a href="../README.md#cors">maelezo ya CORS</a>. Hitilafu ikitaja sababu —<br />plaintext, mixed content, au kizuizi cha muundo — ona<br /><a href="#network-settings">Mipangilio ya mtandao</a>; <strong>RPC proxy</strong> inasuluhisha kisa cha CORS.</p>
+<h3 id="the-header-shows-insecure-rpc">Kichwa kinaonyesha "⚠️ Insecure RPC"</h3>
+<p>Sehemu ya RPC iliyosanidiwa ni <code>http://</code> tupu na haitumiki jinsi ilivyo. Chagua<br />beji kufungua mpangilio, ambapo sababu halisi na suluhisho zimefafanuliwa. Ona<br /><a href="#network-settings">Mipangilio ya mtandao</a>.</p>
+<h3 id="the-camera-wont-open-when-i-select-scan">Kamera haifunguki nikichagua 📷 Scan</h3>
+<ul>
+<li>Toa ruhusa ya kamera kivinjari kinapoomba; ikiwa uliitupilia mbali, iruhusu tena kwenye<br />ruhusa za tovuti na ujaribu tena.</li>
+<li>Upatikanaji wa kamera unahitaji ukurasa salama. Inafanya kazi kwenye <code>https://</code> na kwenye <code>localhost</code>, lakini si kwenye<br />ukurasa wa <code>http://</code> tupu kwenye host nyingine.</li>
+<li>Ikiwa programu nyingine inashikilia kamera, ifunge kwanza. Unaweza kila mara kubandika anwani badala yake.</li>
+</ul>
+<h3 id="unlock-with-passkey-isnt-offered">"Unlock with passkey" haitolewi</h3>
+<p>Ama hakuna passkey iliyosajiliwa kwenye kivinjari hiki, au kifaa hakiwezi kufanya kile passkey unlock<br />kinachohitaji. <strong>Settings → 🔑 Security → Passkey Unlock</strong> inasema kipi. Passkeys ni za kifaa<br />na kivinjari, kwa hiyo iliyosajiliwa mahali pengine haionekani hapa. PIN inafanya kazi kila wakati.</p>
+<h3 id="i-forgot-my-pin">Nimesahau PIN yangu</h3>
+<p>Sakinisha pochi upya kwa kutumia maneno yako ya kurejesha na uweke PIN mpya. Bila maneno,<br />fedha haziwezi kurejeshwa — na mtu yeyote.</p>
+<h3 id="could-not-read-your-saved-wallets-could-not-read-your-accounts">"Could not read your saved wallets" / "Could not read your accounts"</h3>
+<p>Pochi haikuweza kufungua hifadhidata yake ya ndani. Hakuna kilichofutwa — hii karibu<br />kila mara ni kichupo kingine cha Orion, au popup ya <strong>Connect</strong> iliyosalia, bado inashikilia hifadhidata wazi.<br />Baada ya sasisho kivinjari hakitaboresha hifadhidata wakati kichupo cha zamani kikiwa<br />bado kimeambatanishwa nayo.</p>
+<p>Funga vichupo vingine vya Orion na popups, kisha uchague <strong>↻ Try again</strong>. Ujumbe ukibaki,<br />funga kila kichupo cha Orion na uifungue upya pochi kwenye kichupo kimoja.</p>
+<p>Skrini ya kufungua inatofautisha hali hizo mbili kwa makusudi: <em>No stored wallet found</em> inamaanisha hifadhidata<br />kweli iko tupu, wakati <em>Could not read your saved wallets</em> inamaanisha akaunti zako<br />zipo lakini hazifikiki kwa muda. <strong>Usiunde pochi mpya</strong> ukiwa unaona<br />ujumbe wa pili.</p>
+<h3 id="my-wallet-vanished-after-an-update">Pochi yangu ilitoweka baada ya sasisho</h3>
+<p>Data huhamishwa kiotomatiki kutoka kwenye matoleo ya zamani wakati wa uzinduzi wa kwanza. Akaunti zako<br />zikikosekana, <strong>usiunde pochi mpya</strong> — hiyo inaweza kufunika data ya zamani. Ripoti<br />tatizo, na urejeshe kutoka kwenye maneno yako ya kurejesha kwa sasa.</p>
+<h3 id="dapp-says-session-expired">dApp inasema "Session expired"</h3>
+<p>Hii inamaanisha kipindi cha pochi kilimalizika (dakika 30 za kutokuwa na shughuli / saa 8 kamili). Unganisha tena kwa<br />kubonyeza <strong>Connect</strong> kwenye dApp. Data ya pochi yako imehifadhiwa — unahitaji tu<br />kuidhinisha muunganisho tena.</p>
+<hr />
+<h2 id="keeping-your-funds-safe">Kuweka fedha zako salama</h2>
+<p><strong>Fanya</strong></p>
+<ul>
+<li>Weka maneno yako ya kurejesha nje ya mtandao, kwenye karatasi, ikiwezekana mahali zaidi ya moja</li>
+<li>Thibitisha anwani za mpokeaji kabla ya kutuma</li>
+<li>Thibitisha asili inayoonyeshwa kwenye vidokezi vya muunganisho wa dApp</li>
+<li>Anza na muamala mdogo wa majaribio unapotuma kwenye anwani mpya</li>
+<li>Hifadhi walengwa kama anwani, na uangalie jina — jina unalolitambua ni bora kuliko kusoma base58</li>
+<li>Tumia akaunti ya kutazama tu kufuatilia hifadhi baridi, badala ya kufungua ile halisi</li>
+</ul>
+<p><strong>Kamwe usifanye</strong></p>
+<ul>
+<li>Usiweke maneno yako ya kurejesha kwenye tovuti yoyote. Orion Wallet haitakuyataka kamwe baada ya usanidi</li>
+<li>Usihifadhi maneno kwenye picha ya skrini, dokezo la meneja wa nywila, hifadhi ya wingu, au gumzo</li>
+<li>Usishiriki ufunguo wako wa faragha au faili ya <code>.oct</code></li>
+<li>Usitumie pochi yenye fedha halisi kwenye kompyuta inayoshirikiwa au isiyoaminika</li>
+</ul>
+<p>Orion Wallet <strong>haijakaguliwa na mtu huru</strong>. Tafadhali kagua<br /><a href="SECURITY.html">hati ya Usalama</a> kabla ya kuhifadhi thamani kubwa.</p>
+</body>
+</html>

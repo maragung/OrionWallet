@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>사용자 가이드 — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="orion-wallet-user-guide">Orion Wallet — 사용자 가이드</h1>
+<p>Orion Wallet은 전적으로 브라우저 안에서 실행됩니다. 귀하의 키는 로컬에서 생성되고 PIN으로 암호화되어<br />귀하의 기기에만 저장됩니다. 서버로 전송되는 것은 없습니다.</p>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — 소스 코드, 이슈, 릴리스.</blockquote>
+<hr />
+<h2 id="contents">목차</h2>
+<ul>
+<li><a href="#getting-started">시작하기</a></li>
+<li><a href="#creating-a-wallet">지갑 만들기</a></li>
+<li><a href="#importing-an-existing-wallet">기존 지갑 가져오기</a></li>
+<li><a href="#everyday-use">일상적인 사용</a></li>
+<li><a href="#contacts-address-book">연락처(주소록)</a></li>
+<li><a href="#watch-only-accounts">조회 전용 계정</a></li>
+<li><a href="#encrypted-balance-fhe">암호화 잔액(FHE)</a></li>
+<li><a href="#stealth-transfers">스텔스 전송</a></li>
+<li><a href="#connecting-to-a-dapp">dApp 연결</a></li>
+<li><a href="#locking-and-unlocking">잠금 및 잠금 해제</a></li>
+<li><a href="#session-expiry">세션 만료</a></li>
+<li><a href="#network-settings">네트워크 설정</a></li>
+<li><a href="#backup-and-recovery">백업 및 복구</a></li>
+<li><a href="#troubleshooting">문제 해결</a></li>
+<li><a href="#keeping-your-funds-safe">자금을 안전하게 유지하기</a></li>
+</ul>
+<hr />
+<h2 id="getting-started">시작하기</h2>
+<h3 id="requirements">요구 사항</h3>
+<ul>
+<li>최신 버전의 Chrome, Edge, Firefox 또는 Safari</li>
+<li>JavaScript 활성화</li>
+<li>암호화 잔액 기능을 사용할 계획이라면 약 4GB의 RAM</li>
+</ul>
+<h3 id="running-it">실행하기</h3>
+<p>호스팅된 배포판을 사용하거나 로컬에서 실행할 수 있습니다.</p>
+<pre><code class="language-bash">npm install --legacy-peer-deps
+npm run dev</code></pre>
+<p>그런 다음 &lt;http://localhost:5173&gt;을 엽니다.</p>
+<hr />
+<h2 id="creating-a-wallet">지갑 만들기</h2>
+<ol>
+<li><strong>Create New Wallet</strong>을 선택하고 계정 이름을 지정한 다음 PIN을 선택합니다. PIN은 이 기기에서 지갑을 암호화합니다.</li>
+<li><strong>복구 문구를 종이에 적어 두십시오.</strong> 12개의 단어가 표시됩니다. 표시된 정확한 순서대로 종이에 옮겨 적으십시오.</li>
+<li><strong>I've Written It Down</strong>을 선택합니다. 그러면 지갑은 구문이 실제로 화면을 떠났음을 증명하기 위해 무작위로 고른 <strong>3개의 단어</strong>를 다시 입력하도록 요청합니다. 다시 보고 싶다면 <strong>Show Phrase Again</strong>으로<br />다시 표시할 수 있으며, 잘못 입력하면 다시 시도할 수 있을 뿐입니다.</li>
+<li>단어 확인이 끝나면 지갑이 열립니다.</li>
+</ol>
+<blockquote><strong>지갑을 만드는 것만으로는 열리지 않으며, 단어 확인을 통과해야 열립니다.</strong> 그때까지는<br />언제든 그만둘 수 있고 잃을 것도 없습니다. 아직 구문에 의존한 적이 없기 때문입니다.</blockquote>
+<blockquote><strong>복구 문구는 지갑을 복원할 수 있는 유일한 방법입니다.</strong> 이를 가진 사람은 누구나<br />귀하의 자금을 통제할 수 있습니다. 오프라인으로 보관하십시오. 절대 사진으로 찍거나 웹사이트에 입력하거나<br />채팅이나 이메일에 붙여넣지 마십시오.</blockquote>
+<h3 id="pin-versus-recovery-phrase">PIN과 복구 문구의 차이</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>복구 문구</th><th>PIN</th></tr></thead>
+<tbody>
+<tr><td>용도</td><td>어디서든 지갑을 복원합니다</td><td>이 기기에서만 잠금을 해제합니다</td></tr>
+<tr><td>분실 시</td><td>자금을 복구할 수 없습니다</td><td>복구 문구로 복원합니다</td></tr>
+<tr><td>보관 위치</td><td>귀하가 오프라인으로 보관</td><td>저장되지 않음 — 귀하만 알고 있습니다</td></tr>
+</tbody>
+</table>
+</div>
+<hr />
+<h2 id="importing-an-existing-wallet">기존 지갑 가져오기</h2>
+<p><strong>Import</strong>를 선택하고 다음 중 하나를 고릅니다.</p>
+<ul>
+<li><strong>Recovery phrase</strong> — 12/24개의 단어를 입력합니다</li>
+<li><strong>Private key</strong> — base64 개인 키를 붙여넣습니다</li>
+<li><strong>Wallet file</strong> — 암호화된 <code>.oct</code> 파일을 업로드하고 해당 PIN을 입력합니다</li>
+</ul>
+<hr />
+<h2 id="everyday-use">일상적인 사용</h2>
+<h3 id="checking-your-balance">잔액 확인</h3>
+<p><strong>Balance</strong> 탭에는 공개 잔액이 표시되며, PVAC가 활성화된 경우 암호화된 잔액도 표시됩니다.</p>
+<h3 id="receiving">받기</h3>
+<p><strong>Receive</strong>를 열면 귀하의 주소와 QR 코드가 표시됩니다. 주소는 공개 정보이므로<br />공유해도 안전합니다.</p>
+<p><strong>특정 금액을 요청</strong>할 수도 있습니다. 그러면 QR 코드가 주소와 함께 금액을 담게 되며<br />(<code>octra:&lt;address&gt;?amount=&lt;OCT&gt;</code> 형식), 이를 스캔하는 지갑은 둘 다 자동으로 채웁니다.<br />금액을 요청하지 않으면 코드는 주소만 담은 상태로 남으며, 어떤 스캐너든 읽을 수 있습니다.</p>
+<h3 id="sending">보내기</h3>
+<ol>
+<li><strong>Send</strong>를 엽니다.</li>
+<li>수신자를 편리한 방식으로 지정합니다.
+<ul>
+<li>주소를 붙여넣습니다(<code>oct</code>로 시작합니다).</li>
+<li><strong>📇 Contacts…</strong>에서 저장된 이름을 선택합니다.</li>
+<li><strong>📷 Scan</strong>을 선택하여 카메라로 QR 코드를 읽습니다. 처음에는 브라우저가 카메라 권한을 요청하며, 사진은 페이지 안에서 처리되고 결코 업로드되지 않습니다. 금액이 담긴 코드를 스캔하면 금액도 함께 채워집니다.</li>
+</ul>
+</li>
+<li>금액을 입력합니다.</li>
+<li>수수료와 논스를 확인한 다음 PIN으로 확인합니다.</li>
+</ol>
+<p>주소가 저장된 연락처와 일치하면 양식은 그 옆에 이름을 표시합니다. 귀하가 알아보는 이름이<br />base58 문자열보다 훨씬 좋은 확인 수단입니다. 새 주소라면 <strong>＋ Save to contacts</strong>를 통해<br />원하는 라벨로 저장할 수 있으므로, 다음 결제는 붙여넣기가 아니라 선택이 됩니다.</p>
+<p>확인 전에 항상 수신자 주소의 첫 자와 끝자를 검증하십시오.<br />거래는 되돌릴 수 없습니다.</p>
+<h3 id="history">기록(History)</h3>
+<p><strong>History</strong>는 최근 거래를 나열합니다. 네트워크에 연결할 수 없으면 캐시된 항목이<br />표시되며 <code>⚠ Cached</code>로 표시됩니다.</p>
+<p><strong>⤓</strong>는 표를 CSV 파일(시간, 해시, 유형, 발신자, 수신자, 방향, 금액, 수수료,<br />상태)로 내보내 스프레드시트나 귀하의 기록으로 보관할 수 있게 합니다. 내보내기는 <strong>현재 불러와진 행들</strong>을<br />내보냅니다. 즉, 보이는 것이 곧 얻는 것이므로 더 긴 범위를 원한다면 먼저 <strong>Load more</strong>를 사용하십시오. 이<br />파일은 브라우저가 귀하의 다운로드 폴더에 저장하며, 어디로도 전송되지 않습니다.</p>
+<hr />
+<h2 id="contacts-address-book">연락처(주소록)</h2>
+<p><strong>Settings → 📇 Contacts</strong>는 귀하가 정한 이름 아래 주소 목록을 유지합니다. 각 항목에는<br />주소, 이름, 그리고 선택적인 메모가 있습니다. "memo required(메모 필요)"나 입금 주소가 어느<br />거래소에 속하는지 기록하기에 좋은 곳입니다.</p>
+<p>왜 신경 써야 하는가: 읽을 수 없는 주소는 확인할 수 없는 주소입니다. 수취인이 저장되면<br />Send 양식은 이름으로 수취인을 제안하고, 주소를 다시 붙여넣을 때 라벨을 표시하므로<br />바뀌거나 잘린 주소가 눈에 띄지 않고 섞여 버리는 일이 없습니다.</p>
+<ul>
+<li>여기서 <strong>Add</strong>로 항목을 추가하거나, Send 양식에서 바로 <strong>＋ Save to contacts</strong>를 사용합니다.</li>
+<li><strong>✎</strong>는 항목 이름을 바꾸고 <strong>🗑</strong>는 항목을 제거합니다. 연락처를 제거해도 온체인상 아무 영향도 없습니다.</li>
+<li><strong>⤓</strong>는 목록을 CSV로 내보내 다른 기록과 함께 보관하거나 다른 브라우저로 옮길 수 있게 합니다.</li>
+</ul>
+<p>연락처는 나머지 지갑 데이터와 함께 이 브라우저에만 존재합니다. 업로드되지 않으며,<br />지갑을 초기화하면 다른 모든 것과 함께 삭제됩니다.</p>
+<hr />
+<h2 id="watch-only-accounts">조회 전용 계정</h2>
+<p>조회 전용 계정은 귀하가 키를 보유하지 <strong>않은</strong> 주소를 추적합니다. 콜드 스토리지, 하드웨어 지갑,<br />거래소 입금 주소, 또는 귀하가 지켜보는 다른 사람의 주소 등입니다.</p>
+<p><strong>Settings → 👥 Accounts → 👁 Watch Address</strong>에서 추가할 수 있습니다. 주소를 붙여넣고<br />이름을 지정하면 계정 목록에 포함됩니다.</p>
+<p>할 수 있는 일: 잔액 표시, 기록 나열, CSV 내보내기, 그리고 PIN 없이 전환 — 해독할 키 저장소가<br />없으므로 잠금을 해제할 대상도 없습니다.</p>
+<p>할 수 없는 일: <strong>서명은 불가능합니다.</strong> 보내기, 암호화/복호화, 스텔스 전송, 컨트랙트<br />호출, dApp 서명 요청이 모두 거부되며, Send 양식은 입력을 시작하기 전에 그 사실을 알려줍니다.<br />조회 전용 계정은 계정 목록과 헤더에서 👁로 표시되므로, 현재 어떤 종류를 보고 있는지 항상 알 수 있습니다.</p>
+<p>조회 전용 계정을 실제 계정으로 바꾸려면 해당 주소의 복구 문구나 개인 키를 가져오십시오.<br />키를 추가하는 것만이 유일한 방법이며 지름길은 없습니다.</p>
+<hr />
+<h2 id="encrypted-balance-fhe">암호화 잔액(FHE)</h2>
+<p>Orion Wallet은 완전 동형 암호화(FHE)를 사용하여 잔액의 일부를 암호화한 상태로 보관할 수 있으므로,<br />그 금액이 온체인상에 공개적으로 드러나지 않습니다.</p>
+<p>이 기능은 선택 사항입니다. 활성화 여부와 관계없이 다른 모든 기능은 동작합니다.</p>
+<h3 id="enabling-it">활성화하기</h3>
+<p><strong>Settings → PVAC</strong>로 이동합니다. 두 지표가 모두 초록색이어야 합니다.</p>
+<ul>
+<li><strong>WASM Module</strong> — 암호화 모듈이 로드되었습니다</li>
+<li><strong>Bridge Initialized</strong> — 지갑 시드로부터 키가 생성되었습니다</li>
+</ul>
+<p>둘 중 하나라도 준비되지 않았다면 패널이 정확한 원인과 해결책을 설명합니다.</p>
+<h3 id="encrypting-and-decrypting">암호화 및 복호화</h3>
+<p><strong>Encrypt</strong>를 사용하여 공개 잔액과 암호화 잔액 사이에서 자금을 이동합니다. 이러한<br />작업은 계산량이 많아 몇 초가 걸릴 수 있으며, 진행 대화상자가 각 단계를 표시합니다.</p>
+<hr />
+<h2 id="stealth-transfers">스텔스 전송</h2>
+<p>스텔스 전송은 수신자의 공개 키에서 파생된 일회용 주소로 자금을 보내므로,<br />해당 지불이 수신자의 기본 주소와 공개적으로 연결되지 않습니다.</p>
+<p><strong>Stealth</strong>를 열고 수신자와 금액을 입력한 다음 확인합니다. 수신자는 자신의 Stealth 탭에서<br />자금을 수령합니다.</p>
+<hr />
+<h2 id="connecting-to-a-dapp">dApp 연결</h2>
+<p>웹사이트가 연결을 요청하면 요청하는 출처(origin)를 표시하는 팝업이 나타납니다.</p>
+<p>승인하기 전에:</p>
+<ul>
+<li><strong>출처를 주의 깊게 확인하십시오.</strong> 도메인이 의도한 사이트와 정확히 일치하는지 확인합니다.</li>
+<li>기대하는 권한만 승인하십시오.</li>
+<li>"Trust this site"는 읽기 전용 요청에 대한 향후 프롬프트를 건너뜁니다 — 아껴서 사용하십시오.</li>
+<li>팝업의 <strong>network</strong> 선택기를 확인하십시오. 귀하가 직접 추가한 네트워크를 포함해 보유한<br />모든 네트워크가 나열되므로, 팝업을 떠나지 않고 올바른 네트워크에 연결할 수 있습니다.</li>
+</ul>
+<p>연결은 언제든 <strong>Settings → Connected Sites</strong>에서 검토하고 철회할 수 있습니다.</p>
+<hr />
+<h2 id="locking-and-unlocking">잠금 및 잠금 해제</h2>
+<p>PIN은 지갑을 복호화합니다. 복호화된 키는 잠금 해제 세션이 유지되는 동안 계속 사용할 수 있으며,<br />세션이 끝날 때까지 PIN을 다시 묻지 않습니다.</p>
+<ul>
+<li><strong>페이지를 새로고침해도 잠금 해제 상태가 유지됩니다.</strong> 키가 현재 탭을 위해 다시 봉인되므로,<br />새로고침하면 PIN 화면으로 돌아가는 대신 세션을 이어받습니다. 그동안 잠시 "Restoring your session…"이 표시됩니다.</li>
+<li><strong>탭을 닫으면 세션이 종료됩니다.</strong> 봉인된 사본은 해당 탭에 한정되며<br />탭과 함께 사라지므로, 새 탭이나 창은 잠긴 상태로 시작됩니다.</li>
+<li><strong>헤더의 🔒는 즉시 잠그고</strong> 봉인된 사본을 파기합니다. 잠근 뒤의 새로고침은<br />당연히 PIN을 요구합니다.</li>
+<li><strong>비활성 상태</strong>는 기본적으로 30분 후 지갑을 잠그며, 한 번의 잠금 해제는<br />활동 여부와 관계없이 8시간을 넘겨 유지되지 않습니다.</li>
+</ul>
+<p>봉인된 세션의 두 절반은 각각 단독으로는 쓸모가 없습니다. 암호화된 키는 탭이 보관하고,<br />그 키를 여는 열쇠는 브라우저가 어떤 페이지도 — 이 페이지조차도 — 읽어낼 수 없는 형태로 보관합니다.</p>
+<p><strong>Settings → Security → Session &amp; Auto-Lock</strong> 아래:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>설정</th><th>기본값</th><th>기능</th></tr></thead>
+<tbody>
+<tr><td>Stay unlocked after a page refresh</td><td>켜짐</td><td>끄면 모든 새로고침에서 PIN을 요구합니다</td></tr>
+<tr><td>Auto-lock after inactivity</td><td>30분</td><td>5 / 15 / 30 / 60분, 또는 안 함(탭이 닫힐 때까지)</td></tr>
+</tbody>
+</table>
+</div>
+<p>둘 다 이미 열려 있는 세션을 포함해 동시에 적용됩니다. 공용이거나 신뢰할 수 없는<br />컴퓨터에서는 첫 번째 설정을 끄고 자리를 비울 때 지갑을 잠그십시오.</p>
+<h3 id="unlocking-with-a-passkey">패스키로 잠금 해제하기</h3>
+<p>기기에 지문 인식기, Face ID, Windows Hello 또는 보안 키가 있다면 PIN을 입력하는 대신<br />그것으로 잠금을 해제할 수 있습니다.</p>
+<p><strong>Settings → 🔑 Security → Passkey Unlock → Enable passkey unlock</strong>에서 켭니다. 기기가<br />등록을 요청합니다 — <strong>두 번</strong> 요청할 수 있는데, 한 번은 패스키 생성, 한 번은 사용을 위한 것입니다.<br />그러면 잠금 해제 화면의 PIN 입력란 위에 <strong>👆 Unlock with passkey</strong>가 표시됩니다.</p>
+<p>알아 두어야 할 사항:</p>
+<ul>
+<li><strong>PIN은 여전히 존재하며 여전히 중요합니다.</strong> 패스키는 지갑을 여는 것이지 PIN을 대체하는 것이<br />아닙니다. 키 내보내기, 복구 문구 표시, PIN 변경, 새 계정 파생은 모두 여전히 PIN을 요구합니다. PIN을<br />잊지 마십시오 — PIN 분실은 패스키가 있어도 해결되지 않습니다.</li>
+<li><strong>패스키는 이 기기와 이 브라우저에 묶여 있습니다.</strong> 패스키는 지갑 데이터와 함께 이동하지<br />않습니다. 다른 기기에서는 PIN으로 잠금을 해제하고, 원한다면 거기서 패스키를 등록하십시오.</li>
+<li><strong>귀하의 지문은 지갑에 도달하지 않습니다.</strong> 기기가 로컬에서 귀하를 확인하고, 패스키에서 파생된<br />비밀을 페이지에 전달합니다. 그 비밀이 지갑을 여는 열쇠입니다.</li>
+<li><strong>사용 가능 여부는 기기와 브라우저에 따라 다릅니다.</strong> 기기가 필요한 기능을 수행할 수 없다면<br />Security 패널이 그 사실을 알리고 옵션은 꺼진 상태로 유지됩니다 — PIN은 이전과 똑같이 작동합니다.</li>
+<li><strong>같은 패널에서 패스키 잠금 해제를 끌</strong> 수 있습니다. 그러면 저장된 사본이 즉시 삭제되지만,<br />기기에서 패스키 자체가 삭제되지는 않으며 OS나 브라우저 설정에서 제거할 수 있습니다.</li>
+</ul>
+<p>패스키가 더 이상 지갑을 열지 못하게 되면 — 회전되거나 다시 등록된 자격 증명, 또는 복원된 기기 —<br />지갑은 그 사실을 알리고 오래된 사본을 폐기한 다음 PIN을 요구합니다. 잃는 것은 없으며,<br />이후 새 패스키를 등록할 수 있습니다.</p>
+<p>조회 전용 계정이 활성화된 동안에는 패스키 잠금 해제를 등록할 수 없습니다. 키가 없으므로<br />패스키로 봉인할 대상이 없기 때문입니다. Security 패널이 버튼 대신 그 사실을 알려줍니다.</p>
+<hr />
+<h2 id="session-expiry">세션 만료</h2>
+<p>동일한 시간 창이 dApp 연결에도 적용되며, 연결은 자동으로 만료됩니다.</p>
+<ul>
+<li><strong>유휴 시간 제한:</strong> 30분간 비활성</li>
+<li><strong>절대 시간 제한:</strong> 연결 후 8시간</li>
+</ul>
+<p>세션이 만료되면 지갑이 연결을 닫고 dApp에 통보합니다.<br />그러면 dApp이 재연결을 요청해야 합니다.</p>
+<h3 id="what-happens-when-your-session-expires">세션이 만료되면 어떤 일이 벌어지나</h3>
+<ol>
+<li>지갑이 dApp에 <code>sessionExpired</code> 이벤트를 발생시킵니다.</li>
+<li>dApp이 만료된 세션을 감지하고 "Reconnect" 프롬프트를 표시합니다.</li>
+<li><strong>Connect</strong>를 클릭하여 지갑 팝업을 다시 엽니다.</li>
+<li>지갑이 세션을 복원하고 dApp이 계속 작동합니다.</li>
+</ol>
+<h3 id="if-a-dapp-doesnt-reconnect-automatically">dApp이 자동으로 재연결되지 않는 경우</h3>
+<ul>
+<li>dApp에서 <strong>Connect</strong> 버튼을 클릭합니다.</li>
+<li>지갑 팝업이 열리면 연결을 승인합니다.</li>
+<li>이전 세션 데이터는 보존되므로 지갑을 다시 가져올 필요가 없습니다.</li>
+</ul>
+<hr />
+<h2 id="network-settings">네트워크 설정</h2>
+<p><strong>Settings → ⚙️ General</strong>에는 지갑이 통신하는 RPC URL, 링크 대상 탐색기(explorer),<br />그리고 선택적인 프록시가 있습니다. RPC URL을 변경하고 <strong>Save URLs</strong>를 선택하면 지갑이<br />다른 노드를 가리키게 됩니다.</p>
+<h3 id="adding-your-own-network">자체 네트워크 추가</h3>
+<p>Devnet과 Mainnet은 지갑에 포함되어 있습니다. 다른 네트워크를 추가하려면 — 귀하의 노드, devnet 포크,<br />유료 RPC — 같은 패널에서 <strong>Custom Networks</strong>로 스크롤한 뒤 다음을 입력합니다.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>필드</th><th>필수</th><th>참고</th></tr></thead>
+<tbody>
+<tr><td>Network name</td><td>예</td><td>dApp을 포함해 네트워크가 표시되는 모든 곳에 나타납니다</td></tr>
+<tr><td>RPC URL</td><td>예</td><td><code>http://</code> 또는 <code>https://</code></td></tr>
+<tr><td>Explorer URL</td><td>아니요</td><td>기본값은 RPC URL입니다</td></tr>
+<tr><td>Relayer URL</td><td>아니요</td><td>스텔스 전송에만 필요합니다</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Add network</strong>를 선택하면 목록에 추가됩니다. 그때부터 일반적인 선택지가 됩니다.</p>
+<ul>
+<li>상단 바의 <strong>network pill</strong>로 다른 프리셋처럼 전환할 수 있고,</li>
+<li>사이트가 연결을 요청하면 <strong>connect popup</strong>에 <em>(custom)</em> 표시로 나열되며,</li>
+<li>연결된 dApp은 그 이름과 탐색기를 읽어 올바르게 라벨을 표시할 수 있습니다.</li>
+</ul>
+<p>네트워크 전환은 RPC, 탐색기, 릴레이어의 세 엔드포인트를 모두 함께 갱신하므로,<br />지갑이 한 네트워크를 읽으면서 다른 네트워크로 링크하는 일이 생기지 않습니다.</p>
+<p>네트워크 옆의 ✕로 제거할 수 있습니다. 현재 사용 중인 네트워크를 삭제하면<br />지갑은 프리셋으로 대체합니다.</p>
+<p><strong>dApp이 보는 것.</strong> 귀하가 연결한 사이트는 커스텀 네트워크의 이름, 아이콘, 탐색기 URL, 그리고<br />귀하가 추가했다는 사실을 읽을 수 있습니다. 그러나 RPC나 릴레이어 URL은 읽을 <strong>수 없습니다</strong> —<br />홈 노드의 주소나 제공자 키는 지갑에 남습니다. 이름은 보이므로,<br />네트워크 이름을 개인적인 것과 관련지어 짓지 마십시오.</p>
+<h3 id="nodes-without-https">HTTPS가 없는 노드</h3>
+<p><code>https://</code> 노드는 특별한 처리가 필요 없습니다. 그러나 일반 <code>http://</code>로만 접근할 수 있는 노드는<br />다른 문제입니다. 지갑이 노드에 요청하는 모든 것 — 모든 잔액·기록 조회, 제출하는 모든 거래 — 은<br />평문으로 전송되며, 네트워크 경로상의 누구든 그것을 읽고 <em>답을 바꿀 수</em> 있기 때문입니다.<br />그래서 지갑은 먼저 확인을 받습니다.</p>
+<ul>
+<li><strong>루프백(loopback)은 권한이 필요 없습니다.</strong> <code>localhost</code>, <code>127.0.0.1</code>, <code>[::1]</code> 등은<br />귀하의 기기를 벗어나지 않으므로 로컬 노드는 바로 작동합니다.</li>
+<li><strong>다른 <code>http://</code> 주소는 명시적으로 신뢰해야 합니다.</strong> URL을 붙여넣으면 패널이 옆의<br /><strong>Trust <code>http://…</code></strong> 버튼과 함께 무엇이 문제인지 설명합니다. 신뢰는 출처별(스킴, 호스트, 포트)로<br />저장되므로, 한 노드를 신뢰해도 다른 노드가 신뢰되지 않으며, 같은 호스트의 다른 포트는 별도의 결정입니다.</li>
+<li><strong>Trusted plaintext endpoints</strong>는 신뢰한 항목을 나열하며, <strong>Remove</strong>로<br />되돌릴 수 있습니다.</li>
+</ul>
+<p>풀 수 없는 두 가지 제한이 있으며, 패널은 방해가 되는 쪽이 어느 것인지 알려줍니다.</p>
+<ul>
+<li><strong><code>https://</code>로 제공되는 지갑은 <code>http://</code>를 전혀 가져올 수 없습니다.</strong> 브라우저가 이를<br />차단하며(혼합 콘텐츠), 출처를 신뢰해도 바뀌지 않습니다. 노드를 TLS 뒤에 두거나, 프록시를<br />사용하거나, 일반 http 또는 localhost 빌드에서 지갑을 여십시오.</li>
+<li><strong>배포된 빌드는 <code>https://</code>와 루프백만 허용합니다.</strong> 보안 정책은 빌드 시점에 고정되며<br />실행 중에는 넓힐 수 없습니다. 일반 http가 필요한 자체 호스팅 사용자는<br /><code>VITE_ALLOW_HTTP_ENDPOINTS=1</code>로 빌드할 수 있습니다. 위의 신뢰 목록은 여전히 그 위에 적용됩니다.</li>
+</ul>
+<p>탐색기 URL은 이 모든 것에서 예외입니다. 그것은 단지 귀하가 클릭하는 링크일 뿐이며,<br />지갑이 가져오는 대상이 아닙니다.</p>
+<h3 id="rpc-proxy">RPC 프록시</h3>
+<p><strong>RPC proxy (optional)</strong>는 호출을 귀하가 선택한 URL을 통해 라우팅합니다. RPC URL이<br />그것에 퍼센트 인코딩되어 추가되며, 브라우저는 프록시에만 연결합니다. 이는 TLS나 CORS 헤더가 없는<br />노드에 대한 실질적인 해결책이며, 브라우저가 연결하는 대상이 프록시이므로 위의 규칙을 충족합니다.</p>
+<p>프록시는 지갑이 만드는 모든 요청을 보게 되므로 <strong>직접 운영하십시오</strong>. 프록시는 아무것도 서명하거나<br />귀하의 키에 닿을 수 없지만, 지켜볼 수 있고 거짓말을 할 수 있습니다.</p>
+<h3 id="when-something-is-off">무언가 잘못되었을 때</h3>
+<p>RPC 엔드포인트를 구성된 대로 사용할 수 없으면 헤더에 <strong>⚠️ Insecure RPC</strong>가 나타납니다.<br />그것을 선택하면 해당 설정으로 바로 이동합니다. 네트워크 오류도 이유를 함께 전달하므로,<br />"Failed to fetch"만 표시되어도 무엇을 고쳐야 할지 알 수 있습니다.</p>
+<hr />
+<h2 id="backup-and-recovery">백업 및 복구</h2>
+<h3 id="exporting">내보내기</h3>
+<p><strong>Settings → Backup → Export</strong>는 암호화된 <code>.oct</code> 파일을 다운로드합니다. 그것은<br />PIN으로 보호되지만 민감한 것으로 취급하십시오.</p>
+<h3 id="restoring">복원</h3>
+<p><strong>Import → Wallet file</strong>을 사용하고 파일을 내보낼 당시 사용한 PIN을 입력하십시오.</p>
+<h3 id="multiple-accounts">여러 계정</h3>
+<p><strong>Settings → Accounts</strong>는 같은 복구 문구에서 추가 계정을 파생합니다. 하나의<br />문구로 모든 계정이 복원됩니다.</p>
+<p>복구 문구가 복원하지 <strong>못하는</strong> 두 가지가 있습니다. 그것들은 결코 문구에서 파생되지 않았기 때문입니다.</p>
+<ul>
+<li><strong>조회 전용 계정</strong> — 지갑에 추적을 요청한 주소일 뿐입니다. 재설치 후 되살리려면<br />따로 적어 두십시오.</li>
+<li><strong>연락처</strong> — 중요하다면 Settings → Contacts에서 <strong>⤓</strong>로 내보내십시오.</li>
+</ul>
+<p>어느 쪽도 자금을 보유하지 않으므로, 잃어도 돈이 아닌 편의만 잃는 것입니다.</p>
+<hr />
+<h2 id="troubleshooting">문제 해결</h2>
+<h3 id="the-page-is-blank-or-stuck-loading">페이지가 비어 있거나 로딩에 멈춘 경우</h3>
+<p>새로고침하십시오. 계속되면 <strong>Retry</strong> 버튼이 있는 오류 카드가 나타나야 합니다.<br />표시된 메시지를 보고해 주십시오.</p>
+<h3 id="encrypted-balance-is-unavailable">암호화 잔액을 사용할 수 없는 경우</h3>
+<p>Settings → PVAC에 다음 중 하나가 표시됩니다.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>메시지</th><th>의미</th><th>해결책</th></tr></thead>
+<tbody>
+<tr><td><em>The WASM module has not been compiled</em></td><td><code>pvac.js</code>가 제공되고 있지 않습니다</td><td><code>npm run build:wasm</code> 실행</td></tr>
+<tr><td><em>Content-Security-Policy is blocking WebAssembly</em></td><td>CSP에 <code>'wasm-unsafe-eval'</code>이 없습니다</td><td><code>index.html</code>의 <code>script-src</code>에 추가</td></tr>
+<tr><td><em>The compiled module is out of date</em></td><td>빌드가 필요한 함수보다 이전입니다</td><td><code>npm run build:wasm</code>으로 다시 빌드</td></tr>
+<tr><td><em>FHE key generation failed</em></td><td>모듈은 로드되었지만 키 생성에 실패했습니다</td><td>브라우저 콘솔을 확인하고 보고</td></tr>
+</tbody>
+</table>
+</div>
+<p>수정을 적용한 후 <strong>↻ Reload PVAC</strong>를 누르십시오 — 재시작은 필요 없습니다.</p>
+<h3 id="failed-to-load-history-network-errors">"Failed to load history" / 네트워크 오류</h3>
+<p>대개 RPC 노드에 연결할 수 없거나 CORS를 차단하고 있습니다. <strong>Settings</strong>에서 RPC URL을<br />확인하고, <a href="../README.md#cors">CORS 참고 사항</a>을 보십시오. 오류가 이유를 명시한다면 —<br />평문, 혼합 콘텐츠, 또는 빌드 제한 — <a href="#network-settings">네트워크 설정</a>을<br />참조하십시오. CORS 경우는 <strong>RPC proxy</strong>로 해결됩니다.</p>
+<h3 id="the-header-shows-insecure-rpc">헤더에 "⚠️ Insecure RPC"가 표시되는 경우</h3>
+<p>구성된 RPC 엔드포인트가 일반 <code>http://</code>이며 현재 상태로는 사용할 수 없습니다. 배지를<br />선택하여 설정을 열면 정확한 원인과 해결책이 설명되어 있습니다.<br /><a href="#network-settings">네트워크 설정</a>을 참조하십시오.</p>
+<h3 id="the-camera-wont-open-when-i-select-scan">📷 Scan 선택 시 카메라가 열리지 않는 경우</h3>
+<ul>
+<li>브라우저가 요청할 때 카메라 권한을 허용하십시오. 닫아버렸다면 사이트 권한에서<br />다시 허용하고 시도하십시오.</li>
+<li>카메라 접근에는 보안 페이지가 필요합니다. <code>https://</code>와 <code>localhost</code>에서는 작동하지만,<br />다른 호스트의 일반 <code>http://</code> 페이지에서는 작동하지 않습니다.</li>
+<li>다른 앱이 카메라를 사용 중이라면 먼저 닫으십시오. 대신 주소를 붙여넣어도 됩니다.</li>
+</ul>
+<h3 id="unlock-with-passkey-isnt-offered">"Unlock with passkey"가 표시되지 않는 경우</h3>
+<p>이 브라우저에 등록된 패스키가 없거나, 기기가 패스키 잠금 해제에 필요한 기능을 수행할 수 없습니다.<br /><strong>Settings → 🔑 Security → Passkey Unlock</strong>에 그 이유가 표시됩니다. 패스키는 기기별·브라우저별이므로,<br />다른 곳에서 등록한 패스키는 여기에 나타나지 않습니다. PIN은 항상 작동합니다.</p>
+<h3 id="i-forgot-my-pin">PIN을 잊어버린 경우</h3>
+<p>복구 문구를 사용하여 지갑을 다시 설치하고 새 PIN을 설정하십시오. 문구가 없으면<br />자금은 누구에게도 복구될 수 없습니다.</p>
+<h3 id="could-not-read-your-saved-wallets-could-not-read-your-accounts">"Could not read your saved wallets" / "Could not read your accounts"</h3>
+<p>지갑이 로컬 데이터베이스를 열지 못했습니다. 삭제된 것은 없습니다. 이것은 거의<br />항상 다른 Orion 탭이나 남아 있는 <strong>Connect</strong> 팝업이 데이터베이스를 계속 잡고 있기 때문입니다.<br />업데이트 후에도 이전 탭이 데이터베이스에 붙어 있는 한 브라우저는 데이터베이스를 업그레이드하지 않습니다.</p>
+<p>다른 Orion 탭과 팝업을 닫은 다음 <strong>↻ Try again</strong>을 선택하십시오. 메시지가 계속되면<br />모든 Orion 탭을 닫고 지갑을 단일 탭에서 다시 여십시오.</p>
+<p>잠금 해제 화면은 두 상태를 의도적으로 구분합니다. <em>No stored wallet found</em>는 데이터베이스가<br />정말 비어 있음을 의미하고, <em>Could not read your saved wallets</em>는 계정이 존재하지만<br />일시적으로 접근할 수 없음을 의미합니다. 두 번째 메시지가 보이는 동안에는<br /><strong>새 지갑을 만들지 마십시오</strong>.</p>
+<h3 id="my-wallet-vanished-after-an-update">업데이트 후 지갑이 사라진 경우</h3>
+<p>데이터는 첫 실행 시 이전 빌드에서 자동으로 마이그레이션됩니다. 계정이 없다면<br /><strong>새 지갑을 만들지 마십시오</strong> — 이전 데이터를 덮어쓸 수 있습니다. 문제를 보고하고,<br />그동안 복구 문구로 복원하십시오.</p>
+<h3 id="dapp-says-session-expired">dApp이 "Session expired"라고 표시하는 경우</h3>
+<p>지갑 세션이 시간 초과되었음을 의미합니다(유휴 30분 / 절대 8시간). dApp에서<br /><strong>Connect</strong>를 클릭하여 재연결하십시오. 지갑 데이터는 보존됩니다 — 연결만<br />다시 승인하면 됩니다.</p>
+<hr />
+<h2 id="keeping-your-funds-safe">자금을 안전하게 유지하기</h2>
+<p><strong>권장 사항</strong></p>
+<ul>
+<li>복구 문구를 오프라인, 종이에, 가능하면 여러 장소에 보관하십시오</li>
+<li>보내기 전에 수신자 주소를 검증하십시오</li>
+<li>dApp 연결 프롬프트에 표시된 출처를 검증하십시오</li>
+<li>새 주소로 보낼 때는 소액의 테스트 거래부터 시작하십시오</li>
+<li>수취인을 연락처로 저장하고 이름을 확인하십시오 — 알아보는 이름이 base58을 읽는 것보다 낫습니다</li>
+<li>실제 계정을 잠금 해제하는 대신 조회 전용 계정으로 콜드 스토리지를 지켜보십시오</li>
+</ul>
+<p><strong>금지 사항</strong></p>
+<ul>
+<li>어떤 웹사이트에도 복구 문구를 입력하지 마십시오. Orion Wallet은 설정 이후 절대 묻지 않습니다</li>
+<li>문구를 스크린샷, 암호 관리자 메모, 클라우드 드라이브 또는 채팅에 저장하지 마십시오</li>
+<li>개인 키나 <code>.oct</code> 파일을 공유하지 마십시오</li>
+<li>실제 자금이 담긴 지갑을 공용 또는 신뢰할 수 없는 컴퓨터에서 사용하지 마십시오</li>
+</ul>
+<p>Orion Wallet은 <strong>독립적인 감사를 받지 않았습니다</strong>. 상당한 가치를 보관하기 전에<br /><a href="SECURITY.html">보안 문서</a>를 검토하십시오.</p>
+</body>
+</html>

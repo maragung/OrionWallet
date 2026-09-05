@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>セキュリティ — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="security">セキュリティ</h1>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — ソースコード、Issue、リリース。<br /><strong>脆弱性の報告:</strong> <a href="https://github.com/maragung/OrionWallet/security/advisories/new">GitHub Security Advisories</a></blockquote>
+<h2 id="audit-status">監査ステータス</h2>
+<p><strong>Orion Wallet は独立した第三者によるセキュリティ監査を受けていません。</strong></p>
+<p>暗号設計はリファレンスである <code>octra-labs/webcli</code> 実装に従っており、プリミティブは<br />十分にレビューされたライブラリに由来します。しかし、統合そのものは監査を受けていません。<br />相応の価値を保管する前に、その点をよくお考えください。</p>
+<hr />
+<h2 id="reporting-a-vulnerability">脆弱性の報告</h2>
+<p><strong>セキュリティ上の問題について公開の Issue を立てないでください。</strong></p>
+<p>次を含めて、メンテナーに非公開で報告してください。</p>
+<ul>
+<li>問題の説明とその影響</li>
+<li>再現手順</li>
+<li>影響を受けるバージョンまたはコミット</li>
+<li>推奨される修正案があれば</li>
+</ul>
+<p>公開前に、修正のための妥当な期間を設けてください。報告は歓迎され、別段のご希望がない限り<br />クレジットされます。</p>
+<hr />
+<h2 id="threat-model">脅威モデル</h2>
+<h3 id="what-orion-wallet-protects-against">Orion Wallet が防御するもの</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>脅威</th><th>緩和策</th></tr></thead>
+<tbody>
+<tr><td>鍵がサーバーに漏れる</td><td>バックエンドがない。鍵はブラウザから決して出ない</td></tr>
+<tr><td>保管時のキーストア窃取</td><td>AES-256-GCM、PBKDF2 で PIN から導出した鍵</td></tr>
+<tr><td>悪意ある dApp の要求</td><td>明示的な承認プロンプトを伴うオリジン単位の権限</td></tr>
+<tr><td>クロスオリジンのメッセージ偽造</td><td>すべての受信メッセージでオリジンを検証</td></tr>
+<tr><td>メッセージのリプレイ</td><td>セッションごとの CSPRNG チャレンジとノンス</td></tr>
+<tr><td>注入されたマークアップによる XSS</td><td><code>innerHTML</code> / <code>dangerouslySetInnerHTML</code> を使わない。CSP がソースを制限する</td></tr>
+<tr><td>不正な RPC データによるアプリのクラッシュ</td><td>防御的な正規化に加えてエラー境界</td></tr>
+<tr><td>リカバリーフレーズが実際には書き留められていない</td><td>作成はランダムな 3 単語の再入力を条件とする</td></tr>
+<tr><td>鍵のないアカウントからの署名</td><td><code>assertCanSign</code> が UI だけでなく API の境界で拒否する</td></tr>
+<tr><td>ひそかに盗聴される RPC トラフィック</td><td>平文エンドポイントには明示的なオリジン単位の同意が必要</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="what-it-cannot-protect-against">防御できないもの</h3>
+<p>これらについては、自分自身に対して率直になってください。</p>
+<ul>
+<li><strong>侵害された端末。</strong>マルウェア、キーロガー、あるいは敵対的なブラウザ拡張は、入力中の PIN を読み取り、メモリから復号済みの鍵を抽出できます。</li>
+<li><strong>失われたリカバリーフレーズ。</strong>復旧の仕組みはありません。誰も復元できません。</li>
+<li><strong>フィッシング。</strong>偽サイトにリカバリーフレーズを入力すれば、資金は失われます。Orion Wallet はセットアップ後にフレーズを尋ねることは決してありません。</li>
+<li><strong>侵害された RPC ノード。</strong>悪意あるノードは偽の残高を返したり取引を差し止めたりできます。署名を偽造したり鍵を盗んだりはできません。</li>
+<li><strong>サプライチェーンの侵害</strong> — npm 依存関係やホスティングプロバイダーの侵害。</li>
+<li><strong>物理的アクセス</strong> — ウォレットがロック解除された、ロックされていない端末への物理的アクセス。</li>
+</ul>
+<hr />
+<h2 id="cryptographic-design">暗号設計</h2>
+<h3 id="key-derivation-and-storage">鍵の導出と保管</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>目的</th><th>アルゴリズム</th></tr></thead>
+<tbody>
+<tr><td>ニーモニック</td><td>BIP39</td></tr>
+<tr><td>HD 導出</td><td>Ed25519, SLIP-0010 style</td></tr>
+<tr><td>署名</td><td>Ed25519 (tweetnacl)</td></tr>
+<tr><td>ECDH（ステルス）</td><td>X25519 (@noble/curves)</td></tr>
+<tr><td>キーストア暗号化</td><td>AES-256-GCM (WebCrypto)</td></tr>
+<tr><td>PIN → 鍵</td><td>PBKDF2-HMAC-SHA256</td></tr>
+<tr><td>乱数</td><td><code>crypto.getRandomValues</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>キーストアの形式は C++ 版のオリジナルと一致します。<code>OCT1</code> マジック、バージョン、PBKDF2 の反復<br />回数、ソルト、ノンス、そして認証タグ付きの AES-GCM 暗号文です。</p>
+<h3 id="pin-handling">PIN の取り扱い</h3>
+<p>PIN はどのような形でも<strong>決して永続化されません</strong>。ロック解除時に復号鍵を導出し、その後は破棄されます。<br />設計上、「PIN を記憶する」機能はありません。したがって、忘れた PIN はリカバリーフレーズからの復元でしか<br />解決できません。</p>
+<h3 id="unlock-session">ロック解除セッション</h3>
+<p>PIN は永続化されませんが、ロック解除の<em>結果</em>はセッションが続く間、永続化されます。ページの再読み込みで<br />ユーザーを PIN 画面に戻してはならないからです。<code>src/wallet/unlock-session.ts</code> は復号済みのウォレットを<br />AES-256-GCM で封印し、2 つのストアに分割します。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>片方</th><th>場所</th><th>寿命</th></tr></thead>
+<tbody>
+<tr><td>暗号文（<code>orion:unlock-session</code>）</td><td><code>sessionStorage</code></td><td>1 つのタブ。そのタブが閉じると消える</td></tr>
+<tr><td>封印鍵</td><td>IndexedDB <code>unlock-session-keys</code>、<strong>抽出不可能</strong>な <code>CryptoKey</code> として</td><td>ロック時に削除。孤立したものは経過時間で刈り取られる</td></tr>
+</tbody>
+</table>
+</div>
+<p>どちらの片方も単独では使えません。IndexedDB はタブが閉じても残りますが暗号文を持たず、<br /><code>sessionStorage</code> は暗号文を持ちますが鍵を持たず、2 つ目のタブや別のオリジンからは読めません。鍵は<br /><code>extractable: false</code> で生成されるので、このオリジンから<em>使う</em>ことはできてもそのバイト列を読み出すことは<br />できません — 私たち自身のコードからも、ページ内で動くことに成功した何ものからもです。セッションは復元の<br />たびにローテーションし（新しい鍵、新しいノンス）、<code>createdAt</code> を前方へ持ち越すので、再読み込みで絶対上限を<br />延ばすことはできません。</p>
+<p>有効期限: <strong>30 分のアイドル</strong>（設定可能、<code>autoLockMinutes</code>。<code>0</code> で無効化）と、最初のロック解除からの<br /><strong>8 時間の絶対上限</strong>です。両方が復元時に強制され、アイドル期間は <code>useAutoLock</code> によってライブでも<br />強制されるので、開いたままのタブは自らロックします。</p>
+<p>これが<em>防御しない</em>もの — 正直に述べる部分です。</p>
+<ul>
+<li><strong>タブ内でのスクリプト実行。</strong>ライブセッション中にページ内で動くコードは、ウォレットとまったく同じように、ブラウザにセッションの復号を求め、その鍵で署名させることができます。封印鍵を抜き出すことはできないので、侵害はそのタブで終わり、別の場所で使える盗まれた鍵になることはありません。</li>
+<li><strong>侵害された端末。</strong>上記の脅威モデルから変わりません。ローカルのマルウェアは IndexedDB と <code>sessionStorage</code> を両方とも読めます。</li>
+<li><strong>安全でないコンテキスト。</strong><code>crypto.subtle</code> がないと（プレーンな <code>http://</code>、後述）、封印鍵は IndexedDB 上の生のバイト列にフォールバックし、抽出不可能性の保証は失われます。分割と有効期限は依然として保たれます。</li>
+</ul>
+<p>完全にオプトアウトするには、<strong>Settings → Security → Stay unlocked after a page refresh</strong> をオフに<br />します（<code>keepUnlocked: false</code>）。何も書き込まれず、再読み込みのたびに PIN を求められます — この機能が<br />存在する前の挙動です。明示的なロック（🔒）は両方の片方を即座に破棄します。</p>
+<h3 id="passkey-unlock">パスキーによるロック解除</h3>
+<p>オプションで、既定ではオフ、そして追加的なものです。既存のウォレットを開く 2 つ目の方法であって、<br />PIN の置き換えでは決してありません。<code>src/wallet/passkey.ts</code>。</p>
+<p>登録は <code>userVerification: 'required'</code> と WebAuthn の <strong>PRF</strong> 拡張を伴うプラットフォーム資格情報を<br />作成します。PRF は、資格情報と保存済みの 32 バイトのソルトから導出した秘密をページに与えます。それは<br />ユーザーが検証した後にのみブラウザが生成します。ウォレットは <code>sha256("orion-passkey-unlock-v1" || prf)</code> を<br />AES-256 鍵として取り、シリアライズしたウォレットを AES-256-GCM で封印し、鍵をゼロ埋めし、封印した<br />ブロブを資格情報 ID とソルトの隣で IndexedDB に保存します。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>保存されるもの</th><th>保存されないもの</th></tr></thead>
+<tbody>
+<tr><td>資格情報 ID、PRF ソルト、IV、ウォレットの暗号文</td><td>PRF の出力、導出された鍵、PIN、あらゆる平文の鍵素材</td></tr>
+</tbody>
+</table>
+</div>
+<p>はっきり述べておくべき帰結:</p>
+<ul>
+<li><strong>PRF は必須で、決して劣化させません。</strong>認証器がそれをサポートしない場合、登録は throw し、何も保存しません。代替案 — 読み取れる鍵を暗号文の隣に保持すること — はレコードを自己復号可能にしてしまい、この機能を提供しないよりも悪くなります。</li>
+<li><strong>レコードは単独では不活性です。</strong>その認証器上でユーザー検証済みのジェスチャーが成功しない限り、ディスク上にあるものから鍵を導出する方法はありません。</li>
+<li><strong>封印するのはウォレットであって、PIN ではありません。</strong>鍵をエクスポートし、フレーズを表示し、PIN を変更し、アカウントを導出するのは、依然として PIN だけです。したがってパスキーによるロック解除はそれらへの権限昇格には使えず、保存されるレコードは保存された PIN よりも厳密に少ししか漏らしません。</li>
+<li><strong>PIN によるロック解除と同じセッションモデルです。</strong>パスキーによるロック解除は、同じアイドル上限と絶対上限を持つ同じロック解除セッションを生み、どちらも延ばしません。</li>
+<li><strong>端末とブラウザにスコープされます。</strong>オリジンの <code>rpId</code> に束縛され、ローカルに保存されます。ウォレットのエクスポートには含まれず、リカバリーフレーズからも導出されません。</li>
+<li><strong>古い資格情報はフェイルクローズします。</strong>復号が失敗した場合 — 更新・再登録された資格情報、復元された端末 — レコードは削除され、PIN が必要になります。<em>却下またはタイムアウトしたジェスチャー</em>は意図的にそれを削除<strong>しない</strong>ので、キャンセルされたプロンプトが黙ってこの機能を無効化することはありません。</li>
+<li><strong>ウォッチ専用アカウントでは拒否されます。</strong>封印すべき鍵素材がありません。</li>
+</ul>
+<p>防御しないものは変わりません。侵害された端末と、ライブセッション中のスクリプト実行で、上記のロック解除<br />セッションとまったく同じです。ただし、1 つの実際の露出は取り除きます — ロック解除のたびに PIN が<br />入力され、観察されることです。</p>
+<h3 id="watch-only-accounts">ウォッチ専用アカウント</h3>
+<p>アカウントはアドレスだけで、キーストアなしに追加できます。不変条件は、そのようなアカウントは決して<br />署名できないというもので、それは UI ではなく署名が起こる場所で強制されます。<br /><code>assertCanSign</code>（<code>src/wallet/watch-only.ts</code>）は送金、暗号化、ステルス、コントラクト、dApp 要求の各経路から<br />呼ばれ、アクションと対処法の両方を名指しして throw します。</p>
+<p>構造上フェイルクローズします。このチェックは、秘密鍵が完全な 64 バイトの Ed25519 鍵でないウォレットを<br />すべて拒否するので、<code>watchOnly</code> フラグが何らかの理由で失われたとしても、切り詰められた鍵や欠けた鍵は<br />拒否されます。このフラグは <code>serializeWallet</code>/<code>deserializeWallet</code> を通じて引き継がれるので、ロック解除<br />セッションから復元したウォレットも依然としてウォッチ専用です。</p>
+<h3 id="randomness">乱数</h3>
+<p>セキュリティに関わる値はすべて、<code>src/crypto/random.ts</code> を経由して <code>crypto.getRandomValues</code> を使います。</p>
+<p><code>src/sdk/protocol.ts</code> の <code>makeId</code> には <code>Math.random</code> のフォールバックがあります。これはメッセージの<br />相関付け ID に<strong>のみ</strong>使われ、セキュリティ値には決して使われず、その旨が注記されています。<br />チャレンジ、ノンス、鍵、ソルトに再利用しないでください。</p>
+<hr />
+<h2 id="browser-security-posture">ブラウザのセキュリティ体制</h2>
+<h3 id="content-security-policy">Content-Security-Policy</h3>
+<p><code>index.html</code> で設定されています。</p>
+<pre><code class="language-">default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob:; font-src 'self' data:;
+connect-src 'self' https: http://localhost:* http://127.0.0.1:* http://[::1]:*;
+frame-src 'self' https:; worker-src 'self' blob:; object-src 'none';
+base-uri 'self'; form-action 'self';</code></pre>
+<p>3 つのエントリには説明が必要です。</p>
+<ul>
+<li><strong><code>'wasm-unsafe-eval'</code></strong> は PVAC FHE モジュールに必要です。Chromium はそれなしでは <code>WebAssembly.instantiate()</code> をブロックします。これは WebAssembly のコンパイルのみを許可し、JavaScript の <code>eval()</code> を再び有効に<strong>しません</strong>。</li>
+<li><strong>スタイル向けの <code>'unsafe-inline'</code></strong> は、スタイル未適用コンテンツのちらつきを避けるための描画前クリティカル CSS に必要です。スタイルにのみ適用され、スクリプトには決して適用されません。</li>
+<li><strong><code>connect-src</code> のループバック</strong>は、平文を一般的に許可するようポリシーを広げることなく、ローカルで動かすノードを使えるようにします。<code>localhost</code> / <code>127.0.0.0/8</code> / <code>[::1]</code> へのトラフィックは決してマシンの外に出ないので、ワイヤー上に傍受すべきものがありません。</li>
+</ul>
+<h3 id="plaintext-http-rpc-endpoints">平文（http）RPC エンドポイント</h3>
+<p>それ以外のプレーンな <code>http://</code> は既定で拒否され、<code>src/wallet/endpoint-policy.ts</code> が判断を下す唯一の<br />場所です。これは URL と明示的なコンテキストの純粋関数なので、ストア、Settings UI、テストが何を許可<br />するかで食い違うことはありません。</p>
+<p>3 つの独立したブロッカーが適用され、判定は最も根本的なものを最初に名指しするので、混在コンテンツが<br />真の原因のときにユーザーが許可リストを直すよう告げられることはありません。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>ブロッカー</th><th>誰が強制するか</th><th>解除の方法</th></tr></thead>
+<tbody>
+<tr><td>混在コンテンツ</td><td>ブラウザが無条件に</td><td>解除不可。TLS またはプロキシを使う</td></tr>
+<tr><td>Content-Security-Policy</td><td>出荷されるメタタグの CSP</td><td><code>VITE_ALLOW_HTTP_ENDPOINTS=1</code> で再ビルドする</td></tr>
+<tr><td>ユーザー同意</td><td>設定内の <code>allowedInsecureOrigins</code></td><td>Settings → Network でそのオリジンを <strong>Trust</strong> する</td></tr>
+</tbody>
+</table>
+</div>
+<p>設計上の注記:</p>
+<ul>
+<li>CSP はメタタグなので、<strong>実行時に広げることはできません</strong> — どの設定でもこれを許可できず、だからこそビルドフラグなのです。<code>VITE_ALLOW_HTTP_ENDPOINTS=1</code> はビルド時に <code>connect-src</code> へ <code>http:</code> を追加するだけで、それ以外は何もしません。その上でユーザー同意が依然として必要です。</li>
+<li>同意は<strong>オリジン単位</strong>です — スキーム、ホスト、ポート。ホスト名の一致でも URL のプレフィックスでもないので、<code>http://node.lan:8080</code> を信頼してもそのホストの別ポートは信頼されず、<code>http://127.0.0.1.evil.com</code> はループバックとして扱われません。</li>
+<li><strong>エクスプローラー URL は対象外</strong>です。それらは常に <code>&lt;a href&gt;</code> のナビゲーションであって、フェッチではないからです。<code>connect-src</code> も混在コンテンツも適用されません。<code>relayerUrl</code> は保存されますが決してフェッチされません。このポリシーの対象は <code>rpcUrl</code> だけです。</li>
+<li>ブロックされたエンドポイントでも、意図的に <code>RpcClient</code> を構築します。構築を拒否すると、ユーザーがそれを直すための Settings に到達できなくなるからです。理由は代わりに、ヘッダーの <strong>⚠️ Insecure RPC</strong> バッジと <code>RpcClient.unreachableHint</code> として現れます。後者は throw された <code>TypeError</code> にのみ付加され、実際のサーバーエラーやタイムアウトには決して付加されません — それでは誤解を招くからです。</li>
+<li><strong><code>rpcProxyUrl</code></strong> は判断をプロキシに移します。エンドポイントはプロキシ自身のスキームで判定されます。ブラウザが実際に接続するのはそれだからです。プロキシはすべての要求を見るので、UI は自分で運用するよう促します。プロキシは鍵に到達したり署名したりはできません。</li>
+</ul>
+<p>平文 RPC は機密性<em>および</em>完全性の露出です — 経路上のノードがあらゆる照会を読み、応答を書き換えられます —<br />が、鍵の侵害ではありません。署名はローカルで生成され、ウォレットは受け取ったものを鍵素材として一切<br />検証しないからです。</p>
+<h3 id="cross-origin-isolation">クロスオリジン分離</h3>
+<p>COOP/COEP はアプリ全体で <code>same-origin</code> / <code>require-corp</code> ですが、<code>/connect</code> では <code>unsafe-none</code> の<br />上書きが適用され、承認ポップアップがオープナーと MessagePort を交換できるようにしています。この絞り込みは<br />意図的なもので、その 1 つの経路に限定されています。</p>
+<hr />
+<h2 id="dapp-connection-security">dApp 接続のセキュリティ</h2>
+<p>サイトが接続を要求すると:</p>
+<ol>
+<li>ポップアップが要求元のオリジンを目立つように表示します。</li>
+<li>ユーザーが明示的に承認する必要があります。新しいオリジンへのサイレント接続はありません。</li>
+<li>承認はそのオリジンにスコープされ、オリジン単位で永続化されます。</li>
+<li>署名操作は、信頼済みのサイトであっても常に確認を必要とします。</li>
+</ol>
+<p>「Trust this site」は<strong>読み取り専用</strong>の要求（残高、アカウント、ネットワーク）についてのみ<br />プロンプトを抑制します。サイレントな署名を許可することは決してありません。</p>
+<p>接続は <strong>Settings → Connected Sites</strong> で確認・取り消しができます。</p>
+<h3 id="what-a-dapp-learns-about-a-custom-network">dApp がカスタムネットワークについて知ること</h3>
+<p>ユーザーが手動で追加したネットワークは、接続中のサイトから見えます（<code>wallet_getNetworkInfo</code>、<br /><code>wallet_getNetworks</code>、および <code>networkChanged</code> イベント）。dApp はどのネットワーク上にいるかを知らなければ<br />正しいエクスプローラーリンクやチェーンのラベルを描画できないからです。ワイヤーを渡るレコードは<br />意図的な部分集合です。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>送られるもの</th><th>差し控えられるもの</th></tr></thead>
+<tbody>
+<tr><td><code>id</code>、<code>name</code>、<code>explorerUrl</code>、<code>icon</code>、<code>custom</code></td><td><code>rpcUrl</code>、<code>relayerUrl</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>エンドポイントが差し控えられるのは、ユーザーが追加したネットワークが通常プライベートなもの — LAN<br />アドレス、トンネル、クエリ文字列に API キーを含む有料プロバイダー URL — だからです。サイトに接続する<br />ことで、ユーザーのノードがどこにあるかを開示したり、資格情報付きの URL を引き渡したりすべきでは<br />ありません。機能は何も失われません。読み取りはウォレット経由でプロキシされ、取引はウォレットが構築・<br />ブロードキャストするので、dApp が自ら RPC に到達する必要は決してありません。</p>
+<p>知っておくべき帰結が 2 つあります。</p>
+<ul>
+<li>カスタムネットワークの<strong>名前</strong>はユーザーが選び、dApp に表示されます。個人を特定できる識別子にちなんで名付けると、その識別子が接続するすべてのサイトに開示されます。</li>
+<li><code>wallet_getNetworks</code> は、設定したネットワークが<strong>いくつ</strong>あるかを明かします。これは小さなフィンガープリンティングの面ですが、dApp が「X に切り替える」案内を提供できるように受け入れられています。</li>
+</ul>
+<p>どの dApp もネットワークを変更できません。<code>wallet_switchNetwork</code> メソッドは存在しません。切り替えは<br />ウォレット自身の UI でのみ起こり、dApp は後から <code>networkChanged</code> を通じてそれを知ります。</p>
+<hr />
+<h2 id="dependency-status">依存関係のステータス</h2>
+<p>本番依存関係: <strong>既知の脆弱性ゼロ</strong>（<code>npm audit --omit=dev</code>）。</p>
+<p>開発依存関係は、vitest、vite、esbuild、および関連パッケージに勧告を抱えています。<br />残りの修正はいずれも、ビルドを壊すおそれのあるメジャーアップグレード（vite 5→8、vitest 2→4）を<br />必要とします。これらのパッケージはビルドツールであり、ユーザーには出荷されず、デプロイされたウォレットに<br />影響することはできません。</p>
+<p>これは意図的なトレードオフで、リリースごとに見直されます。<code>npm audit --omit=dev</code> を実行して、<br />出荷される範囲がクリーンなままであることを確認してください。</p>
+<hr />
+<h2 id="guidance-for-users">ユーザー向けガイダンス</h2>
+<p><strong>すべきこと</strong></p>
+<ul>
+<li>リカバリーフレーズをオフラインで、紙に、複数の場所に保管する</li>
+<li>送金前に受取アドレスを一文字ずつ確認する</li>
+<li>すべての dApp 接続プロンプトでオリジンを確認する</li>
+<li>新しいアドレスを使うときは、まず少額のテスト送金をする</li>
+<li>ブラウザと OS を最新に保つ</li>
+</ul>
+<p><strong>決してしないこと</strong></p>
+<ul>
+<li>セットアップ後に、どのウェブサイトにもリカバリーフレーズを入力する</li>
+<li>フレーズをデジタルで保存する — スクリーンショット、クラウドメモ、チャットメッセージは不可</li>
+<li>秘密鍵や <code>.oct</code> バックアップファイルを共有する</li>
+<li>実際の資金を保持するウォレットを、共有または信頼できないコンピューターで使う</li>
+</ul>
+<hr />
+<h2 id="for-contributors">コントリビューター向け</h2>
+<p>弱めてはならないセキュリティ上重要な不変条件:</p>
+<ul>
+<li>すべての受信 <code>postMessage</code> でのオリジン検証</li>
+<li>すべてのセキュリティ値に CSPRNG。<code>makeId</code> はその 1 つではない</li>
+<li><code>localStorage</code>、<code>sessionStorage</code>、ログ、エラーメッセージに秘密情報を置かない</li>
+<li><code>innerHTML</code> や <code>dangerouslySetInnerHTML</code> を使わない</li>
+<li>PIN は決して永続化しない</li>
+<li>パスキーによるロック解除は PRF を必須とする。読み取れる鍵の保存に決してフォールバックしない</li>
+<li><code>assertCanSign</code> がすべての署名経路を守る — ウォッチ専用アカウントは決して署名してはならない</li>
+<li>平文エンドポイントのポリシーは <code>endpoint-policy.ts</code> にとどめる。他の場所に場当たり的な URL チェックを置かない</li>
+<li>Canonical JSON はバイト単位で正確なままにする — 署名がそれに依存する</li>
+</ul>
+<p>暗号、鍵の取り扱い、ストレージ、または接続フローに触れる変更は、その旨をプルリクエストで<br />明示的に述べるべきです。</p>
+</body>
+</html>

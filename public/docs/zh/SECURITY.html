@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>安全说明 — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="security">安全</h1>
+<blockquote><strong>GitHub：</strong><a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> —— 源代码、问题与发布。<br /><strong>报告漏洞：</strong><a href="https://github.com/maragung/OrionWallet/security/advisories/new">GitHub Security Advisories</a></blockquote>
+<h2 id="audit-status">审计状态</h2>
+<p><strong>Orion Wallet 尚未经过独立的第三方安全审计。</strong></p>
+<p>其密码学设计遵循参考实现 <code>octra-labs/webcli</code>，各项密码学原语则<br />来自经过充分审阅的库。但集成本身未经审计。<br />在存入大额价值之前，请务必权衡这一点。</p>
+<hr />
+<h2 id="reporting-a-vulnerability">报告漏洞</h2>
+<p><strong>请勿为安全问题公开创建 issue。</strong></p>
+<p>请私下向维护者报告，并包含：</p>
+<ul>
+<li>问题的描述及其影响</li>
+<li>复现步骤</li>
+<li>受影响的版本或提交</li>
+<li>任何建议的修复方案</li>
+</ul>
+<p>在公开披露之前，请留出合理的修复时间窗口。我们欢迎漏洞报告，<br />并会予以署名致谢，除非您另有偏好。</p>
+<hr />
+<h2 id="threat-model">威胁模型</h2>
+<h3 id="what-orion-wallet-protects-against">Orion Wallet 能够防护的威胁</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>威胁</th><th>缓解措施</th></tr></thead>
+<tbody>
+<tr><td>密钥泄露到服务器</td><td>无后端。密钥永不离开浏览器</td></tr>
+<tr><td>静态存储的密钥库被盗</td><td>AES-256-GCM，密钥通过 PBKDF2 从 PIN 码派生</td></tr>
+<tr><td>恶意 dApp 请求</td><td>按来源划分的权限，并带有显式的审批提示</td></tr>
+<tr><td>跨来源消息伪造</td><td>对每一条入站消息校验来源</td></tr>
+<tr><td>消息重放</td><td>每会话的 CSPRNG 挑战值与 nonce</td></tr>
+<tr><td>通过注入标记发起的 XSS</td><td>不使用 <code>innerHTML</code> / <code>dangerouslySetInnerHTML</code>；CSP 限制来源</td></tr>
+<tr><td>格式错误的 RPC 数据导致应用崩溃</td><td>防御性归一化，外加错误边界</td></tr>
+<tr><td>从未真正抄写下来的恢复助记词</td><td>创建流程以重新输入 3 个随机单词作为前置条件</td></tr>
+<tr><td>从没有密钥的账户发起签名</td><td><code>assertCanSign</code> 会在 API 边界处拒绝，而不仅仅是在 UI 中</td></tr>
+<tr><td>被静默窃听的 RPC 流量</td><td>明文端点需要按来源的显式同意</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="what-it-cannot-protect-against">它无法防护的威胁</h3>
+<p>请对以下这些情况保持清醒的认识：</p>
+<ul>
+<li><strong>设备被攻破。</strong>恶意软件、键盘记录器或恶意的浏览器扩展能够在您输入 PIN 码时将其读取，并从内存中提取已解密的密钥。</li>
+<li><strong>丢失恢复助记词。</strong>不存在任何找回机制。没有人能够恢复它。</li>
+<li><strong>钓鱼攻击。</strong>如果您在假冒网站上输入了恢复助记词，资金便会丢失。Orion Wallet 在初始设置之后绝不会再向您索要助记词。</li>
+<li><strong>RPC 节点被攻破。</strong>恶意节点可能提供虚假余额或扣留交易。但它无法伪造签名或窃取密钥。</li>
+<li>对 npm 依赖项或托管服务提供商的<strong>供应链攻击</strong>。</li>
+<li>在钱包处于解锁状态时对已解锁设备的<strong>物理访问</strong>。</li>
+</ul>
+<hr />
+<h2 id="cryptographic-design">密码学设计</h2>
+<h3 id="key-derivation-and-storage">密钥派生与存储</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>用途</th><th>算法</th></tr></thead>
+<tbody>
+<tr><td>助记词</td><td>BIP39</td></tr>
+<tr><td>HD 派生</td><td>Ed25519，SLIP-0010 风格</td></tr>
+<tr><td>签名</td><td>Ed25519（tweetnacl）</td></tr>
+<tr><td>ECDH（隐身）</td><td>X25519（@noble/curves）</td></tr>
+<tr><td>密钥库加密</td><td>AES-256-GCM（WebCrypto）</td></tr>
+<tr><td>PIN 码 → 密钥</td><td>PBKDF2-HMAC-SHA256</td></tr>
+<tr><td>随机性</td><td><code>crypto.getRandomValues</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>密钥库格式与 C++ 原始实现一致：<code>OCT1</code> 魔数、版本号、PBKDF2 迭代<br />次数、盐值、nonce，随后是带有其认证标签的 AES-GCM 密文。</p>
+<h3 id="pin-handling">PIN 码处理</h3>
+<p>PIN 码<strong>绝不会以任何形式被持久化</strong>。它在解锁时派生出解密密钥，<br />随后即被丢弃。不存在"记住我的 PIN 码"——这是刻意的设计。因此，忘记的<br />PIN 码只能通过从恢复助记词恢复来解决。</p>
+<h3 id="unlock-session">解锁会话</h3>
+<p>PIN 码不会被持久化，但解锁的<em>结果</em>会被持久化，其存续时间与会话相同：<br />刷新页面绝不能把用户重新丢回 PIN 码界面。<code>src/wallet/unlock-session.ts</code><br />会用 AES-256-GCM 密封已解密的钱包，并将其拆分到两个存储中：</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>分片</th><th>存放位置</th><th>存续时间</th></tr></thead>
+<tbody>
+<tr><td>密文（<code>orion:unlock-session</code>）</td><td><code>sessionStorage</code></td><td>仅限单个标签页。该标签页关闭即消失</td></tr>
+<tr><td>密封密钥</td><td>IndexedDB 的 <code>unlock-session-keys</code>，作为<strong>不可导出的</strong> <code>CryptoKey</code></td><td>锁定时删除；孤立项按存在时长清理</td></tr>
+</tbody>
+</table>
+</div>
+<p>任何一个分片单独都无法使用。IndexedDB 在标签页关闭后依然存在，但其中不含密文；<br /><code>sessionStorage</code> 持有密文却没有密钥，而且第二个标签页或另一来源都无法读取<br />它。该密钥以 <code>extractable: false</code> 生成，因此本来源可以<em>使用</em>它，但其<br />字节无法被读出——无论是我们自己的代码，还是任何设法在页面中运行的东西都不行。<br />会话在每次恢复时都会轮换（新密钥、新 nonce），并将 <code>createdAt</code><br />向前传递，从而使刷新无法延长绝对上限。</p>
+<p>过期：<strong>空闲 30 分钟</strong>（可配置，<code>autoLockMinutes</code>；设为 <code>0</code> 可禁用）以及自最初解锁起的<strong>8 小时<br />绝对上限</strong>。两者都会在恢复时被强制执行，而空闲窗口还会由 <code>useAutoLock</code> 实时强制执行，<br />因此一个一直开着的标签页会自行锁定。</p>
+<p>它<em>无法</em>防护的情形——坦诚地说：</p>
+<ul>
+<li><strong>标签页内的脚本执行。</strong>在活动会话期间于页面中运行的代码可以请求浏览器解密会话，然后用密钥进行签名，其做法与钱包完全相同。它无法窃取密封密钥，因此这种攻破止步于该标签页；它不会变成一个可在别处使用的被盗密钥。</li>
+<li><strong>设备被攻破。</strong>与上文威胁模型中所述相同：本地恶意软件可以同时读取 IndexedDB 和 <code>sessionStorage</code>。</li>
+<li><strong>不安全的上下文。</strong>在没有 <code>crypto.subtle</code> 的情况下（纯 <code>http://</code>，见下文），密封密钥会退回为 IndexedDB 中的原始字节，不可导出性保证随之丧失。但拆分与过期机制仍然有效。</li>
+</ul>
+<p>若要完全退出该功能，请关闭 <strong>Settings → Security → Stay unlocked after a page refresh</strong><br />（<code>keepUnlocked: false</code>）。不会写入任何内容，并且每次重新加载都会要求输入 PIN 码——这正是<br />该功能存在之前的行为。一次显式的锁定（🔒）会立即销毁两个分片。</p>
+<h3 id="passkey-unlock">通行密钥解锁</h3>
+<p>该功能是可选的、默认关闭且属于附加性质：它是打开既有钱包的第二种方式，绝不<br />用于替代 PIN 码。<code>src/wallet/passkey.ts</code>。</p>
+<p>注册会创建一个平台凭据，其 <code>userVerification: 'required'</code>，并启用<br />WebAuthn 的 <strong>PRF</strong> 扩展。PRF 会向页面提供一个由凭据和一个已存储的 32 字节盐值派生出的<br />机密，浏览器只有在用户完成验证后才会生成它。钱包取 <code>sha256("orion-passkey-unlock-v1" || prf)</code> 作为一个 AES-256 密钥，<br />用 AES-256-GCM 密封序列化后的钱包，将该密钥清零，并把密封后的数据块存入 IndexedDB，<br />紧邻凭据 ID 和盐值存放。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>已存储</th><th>未存储</th></tr></thead>
+<tbody>
+<tr><td>凭据 ID、PRF 盐值、IV、钱包的密文</td><td>PRF 输出、派生密钥、PIN 码、任何明文密钥材料</td></tr>
+</tbody>
+</table>
+</div>
+<p>值得坦白说明的一些后果：</p>
+<ul>
+<li><strong>PRF 是必需的，绝不降级。</strong>如果认证器不支持它，注册就会抛出异常且不存储任何内容。另一种做法——把一个可读的密钥与密文一同保存——会使该记录能够自我解密，这比不提供此功能更糟。</li>
+<li><strong>该记录本身是惰性的。</strong>如果没有在该认证器上完成一次成功的、经用户验证的操作，就无法从磁盘上的内容派生出密钥。</li>
+<li><strong>它密封的是钱包，而非 PIN 码。</strong>PIN 码仍然是唯一能够导出密钥、显示助记词、更改 PIN 码或派生账户的凭据。因此通行密钥解锁无法被用来提权到这些操作，而且所存储的记录泄露的信息严格少于存储 PIN 码会泄露的信息。</li>
+<li><strong>与 PIN 码解锁采用相同的会话模型。</strong>通行密钥解锁产生的解锁会话完全相同，具有相同的空闲上限和绝对上限；它不会延长其中任何一个。</li>
+<li><strong>限定于该设备和浏览器。</strong>它绑定到来源的 <code>rpId</code> 并存储在本地。它不属于钱包导出的一部分，也不是从恢复助记词派生的。</li>
+<li><strong>过期的凭据会安全失败（fail closed）。</strong>如果解密失败——凭据被轮换或重新注册、设备被恢复——则该记录会被删除，并要求输入 PIN 码。而<em>被取消或超时的操作</em>被刻意设计为<strong>不</strong>删除它，因此一次被取消的提示无法悄无声息地禁用此功能。</li>
+<li><strong>对仅观察账户拒绝启用。</strong>没有可供密封的密钥材料。</li>
+</ul>
+<p>它无法防护的情形保持不变：设备被攻破，以及活动会话中的<br />脚本执行，与上文解锁会话的情况完全相同。它确实消除了一处真实的暴露面——<br />即每次解锁时都要输入并可能被观察到的 PIN 码。</p>
+<h3 id="watch-only-accounts">仅观察账户</h3>
+<p>账户可以仅凭地址添加，而无需密钥库。其不变式是：这样的账户永远无法签名，<br />并且该约束是在签名实际发生之处强制执行的，而非在 UI 中：<code>assertCanSign</code>（<code>src/wallet/watch-only.ts</code>）会被<br />发送、加密、隐身、合约以及 dApp 请求等路径调用，并在抛出异常时同时指明操作与修复方法。</p>
+<p>它在设计上就是安全失败的：该检查会拒绝任何私钥不是完整 64 字节 Ed25519 密钥的钱包，<br />因此即便 <code>watchOnly</code> 标志不知何故丢失，被截断或缺失的密钥也会被拒绝。该标志会通过 <code>serializeWallet</code>/<code>deserializeWallet</code> 传递，<br />因此从解锁会话恢复的钱包仍然是仅观察的。</p>
+<h3 id="randomness">随机性</h3>
+<p>所有与安全相关的值都通过 <code>src/crypto/random.ts</code> 使用 <code>crypto.getRandomValues</code>。</p>
+<p><code>src/sdk/protocol.ts</code> 中的 <code>makeId</code> 带有一个 <code>Math.random</code> 回退。它<strong>仅</strong>用于<br />消息关联 ID，绝不用于安全值，并且已如此注明。请勿将其<br />重用于挑战值、nonce、密钥或盐值。</p>
+<hr />
+<h2 id="browser-security-posture">浏览器安全态势</h2>
+<h3 id="content-security-policy">Content-Security-Policy</h3>
+<p>在 <code>index.html</code> 中设置：</p>
+<pre><code class="language-">default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob:; font-src 'self' data:;
+connect-src 'self' https: http://localhost:* http://127.0.0.1:* http://[::1]:*;
+frame-src 'self' https:; worker-src 'self' blob:; object-src 'none';
+base-uri 'self'; form-action 'self';</code></pre>
+<p>其中有三项条目值得解释：</p>
+<ul>
+<li><strong><code>'wasm-unsafe-eval'</code></strong> 是 PVAC FHE 模块所必需的。没有它，Chromium 会阻止 <code>WebAssembly.instantiate()</code>。它仅允许 WebAssembly 编译——它并<strong>不</strong>会重新启用 JavaScript 的 <code>eval()</code>。</li>
+<li><strong>用于样式的 <code>'unsafe-inline'</code></strong> 是那段绘制前的关键 CSS 所需要的，以避免出现无样式内容闪烁（flash of unstyled content）。它仅适用于样式，绝不适用于脚本。</li>
+<li><strong><code>connect-src</code> 中的环回地址</strong>让本地运行的节点得以使用，而无需将策略整体放宽到明文。发往 <code>localhost</code> / <code>127.0.0.0/8</code> / <code>[::1]</code> 的流量永远不会离开本机，因此线路上没有任何可供拦截的内容。</li>
+</ul>
+<h3 id="plaintext-http-rpc-endpoints">明文（http）RPC 端点</h3>
+<p>通过纯 <code>http://</code> 传输的其他任何内容默认都会被拒绝，而 <code>src/wallet/endpoint-policy.ts</code><br />是唯一做出该判定的地方。它是一个仅依赖 URL 加上一个显式上下文的纯函数，<br />因此存储、Settings UI 与测试之间不会对何为允许产生分歧。</p>
+<p>会有三重相互独立的阻断器生效，而判定结果会首先指出其中最根本的那一个，<br />这样当混合内容才是真正原因时，用户就绝不会被告知去修改允许列表：</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>阻断器</th><th>由谁强制执行</th><th>如何解除</th></tr></thead>
+<tbody>
+<tr><td>混合内容</td><td>由浏览器无条件执行</td><td>无法解除。请使用 TLS 或代理</td></tr>
+<tr><td>Content-Security-Policy</td><td>随产品发布的 meta 标签 CSP</td><td>使用 <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code> 重新构建</td></tr>
+<tr><td>用户同意</td><td>设置中的 <code>allowedInsecureOrigins</code></td><td>在 Settings → Network 中 <strong>Trust</strong>（信任）该来源</td></tr>
+</tbody>
+</table>
+</div>
+<p>关于该设计的一些说明：</p>
+<ul>
+<li>CSP 是一个 meta 标签，因此它<strong>无法在运行时被放宽</strong>——没有任何设置能够授予这一点，这正是它是一个构建标志的原因。<code>VITE_ALLOW_HTTP_ENDPOINTS=1</code> 只会在构建时把 <code>http:</code> 追加到 <code>connect-src</code>，除此之外别无其他；在此之上仍然需要用户同意。</li>
+<li>同意是<strong>按来源</strong>给出的——即协议、主机和端口。它不是主机名匹配，也不是 URL 前缀匹配，因此信任 <code>http://node.lan:8080</code> 并不会信任该主机上的另一个端口，而 <code>http://127.0.0.1.evil.com</code> 也不会被当作环回地址。</li>
+<li><strong>区块浏览器 URL 是豁免的</strong>，因为它们始终只是 <code>&lt;a href&gt;</code> 导航，而非 fetch 请求。<code>connect-src</code> 和混合内容对它们都不适用。<code>relayerUrl</code> 会被存储但从不被 fetch。只有 <code>rpcUrl</code> 受此策略约束。</li>
+<li>被阻断的端点仍然会刻意地构建一个 <code>RpcClient</code>：拒绝构建它会使用户无法进入 Settings 去修复它。取而代之，其原因会以标题栏中的一个 <strong>⚠️ Insecure RPC</strong> 徽标以及 <code>RpcClient.unreachableHint</code> 的形式呈现，后者只会被追加到被抛出的 <code>TypeError</code> 上——绝不会追加到真正的服务器错误或超时上，因为那会产生误导。</li>
+<li><strong><code>rpcProxyUrl</code></strong> 会把该决策转移到代理上：端点将依据代理自身的协议来判定，因为那才是浏览器实际连接的对象。代理会看到每一个请求，因此 UI 建议运行你自己的代理。它无法接触密钥或进行签名。</li>
+</ul>
+<p>明文 RPC 既是机密性<em>也</em>是完整性上的暴露面——路径上的节点可以读取<br />每一次查询并篡改回复——但它不是密钥泄露层面的暴露面：签名是在本地<br />产生的，而且钱包不会把它收到的任何内容验证进密钥材料中。</p>
+<h3 id="cross-origin-isolation">跨来源隔离</h3>
+<p>COOP/COEP 在整个应用范围内为 <code>same-origin</code> / <code>require-corp</code>，并在 <code>/connect</code> 上<br />以 <code>unsafe-none</code> 覆盖，从而使审批弹窗能够与其打开者交换 MessagePort。<br />这一收窄是刻意为之的，且仅限于那一条路由。</p>
+<hr />
+<h2 id="dapp-connection-security">dApp 连接安全</h2>
+<p>当一个站点请求连接时：</p>
+<ol>
+<li>弹窗会醒目地显示发起请求的来源。</li>
+<li>用户必须显式批准；对于新来源不存在静默连接。</li>
+<li>批准仅限于该来源，并按来源持久化。</li>
+<li>签名操作始终需要确认，即便对于受信任的站点也是如此。</li>
+</ol>
+<p>"Trust this site" 仅会抑制针对<strong>只读</strong>请求（余额、账户、<br />网络）的提示。它绝不会授予静默签名。</p>
+<p>可以在 <strong>Settings → Connected Sites</strong> 下查看并撤销连接。</p>
+<h3 id="what-a-dapp-learns-about-a-custom-network">dApp 能了解到关于自定义网络的哪些信息</h3>
+<p>用户手动添加的网络对已连接的站点是可见的（<code>wallet_getNetworkInfo</code>、<br /><code>wallet_getNetworks</code> 以及 <code>networkChanged</code> 事件），因为 dApp 若不知道自己处于哪个网络，<br />就无法渲染出正确的区块浏览器链接或链标签。经由网络传输的那条记录是一个刻意划定的子集：</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>发送</th><th>保留（不发送）</th></tr></thead>
+<tbody>
+<tr><td><code>id</code>、<code>name</code>、<code>explorerUrl</code>、<code>icon</code>、<code>custom</code></td><td><code>rpcUrl</code>、<code>relayerUrl</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>这些端点之所以被保留而不发送，是因为用户添加的网络通常是私有的——一个局域网<br />地址、一条隧道、一个把 API 密钥放在查询字符串里的付费提供商 URL。连接到某个<br />站点不应当泄露用户节点所在的位置，也不应当交出一个带凭据的 URL。这不会损失任何<br />功能：读取会经由钱包代理，交易也由钱包构建并广播，因此 dApp 从不需要自行访问 RPC。</p>
+<p>有两点后果值得了解：</p>
+<ul>
+<li>自定义网络的<strong>名称</strong>由用户自行选定，并会展示给 dApp。若以某个个人标识来命名网络，就会把该标识泄露给你连接的每一个站点。</li>
+<li><code>wallet_getNetworks</code> 会暴露你已配置<strong>多少个</strong>网络。这是一个较小的指纹识别暴露面，之所以接受它，是为了让 dApp 能够提供"切换到 X"这样的引导。</li>
+</ul>
+<p>任何 dApp 都无法更改网络。不存在 <code>wallet_switchNetwork</code> 方法；切换只发生在<br />钱包自己的 UI 中，dApp 事后通过 <code>networkChanged</code> 得知。</p>
+<hr />
+<h2 id="dependency-status">依赖状态</h2>
+<p>生产依赖：<strong>零已知漏洞</strong>（<code>npm audit --omit=dev</code>）。</p>
+<p>开发依赖在 vitest、vite、esbuild 及相关包中带有安全公告。<br />剩余的每一项修复都需要一次大版本升级（vite 5→8、vitest 2→4），而这有破坏<br />构建的风险。这些包属于构建工具——它们不会随产品发布给用户，也无法影响<br />已部署的钱包。</p>
+<p>这是一个刻意的权衡，并会在每次发布时重新评估。运行 <code>npm audit --omit=dev</code> 即可<br />确认所发布的暴露面保持干净。</p>
+<hr />
+<h2 id="guidance-for-users">面向用户的指南</h2>
+<p><strong>应当做</strong></p>
+<ul>
+<li>将恢复助记词离线保存在纸上，并存放于不止一个地点</li>
+<li>发送前逐字核对收款地址</li>
+<li>在每一次 dApp 连接提示中核实来源</li>
+<li>使用新地址时先发送一笔小额测试金额</li>
+<li>保持浏览器和操作系统更新</li>
+</ul>
+<p><strong>切勿</strong></p>
+<ul>
+<li>在初始设置之后于任何网站上输入恢复助记词</li>
+<li>以数字形式存储助记词——不要截图、云端笔记或聊天消息</li>
+<li>分享你的私钥或 <code>.oct</code> 备份文件</li>
+<li>在共享或不受信任的计算机上使用持有真实资金的钱包</li>
+</ul>
+<hr />
+<h2 id="for-contributors">面向贡献者</h2>
+<p>不得削弱的、对安全敏感的不变式：</p>
+<ul>
+<li>对每一条入站 <code>postMessage</code> 进行来源校验</li>
+<li>所有安全值均使用 CSPRNG；<code>makeId</code> 不算其中之一</li>
+<li><code>localStorage</code>、<code>sessionStorage</code>、日志或错误消息中不得存放机密</li>
+<li>不使用 <code>innerHTML</code> 或 <code>dangerouslySetInnerHTML</code></li>
+<li>PIN 码绝不持久化</li>
+<li>通行密钥解锁需要 PRF；绝不退回到存储一个可读的密钥</li>
+<li><code>assertCanSign</code> 守护每一条签名路径——仅观察账户绝不允许签名</li>
+<li>明文端点策略保持集中在 <code>endpoint-policy.ts</code> 中；不得在别处进行临时的 URL 检查</li>
+<li>规范化 JSON 保持逐字节精确——签名依赖于它</li>
+</ul>
+<p>任何触及密码学、密钥处理、存储或连接流程的改动，都应在 pull request 中<br />明确予以说明。</p>
+</body>
+</html>

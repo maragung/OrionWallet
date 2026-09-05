@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ความปลอดภัย — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="security">ความปลอดภัย</h1>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — โค้ดต้นฉบับ ประเด็นปัญหา และเวอร์ชันเผยแพร่<br /><strong>รายงานช่องโหว่:</strong> <a href="https://github.com/maragung/OrionWallet/security/advisories/new">GitHub Security Advisories</a></blockquote>
+<h2 id="audit-status">สถานะการตรวจสอบ</h2>
+<p><strong>Orion Wallet ยังไม่ผ่านการตรวจสอบความปลอดภัยโดยบุคคลที่สามที่เป็นอิสระ</strong></p>
+<p>การออกแบบเชิงการเข้ารหัสเป็นไปตามการ implement ต้นฉบับ <code>octra-labs/webcli</code> และ<br />พรีมิทีฟมาจากไลบรารีที่ผ่านการตรวจสอบอย่างดี แต่การผสานรวมเองยังไม่ถูกตรวจสอบ<br />โปรดชั่งน้ำหนักสิ่งนั้นก่อนจัดเก็บมูลค่าจำนวนมาก</p>
+<hr />
+<h2 id="reporting-a-vulnerability">การรายงานช่องโหว่</h2>
+<p><strong>อย่าเปิด issue สาธารณะสำหรับปัญหาด้านความปลอดภัย</strong></p>
+<p>จงรายงานเป็นการส่วนตัวถึงผู้ดูแล โดยรวมถึง:</p>
+<ul>
+<li>คำอธิบายของปัญหาและผลกระทบของมัน</li>
+<li>ขั้นตอนในการจำลองปัญหา</li>
+<li>เวอร์ชันหรือ commit ที่ได้รับผลกระทบ</li>
+<li>แนวทางแก้ไขที่แนะนำ (ถ้ามี)</li>
+</ul>
+<p>โปรดให้เวลาที่สมเหตุสมผลสำหรับการแก้ไขก่อนการเปิดเผยต่อสาธารณะ การรายงานเป็นที่ยินดี<br />และจะได้รับการให้เครดิต เว้นแต่คุณต้องการให้เป็นอย่างอื่น</p>
+<hr />
+<h2 id="threat-model">โมเดลภัยคุกคาม</h2>
+<h3 id="what-orion-wallet-protects-against">สิ่งที่ Orion Wallet ป้องกัน</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>ภัยคุกคาม</th><th>มาตรการป้องกัน</th></tr></thead>
+<tbody>
+<tr><td>คีย์รั่วไปยังเซิร์ฟเวอร์</td><td>ไม่มีแบ็กเอนด์ คีย์ไม่เคยออกจากเบราว์เซอร์</td></tr>
+<tr><td>การขโมยคีย์สโตร์ขณะอยู่นิ่ง</td><td>AES-256-GCM, คีย์ที่สร้างจาก PIN ผ่าน PBKDF2</td></tr>
+<tr><td>คำขอจาก dApp ที่เป็นอันตราย</td><td>สิทธิ์ต่อ origin พร้อมพร้อมท์ขออนุมัติที่ชัดเจน</td></tr>
+<tr><td>การปลอมแปลงข้อความข้าม origin</td><td>origin ถูกตรวจสอบบนข้อความขาเข้าทุกครั้ง</td></tr>
+<tr><td>การเล่นซ้ำข้อความ</td><td>challenge จาก CSPRNG และ nonce ต่อเซสชัน</td></tr>
+<tr><td>XSS ผ่านมาร์กอัปที่ถูกฉีด</td><td>ไม่มี <code>innerHTML</code> / <code>dangerouslySetInnerHTML</code>; CSP จำกัดแหล่งที่มา</td></tr>
+<tr><td>ข้อมูล RPC ที่ผิดรูปแบบทำให้แอปพัง</td><td>การทำข้อมูลให้เป็นปกติเชิงรับบวกกับ error boundaries</td></tr>
+<tr><td>วลีกู้คืนที่ไม่เคยถูกเขียนเก็บจริง</td><td>การสร้างถูกคุมด้วยการพิมพ์คำสุ่ม 3 คำซ้ำ</td></tr>
+<tr><td>การเซ็นจากบัญชีที่ไม่มีคีย์</td><td><code>assertCanSign</code> ปฏิเสธที่ขอบเขต API ไม่ใช่แค่ใน UI</td></tr>
+<tr><td>การดักฟังการจราจร RPC อย่างเงียบ ๆ</td><td>เอนด์พอยต์ plaintext ต้องมีการยินยอมต่อ origin อย่างชัดเจน</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="what-it-cannot-protect-against">สิ่งที่มันไม่สามารถป้องกันได้</h3>
+<p>จงชัดเจนกับตัวเองเกี่ยวกับสิ่งเหล่านี้:</p>
+<ul>
+<li><strong>อุปกรณ์ที่ถูกบุกรุก.</strong> มัลแวร์, คีย์ล็อกเกอร์ หรือส่วนขยายเบราว์เซอร์ที่ไม่เป็นมิตรสามารถอ่าน PIN ขณะที่คุณพิมพ์และดึงคีย์ที่ถูกถอดรหัสจากหน่วยความจำได้</li>
+<li><strong>วลีกู้คืนที่หายไป.</strong> ไม่มีกลไกกู้คืน ไม่มีใครสามารถคืนมันได้</li>
+<li><strong>ฟิชชิง.</strong> หากคุณป้อนวลีกู้คืนบนไซต์ปลอม เงินจะหายไป Orion Wallet ไม่เคยขอวลีของคุณหลังการตั้งค่า</li>
+<li><strong>โหนด RPC ที่ถูกบุกรุก.</strong> โหนดที่ไม่ประสงค์ดีสามารถเสิร์ฟยอดคงเหลือเท็จหรือระงับธุรกรรมได้ มันไม่สามารถปลอมลายเซ็นหรือขโมยคีย์ได้</li>
+<li><strong>การถูกบุกรุกในซัพพลายเชน</strong> ของ dependency npm หรือผู้ให้บริการโฮสติ้ง</li>
+<li><strong>การเข้าถึงทางกายภาพ</strong> ต่ออุปกรณ์ที่ปลดล็อกอยู่พร้อมกับ wallet ที่ปลดล็อกแล้ว</li>
+</ul>
+<hr />
+<h2 id="cryptographic-design">การออกแบบเชิงการเข้ารหัส</h2>
+<h3 id="key-derivation-and-storage">การสร้างและการเก็บคีย์</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>วัตถุประสงค์</th><th>อัลกอริทึม</th></tr></thead>
+<tbody>
+<tr><td>มนีโมนิก</td><td>BIP39</td></tr>
+<tr><td>การสร้าง HD</td><td>Ed25519, แบบ SLIP-0010</td></tr>
+<tr><td>การเซ็น</td><td>Ed25519 (tweetnacl)</td></tr>
+<tr><td>ECDH (stealth)</td><td>X25519 (@noble/curves)</td></tr>
+<tr><td>การเข้ารหัสคีย์สโตร์</td><td>AES-256-GCM (WebCrypto)</td></tr>
+<tr><td>PIN → คีย์</td><td>PBKDF2-HMAC-SHA256</td></tr>
+<tr><td>ความสุ่ม</td><td><code>crypto.getRandomValues</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>รูปแบบคีย์สโตร์ตรงกับต้นฉบับ C++: <code>OCT1</code> magic, เวอร์ชัน, จำนวนรอบ PBKDF2,<br />salt, nonce, จากนั้นเป็น ciphertext AES-GCM พร้อมแท็กตรวจสอบความถูกต้อง</p>
+<h3 id="pin-handling">การจัดการ PIN</h3>
+<p>PIN <strong>ไม่ถูกจัดเก็บถาวร</strong> ในรูปแบบใด ๆ มันใช้สร้างคีย์ถอดรหัสตอนปลดล็อก<br />แล้วก็ถูกทิ้ง ไม่มี "จดจำ PIN ของฉัน" — โดยการออกแบบ ดังนั้น PIN ที่ลืม<br />จึงแก้ได้ด้วยการกู้คืนจากวลีกู้คืนเท่านั้น</p>
+<h3 id="unlock-session">เซสชันการปลดล็อก</h3>
+<p>PIN ไม่ถูกจัดเก็บถาวร แต่<em>ผลลัพธ์</em>ของการปลดล็อกถูกเก็บไว้ ตราบที่เซสชันยังคงอยู่:<br />การรีเฟรชหน้าต้องไม่โยนผู้ใช้กลับไปที่หน้าจอ PIN <code>src/wallet/unlock-session.ts</code><br />ผนึก wallet ที่ถูกถอดรหัสด้วย AES-256-GCM แล้วแบ่งมันข้ามสอง store:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>ส่วน</th><th>ที่ไหน</th><th>อายุการใช้งาน</th></tr></thead>
+<tbody>
+<tr><td>Ciphertext (<code>orion:unlock-session</code>)</td><td><code>sessionStorage</code></td><td>หนึ่งแท็บ หายไปเมื่อแท็บนั้นปิด</td></tr>
+<tr><td>Sealing key</td><td>IndexedDB <code>unlock-session-keys</code>, เป็น <code>CryptoKey</code> แบบ <strong>non-extractable</strong></td><td>ถูกลบเมื่อล็อก; ลูกกำพร้าถูกตัดทิ้งตามอายุ</td></tr>
+</tbody>
+</table>
+</div>
+<p>ไม่มีครึ่งใดใช้ได้ตามลำพัง IndexedDB อยู่รอดเมื่อแท็บปิดแต่ไม่มี ciphertext;<br /><code>sessionStorage</code> ถือ ciphertext แต่ไม่มีคีย์ และแท็บที่สองหรือ origin อื่นไม่สามารถอ่าน<br />มันได้ คีย์ถูกสร้างด้วย <code>extractable: false</code> ดังนั้น origin นี้จึงสามารถ<em>ใช้</em>มันได้ แต่<br />ไบต์ของมันไม่สามารถถูกอ่านออกมา — ไม่ใช่โดยโค้ดของเราเอง และไม่ใช่โดยอะไรก็ตามที่<br />รันได้ในหน้าเพจ เซสชันหมุนเวียน (คีย์ใหม่, nonce ใหม่) ทุกครั้งที่กู้คืน และพา <code>createdAt</code><br />ไปข้างหน้า เพื่อให้การรีเฟรชไม่สามารถขยายเพดานแบบสัมบูรณ์ได้</p>
+<p>การหมดอายุ: <strong>ไม่มีการใช้งาน 30 นาที</strong> (ปรับได้, <code>autoLockMinutes</code>; <code>0</code> ปิดมัน) และ<br /><strong>เพดานแบบสัมบูรณ์ 8 ชั่วโมง</strong> นับจากการปลดล็อกครั้งแรก ทั้งสองถูกบังคับใช้ตอนกู้คืน<br />และช่วงไม่มีการใช้งานยังถูกบังคับใช้แบบเรียลไทม์โดย <code>useAutoLock</code> ดังนั้นแท็บที่ปล่อย<br />ค้างไว้จะล็อกตัวเอง</p>
+<p>สิ่งที่มัน<em>ไม่</em>ได้ป้องกัน — ส่วนที่ตรงไปตรงมา:</p>
+<ul>
+<li><strong>การรันสคริปต์ในแท็บ.</strong> โค้ดที่รันในหน้าเพจระหว่างเซสชันที่ยังมีชีวิตอยู่สามารถขอให้<br />เบราว์เซอร์ถอดรหัสเซสชันแล้วเซ็นด้วยคีย์ เหมือนกับที่ wallet ทำเป๊ะ มันไม่สามารถ<br />ลักลอบส่งคีย์ผนึกออกไปได้ ดังนั้นการถูกบุกรุกจบลงที่แท็บ; มันไม่กลายเป็นคีย์ที่ถูกขโมย<br />ซึ่งใช้ที่อื่นได้</li>
+<li><strong>อุปกรณ์ที่ถูกบุกรุก.</strong> ไม่เปลี่ยนจากโมเดลภัยคุกคามข้างต้น: มัลแวร์ในเครื่องสามารถอ่าน<br />IndexedDB และ <code>sessionStorage</code> ร่วมกันได้</li>
+<li><strong>คอนเทกซ์ที่ไม่ปลอดภัย.</strong> หากไม่มี <code>crypto.subtle</code> (plain <code>http://</code> ดูด้านล่าง) คีย์ผนึก<br />จะถอยไปเป็นไบต์ดิบใน IndexedDB และการรับประกันแบบไม่สามารถแยกออกได้ก็สูญเสียไป<br />การแบ่งและการหมดอายุยังคงมีผล</li>
+</ul>
+<p>เพื่อเลือกไม่ใช้ทั้งหมด ให้ปิด <strong>Settings → Security → Stay unlocked after a page refresh</strong><br />(<code>keepUnlocked: false</code>) จะไม่มีอะไรถูกเขียน และทุกการโหลดซ้ำจะถาม PIN — พฤติกรรม<br />ก่อนที่ฟีเจอร์นี้จะเกิดขึ้น การล็อกอย่างชัดแจ้ง (🔒) ทำลายทั้งสองครึ่งทันที</p>
+<h3 id="passkey-unlock">การปลดล็อกด้วย passkey</h3>
+<p>เป็นทางเลือก, ปิดโดยค่าเริ่มต้น และเป็นแบบเพิ่มเติม: มันเป็นวิธีที่สองในการเปิด wallet ที่มีอยู่<br />ไม่ใช่สิ่งแทนที่ PIN <code>src/wallet/passkey.ts</code></p>
+<p>การลงทะเบียนสร้าง platform credential ด้วย <code>userVerification: 'required'</code> และ<br />ส่วนขยาย WebAuthn <strong>PRF</strong> PRF ให้หน้าเพจได้ secret ที่สร้างจาก credential และ<br />salt 32 ไบต์ที่ถูกเก็บไว้ ซึ่งเบราว์เซอร์จะผลิตออกมาเมื่อผู้ใช้ยืนยันตัวตนแล้วเท่านั้น<br />wallet ใช้ <code>sha256("orion-passkey-unlock-v1" || prf)</code> เป็นคีย์ AES-256, ผนึก<br />wallet ที่ถูก serialise ด้วย AES-256-GCM, ปรับคีย์ให้เป็นศูนย์ และเก็บ blob ที่ผนึกแล้ว<br />ใน IndexedDB ข้าง credential ID และ salt</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>ถูกเก็บ</th><th>ไม่ถูกเก็บ</th></tr></thead>
+<tbody>
+<tr><td>Credential ID, PRF salt, IV, ciphertext ของ wallet</td><td>เอาต์พุต PRF, คีย์ที่ถูกสร้าง, PIN, วัสดุคีย์ plaintext ใด ๆ</td></tr>
+</tbody>
+</table>
+</div>
+<p>ผลที่ตามมาซึ่งควรกล่าวไว้อย่างตรงไปตรงมา:</p>
+<ul>
+<li><strong>PRF เป็นสิ่งที่จำเป็น ไม่มีการลดระดับเด็ดขาด.</strong> หาก authenticator ไม่รองรับมัน<br />การลงทะเบียนจะ throw และไม่เก็บอะไรเลย ทางเลือกอื่น — การเก็บคีย์ที่อ่านได้<br />ไว้ข้าง ciphertext — จะทำให้เรคคอร์ดถอดรหัสตัวเองได้ ซึ่งแย่กว่าการไม่เสนอฟีเจอร์นี้</li>
+<li><strong>เรคคอร์ดเฉย ๆ ไม่มีประโยชน์.</strong> หากปราศจากท่าทางยืนยันตัวตนที่สำเร็จบน<br />authenticator นั้น ก็ไม่มีทางสร้างคีย์จากสิ่งที่อยู่บนดิสก์ได้</li>
+<li><strong>มันผนึก wallet ไม่ใช่ PIN.</strong> PIN ยังคงเป็นสิ่งเดียวที่ส่งออกคีย์, เปิดเผยวลี,<br />เปลี่ยน PIN หรือสร้างบัญชี ดังนั้นการปลดล็อกด้วย passkey จึงไม่สามารถยกระดับไปถึงสิ่งเหล่านั้นได้<br />และเรคคอร์ดที่ถูกเก็บก็รั่วไหลน้อยกว่า PIN ที่ถูกเก็บไว้อย่างเคร่งครัด</li>
+<li><strong>โมเดลเซสชันเดียวกันกับการปลดล็อกด้วย PIN.</strong> การปลดล็อกด้วย passkey ให้เซสชันการปลดล็อก<br />เดียวกันกับเพดานแบบไม่มีการใช้งานและแบบสัมบูรณ์เดียวกัน; มันไม่ได้ขยายอย่างใดอย่างหนึ่ง</li>
+<li><strong>จำกัดอยู่ที่อุปกรณ์และเบราว์เซอร์.</strong> ผูกกับ <code>rpId</code> ของ origin และถูกเก็บในเครื่อง มัน<br />ไม่ใช่ส่วนหนึ่งของการส่งออก wallet และไม่ได้สร้างจากวลีกู้คืน</li>
+<li><strong>credential ที่เก่าค้างจะล้มแบบปิด (fail closed).</strong> หากการถอดรหัสล้มเหลว — credential ที่ถูกหมุน<br />หรือลงทะเบียนใหม่, อุปกรณ์ที่ถูกกู้คืน — เรคคอร์ดจะถูกลบและต้องใช้ PIN<br />ท่าทางที่ถูกปิดหรือหมดเวลาโดยเจตนาจะ<em>ไม่</em>ลบมัน ดังนั้นพร้อมท์ที่ถูกยกเลิก<br />จึงไม่สามารถปิดฟีเจอร์อย่างเงียบ ๆ ได้</li>
+<li><strong>ถูกปฏิเสธสำหรับบัญชี watch-only.</strong> ไม่มีวัสดุคีย์ที่จะผนึก</li>
+</ul>
+<p>สิ่งที่มันไม่ป้องกันไม่เปลี่ยน: อุปกรณ์ที่ถูกบุกรุก และการรันสคริปต์ในเซสชันที่ยังมีชีวิตอยู่<br />เหมือนกับเซสชันการปลดล็อกข้างต้นเป๊ะ มันลดการเปิดเผยจริงอย่างหนึ่ง —<br />การที่ PIN ถูกพิมพ์และถูกจับตามองทุกครั้งที่ปลดล็อก</p>
+<h3 id="watch-only-accounts">บัญชี watch-only</h3>
+<p>บัญชีสามารถถูกเพิ่มด้วยที่อยู่เพียงอย่างเดียว โดยไม่มีคีย์สโตร์ หลักไม่แปรเปลี่ยนคือบัญชี<br />แบบนั้นไม่สามารถเซ็นได้เด็ดขาด และมันถูกบังคับใช้ตรงที่การเซ็นเกิดขึ้น ไม่ใช่ใน UI:<br /><code>assertCanSign</code> (<code>src/wallet/watch-only.ts</code>) ถูกเรียกโดยเส้นทาง send, encrypt, stealth,<br />contract และ dApp-request และ throw โดยระบุทั้งการกระทำและวิธีแก้</p>
+<p>มันล้มแบบปิดโดยโครงสร้าง: การตรวจปฏิเสธ wallet ใดก็ตามที่คีย์ลับไม่ใช่<br />คีย์ Ed25519 เต็ม 64 ไบต์ ดังนั้นคีย์ที่ถูกตัดทอนหรือหายไปจะถูกปฏิเสธแม้แฟล็ก <code>watchOnly</code><br />จะหายไปด้วยเหตุใดก็ตาม แฟล็กถูกพาตลอดผ่าน <code>serializeWallet</code>/<code>deserializeWallet</code><br />ดังนั้น wallet ที่ถูกกู้คืนจากเซสชันการปลดล็อกจึงยังเป็น watch-only</p>
+<h3 id="randomness">ความสุ่ม</h3>
+<p>ค่าที่เกี่ยวข้องกับความปลอดภัยทั้งหมดใช้ <code>crypto.getRandomValues</code> ผ่าน <code>src/crypto/random.ts</code></p>
+<p><code>makeId</code> ใน <code>src/sdk/protocol.ts</code> มี fallback เป็น <code>Math.random</code> มันถูกใช้<strong>เฉพาะ</strong>สำหรับ<br />ID การจับคู่ข้อความ ไม่เคยใช้สำหรับค่าด้านความปลอดภัย และถูกทำหมายเหตุไว้เช่นนั้น<br />อย่านำมันกลับมาใช้สำหรับ challenges, nonces, คีย์ หรือ salts</p>
+<hr />
+<h2 id="browser-security-posture">ท่าทีความปลอดภัยของเบราว์เซอร์</h2>
+<h3 id="content-security-policy">Content-Security-Policy</h3>
+<p>ตั้งค่าใน <code>index.html</code>:</p>
+<pre><code class="language-">default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob:; font-src 'self' data:;
+connect-src 'self' https: http://localhost:* http://127.0.0.1:* http://[::1]:*;
+frame-src 'self' https:; worker-src 'self' blob:; object-src 'none';
+base-uri 'self'; form-action 'self';</code></pre>
+<p>สามรายการสมควรได้รับคำอธิบาย:</p>
+<ul>
+<li><strong><code>'wasm-unsafe-eval'</code></strong> จำเป็นสำหรับโมดูล PVAC FHE Chromium บล็อก<br /><code>WebAssembly.instantiate()</code> หากไม่มีมัน มันอนุญาตการคอมไพล์ WebAssembly เท่านั้น — มัน<strong>ไม่</strong><br />เปิดใช้ JavaScript <code>eval()</code> อีกครั้ง</li>
+<li><strong><code>'unsafe-inline'</code> สำหรับสไตล์</strong> จำเป็นสำหรับ CSS วิกฤตก่อนการเพนต์ที่หลีกเลี่ยง<br />การกะพริบของเนื้อหาที่ยังไม่แต่งสไตล์ มันใช้กับสไตล์เท่านั้น ไม่เคยใช้กับสคริปต์</li>
+<li><strong>Loopback ใน <code>connect-src</code></strong> ทำให้โหนดที่รันในเครื่องถูกใช้ได้โดยไม่ขยายนโยบาย<br />เป็น plaintext โดยทั่วไป การจราจรไปยัง <code>localhost</code> / <code>127.0.0.0/8</code> / <code>[::1]</code> ไม่เคยออกจาก<br />เครื่อง ดังนั้นจึงไม่มีอะไรบนสายให้ดักจับ</li>
+</ul>
+<h3 id="plaintext-http-rpc-endpoints">เอนด์พอยต์ RPC แบบ plaintext (http)</h3>
+<p>สิ่งอื่นใดผ่าน <code>http://</code> ธรรมดาจะถูกปฏิเสธโดยค่าเริ่มต้น และ <code>src/wallet/endpoint-policy.ts</code><br />คือที่เดียวที่ตัดสินใจ มันเป็นฟังก์ชันล้วนของ URL บวกกับบริบทที่ชัดเจน<br />ดังนั้น store, UI การตั้งค่า และการทดสอบจะไม่ขัดแย้งกันเรื่องสิ่งที่อนุญาต</p>
+<p>ตัวบล็อกอิสระสามตัวมีผล และคำวินิจฉัยจะระบุตัวที่พื้นฐานที่สุดก่อน เพื่อไม่ให้<br />ผู้ใช้ถูกบอกให้แก้รายการอนุญาตในขณะที่ mixed content เป็นต้นเหตุจริง:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>ตัวบล็อก</th><th>ใครบังคับใช้</th><th>วิธีปลดล็อก</th></tr></thead>
+<tbody>
+<tr><td>Mixed content</td><td>เบราว์เซอร์, อย่างไม่มีเงื่อนไข</td><td>ปลดไม่ได้ ใช้ TLS หรือพร็อกซี</td></tr>
+<tr><td>Content-Security-Policy</td><td>meta-tag CSP ที่มาพร้อมกับตัวสินค้า</td><td>บิลด์ใหม่ด้วย <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code></td></tr>
+<tr><td>การยินยอมของผู้ใช้</td><td><code>allowedInsecureOrigins</code> ในการตั้งค่า</td><td><strong>Trust</strong> origin ใน Settings → Network</td></tr>
+</tbody>
+</table>
+</div>
+<p>หมายเหตุเกี่ยวกับการออกแบบ:</p>
+<ul>
+<li>CSP เป็น meta tag ดังนั้นมัน<strong>ไม่สามารถขยายตอนรันไทม์ได้</strong> — ไม่มีการตั้งค่าใดให้สิทธิ์นี้ได้<br />ซึ่งคือเหตุผลที่มันเป็นบิลด์แฟล็ก <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code> ต่อท้าย <code>http:</code> เข้ากับ<br /><code>connect-src</code> ตอนบิลด์เท่านั้น ไม่มีอะไรอื่น; การยินยอมของผู้ใช้ยังคงจำเป็นเพิ่มเติม</li>
+<li>การยินยอมเป็นแบบ<strong>ต่อ origin</strong> — scheme, host และพอร์ต มันไม่ใช่การจับคู่ชื่อโฮสต์<br />และไม่ใช่คำนำหน้า URL ดังนั้นการ trust <code>http://node.lan:8080</code> จึงไม่ trust พอร์ตอื่น<br />บนโฮสต์นั้น และ <code>http://127.0.0.1.evil.com</code> ไม่ถูกถือเป็น loopback</li>
+<li><strong>URL ของ explorer ได้รับการยกเว้น</strong> เพราะมันเป็นเพียงการนำทางแบบ <code>&lt;a href&gt;</code> ไม่ใช่การ fetch<br /><code>connect-src</code> และ mixed content ไม่มีผลกับมัน <code>relayerUrl</code> ถูกเก็บแต่ไม่เคยถูก fetch<br />มีเพียง <code>rpcUrl</code> เท่านั้นที่อยู่ภายใต้นโยบายนี้</li>
+<li>เอนด์พอยต์ที่ถูกบล็อกยังคงสร้าง <code>RpcClient</code> ขึ้นมาโดยเจตนา: การปฏิเสธไม่สร้างมัน<br />จะทำให้ผู้ใช้ไม่สามารถไปถึง Settings เพื่อแก้ไขได้ เหตุผลกลับถูกแสดงเป็น<br />ป้าย <strong>⚠️ Insecure RPC</strong> ในเฮดเดอร์ และเป็น <code>RpcClient.unreachableHint</code> ซึ่งถูกต่อท้าย<br />กับ <code>TypeError</code> ที่ถูก throw เท่านั้น — ไม่เคยต่อท้ายกับข้อผิดพลาดเซิร์ฟเวอร์จริงหรือ timeout<br />ซึ่งจะทำให้เข้าใจผิด</li>
+<li><strong><code>rpcProxyUrl</code></strong> ย้ายการตัดสินใจไปที่พร็อกซี: เอนด์พอยต์ถูกตัดสินด้วย scheme ของพร็อกซีเอง<br />เพราะนั่นคือสิ่งที่เบราว์เซอร์เชื่อมต่อจริง พร็อกซีเห็นทุกคำขอ ดังนั้น UI จึงบอกให้รันพร็อกซี<br />ของคุณเอง มันไม่สามารถเข้าถึงคีย์หรือเซ็นได้</li>
+</ul>
+<p>RPC แบบ plaintext คือการเปิดเผยทั้งการรักษาความลับ<em>และ</em>ความถูกต้อง — โหนดบนเส้นทางสามารถอ่าน<br />ทุกการค้นหาและแก้ไขคำตอบ — แต่ไม่ใช่การเปิดเผยที่ทำให้คีย์ถูกบุกรุก: ลายเซ็นถูกสร้าง<br />ในเครื่อง และ wallet ไม่ตรวจสอบสิ่งที่มันได้รับให้กลายเป็นวัสดุคีย์</p>
+<h3 id="cross-origin-isolation">การแยกข้าม origin</h3>
+<p>COOP/COEP เป็น <code>same-origin</code> / <code>require-corp</code> ทั้งแอป โดยมีค่า override แบบ <code>unsafe-none</code><br />บน <code>/connect</code> เพื่อให้ป็อปอัปขออนุมัติสามารถแลกเปลี่ยน MessagePort กับ opener ได้<br />การจำกัดขอบเขตนี้เป็นไปโดยเจตนาและจำกัดอยู่ที่เส้นทางเดียวเท่านั้น</p>
+<hr />
+<h2 id="dapp-connection-security">ความปลอดภัยการเชื่อมต่อ dApp</h2>
+<p>เมื่อไซต์ขอการเชื่อมต่อ:</p>
+<ol>
+<li>ป็อปอัปแสดง origin ที่ร้องขออย่างเด่นชัด</li>
+<li>ผู้ใช้ต้องอนุมัติอย่างชัดเจน; ไม่มีการเชื่อมต่อเงียบสำหรับ origin ใหม่</li>
+<li>การอนุมัติจำกัดขอบเขตอยู่ที่ origin นั้นและถูกจัดเก็บแบบต่อ origin</li>
+<li>การเซ็นทุกครั้งต้องมีการยืนยันเสมอ แม้แต่ไซต์ที่ trust แล้ว</li>
+</ol>
+<p>"Trust this site" ระงับพร้อมท์สำหรับคำขอแบบ<strong>อ่านอย่างเดียว</strong> (ยอดคงเหลือ, บัญชี,<br />เครือข่าย) เท่านั้น มันไม่เคยให้สิทธิ์การเซ็นแบบเงียบ</p>
+<p>การเชื่อมต่อสามารถถูกตรวจสอบและเพิกถอนได้ภายใต้ <strong>Settings → Connected Sites</strong></p>
+<h3 id="what-a-dapp-learns-about-a-custom-network">สิ่งที่ dApp เรียนรู้เกี่ยวกับเครือข่ายที่กำหนดเอง</h3>
+<p>เครือข่ายที่ผู้ใช้เพิ่มด้วยมือปรากฏให้ไซต์ที่เชื่อมต่อเห็น (<code>wallet_getNetworkInfo</code>,<br /><code>wallet_getNetworks</code> และอีเวนต์ <code>networkChanged</code>) เพราะ dApp ไม่สามารถเรนเดอร์ลิงก์ explorer<br />หรือป้ายเชนที่ถูกต้องได้โดยไม่รู้ว่ามันอยู่บนเครือข่ายไหน เรคคอร์ดที่ข้ามสายไป<br />เป็นเซ็ตย่อยโดยเจตนา:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>ถูกส่ง</th><th>ถูกยับยั้ง</th></tr></thead>
+<tbody>
+<tr><td><code>id</code>, <code>name</code>, <code>explorerUrl</code>, <code>icon</code>, <code>custom</code></td><td><code>rpcUrl</code>, <code>relayerUrl</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>เอนด์พอยต์ถูกยับยั้งเพราะเครือข่ายที่ผู้ใช้เพิ่มมักเป็นเครือข่ายส่วนตัว — ที่อยู่ LAN,<br />อุโมงค์, URL ผู้ให้บริการแบบเสียเงินที่มีคีย์ API ใน query string การเชื่อมต่อกับ<br />ไซต์ไม่ควรเปิดเผยว่าโหนดของผู้ใช้อาศัยอยู่ที่ใดหรือส่งมอบ URL ที่มีข้อมูลประจำตัว<br />ไม่มีฟังก์ชันใดสูญเสีย: การอ่านถูกพร็อกซีผ่าน wallet และธุรกรรมถูกสร้างและ<br />กระจายเสียงโดย wallet ดังนั้น dApp จึงไม่ต้องไปถึง RPC ด้วยตัวเอง</p>
+<p>ผลที่ตามมาสองอย่างที่น่ารู้:</p>
+<ul>
+<li><strong>ชื่อ</strong>ของเครือข่ายที่กำหนดเองเป็นสิ่งที่ผู้ใช้เลือกและถูกแสดงให้ dApp เห็น การตั้งชื่อตาม<br />ตัวบ่งชี้ส่วนบุคคลจะเปิดเผยตัวบ่งชี้นั้นให้ทุกไซต์ที่คุณเชื่อมต่อ</li>
+<li><code>wallet_getNetworks</code> เปิดเผยว่าคุณตั้งค่าเครือข่ายไว้<strong>จำนวนเท่าใด</strong> นี่คือ<br />พื้นผิวการพิมพ์ลายนิ้วมือเล็ก ๆ ซึ่งถูกยอมรับเพื่อให้ dApp เสนอคำแนะนำ "สลับไป X" ได้</li>
+</ul>
+<p>ไม่มี dApp ใดเปลี่ยนเครือข่ายได้ ไม่มีเมธอด <code>wallet_switchNetwork</code>; การสลับเกิดขึ้น<br />ใน UI ของ wallet เองเท่านั้น และ dApp จะรู้ทีหลังผ่าน <code>networkChanged</code></p>
+<hr />
+<h2 id="dependency-status">สถานะ dependency</h2>
+<p>dependency โปรดักชัน: <strong>ช่องโหว่ที่รู้จักเป็นศูนย์</strong> (<code>npm audit --omit=dev</code>)</p>
+<p>dependency สำหรับการพัฒนามีคำเตือนใน vitest, vite, esbuild และแพ็กเกจที่เกี่ยวข้อง<br />การแก้ที่เหลือแต่ละรายการต้องอัปเกรดครั้งใหญ่ (vite 5→8, vitest 2→4) ซึ่งเสี่ยงทำให้<br />บิลด์พัง แพ็กเกจเหล่านี้เป็นเครื่องมือบิลด์ — มันไม่ถูกส่งถึงผู้ใช้และไม่สามารถส่งผลต่อ<br />wallet ที่ถูกติดตั้งใช้งาน</p>
+<p>นี่คือการแลกเปลี่ยนโดยเจตนา ซึ่งถูกทบทวนทุกครั้งที่เผยแพร่ รัน <code>npm audit --omit=dev</code> เพื่อ<br />ยืนยันว่าพื้นผิวที่ส่งออกยังสะอาด</p>
+<hr />
+<h2 id="guidance-for-users">คำแนะนำสำหรับผู้ใช้</h2>
+<p><strong>ควรทำ</strong></p>
+<ul>
+<li>เก็บวลีกู้คืนของคุณแบบออฟไลน์ บนกระดาษ ในมากกว่าหนึ่งสถานที่</li>
+<li>ตรวจสอบที่อยู่ผู้รับทีละตัวอักษรก่อนส่ง</li>
+<li>ตรวจสอบ origin ในพร้อมท์การเชื่อมต่อ dApp ทุกครั้ง</li>
+<li>ส่งจำนวนเงินทดสอบเล็กน้อยก่อนเมื่อใช้ที่อยู่ใหม่</li>
+<li>อัปเดตเบราว์เซอร์และระบบปฏิบัติการของคุณอยู่เสมอ</li>
+</ul>
+<p><strong>ไม่ควรทำเด็ดขาด</strong></p>
+<ul>
+<li>ป้อนวลีกู้คืนบนเว็บไซต์ใด ๆ หลังการตั้งค่า</li>
+<li>เก็บวลีแบบดิจิทัล — ไม่มีการแคปหน้าจอ, โน้ตคลาวด์ หรือข้อความแชท</li>
+<li>แชร์คีย์ส่วนตัวหรือไฟล์สำรอง <code>.oct</code> ของคุณ</li>
+<li>ใช้ wallet ที่ถือเงินจริงบนคอมพิวเตอร์ที่ใช้ร่วมกันหรือไม่น่าเชื่อถือ</li>
+</ul>
+<hr />
+<h2 id="for-contributors">สำหรับผู้มีส่วนร่วม</h2>
+<p>หลักไม่แปรเปลี่ยนที่อ่อนไหวด้านความปลอดภัยซึ่งต้องไม่ถูกทำให้อ่อนแอลง:</p>
+<ul>
+<li>การตรวจสอบ origin บน <code>postMessage</code> ขาเข้าทุกครั้ง</li>
+<li>CSPRNG สำหรับค่าด้านความปลอดภัยทั้งหมด; <code>makeId</code> ไม่ใช่หนึ่งในนั้น</li>
+<li>ไม่มีความลับใน <code>localStorage</code>, <code>sessionStorage</code>, ล็อก หรือข้อความผิดพลาด</li>
+<li>ไม่มี <code>innerHTML</code> หรือ <code>dangerouslySetInnerHTML</code></li>
+<li>PIN ไม่ถูกจัดเก็บถาวรเด็ดขาด</li>
+<li>การปลดล็อกด้วย passkey ต้องใช้ PRF; ไม่ถอยไปเก็บคีย์ที่อ่านได้เด็ดขาด</li>
+<li><code>assertCanSign</code> เฝ้าทุกเส้นทางการเซ็น — บัญชี watch-only ต้องไม่เซ็นเด็ดขาด</li>
+<li>นโยบายเอนด์พอยต์ plaintext ยังคงอยู่ใน <code>endpoint-policy.ts</code>; ไม่มีการตรวจ URL แบบเฉพาะกิจที่อื่น</li>
+<li>Canonical JSON ยังคงตรงแบบไบต์ต่อไบต์ — ลายเซ็นขึ้นอยู่กับมัน</li>
+</ul>
+<p>การเปลี่ยนแปลงใด ๆ ที่แตะการเข้ารหัส, การจัดการคีย์, การจัดเก็บ หรือโฟลว์การเชื่อมต่อ ควรบอก<br />อย่างชัดเจนใน pull request</p>
+</body>
+</html>

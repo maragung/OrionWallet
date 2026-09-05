@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Keamanan — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="security">Keamanan</h1>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Kode sumber, isu, dan rilis.<br /><strong>Laporkan kerentanan:</strong> <a href="https://github.com/maragung/OrionWallet/security/advisories/new">GitHub Security Advisories</a></blockquote>
+<h2 id="audit-status">Status audit</h2>
+<p><strong>Orion Wallet belum menjalani audit keamanan pihak ketiga yang independen.</strong></p>
+<p>Desain kriptografinya mengikuti implementasi referensi <code>octra-labs/webcli</code>, dan<br />primitifnya berasal dari pustaka yang telah ditinjau dengan baik. Namun integrasinya sendiri belum diaudit.<br />Mohon pertimbangkan hal itu sebelum menyimpan nilai yang signifikan.</p>
+<hr />
+<h2 id="reporting-a-vulnerability">Melaporkan kerentanan</h2>
+<p><strong>Jangan membuka isu publik untuk masalah keamanan.</strong></p>
+<p>Laporkan secara privat kepada para maintainer, termasuk:</p>
+<ul>
+<li>Deskripsi masalah dan dampaknya</li>
+<li>Langkah-langkah untuk mereproduksinya</li>
+<li>Versi atau commit yang terpengaruh</li>
+<li>Saran perbaikan apa pun</li>
+</ul>
+<p>Mohon berikan tenggang waktu yang wajar untuk perbaikan sebelum pengungkapan publik. Laporan sangat kami hargai<br />dan akan dikreditkan kecuali Anda memilih sebaliknya.</p>
+<hr />
+<h2 id="threat-model">Model ancaman</h2>
+<h3 id="what-orion-wallet-protects-against">Yang dilindungi Orion Wallet</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Ancaman</th><th>Mitigasi</th></tr></thead>
+<tbody>
+<tr><td>Kunci bocor ke server</td><td>Tanpa backend. Kunci tidak pernah keluar dari browser</td></tr>
+<tr><td>Pencurian keystore saat tersimpan</td><td>AES-256-GCM, kunci diturunkan dari PIN via PBKDF2</td></tr>
+<tr><td>Permintaan dApp yang jahat</td><td>Izin per-origin dengan prompt persetujuan eksplisit</td></tr>
+<tr><td>Pemalsuan pesan lintas-origin</td><td>Origin divalidasi pada setiap pesan masuk</td></tr>
+<tr><td>Replay pesan</td><td>Challenge dan nonce CSPRNG per sesi</td></tr>
+<tr><td>XSS via markup yang disuntikkan</td><td>Tanpa <code>innerHTML</code> / <code>dangerouslySetInnerHTML</code>; CSP membatasi sumber</td></tr>
+<tr><td>Data RPC cacat yang membuat aplikasi crash</td><td>Normalisasi defensif plus error boundary</td></tr>
+<tr><td>Recovery phrase yang tidak pernah benar-benar dicatat</td><td>Pembuatan digerbangi dengan mengetik ulang 3 kata acak</td></tr>
+<tr><td>Menandatangani dari akun tanpa kunci</td><td><code>assertCanSign</code> menolak di batas API, bukan hanya di UI</td></tr>
+<tr><td>Lalu lintas RPC yang diintai diam-diam</td><td>Endpoint plaintext memerlukan persetujuan eksplisit per-origin</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="what-it-cannot-protect-against">Yang tidak bisa dilindunginya</h3>
+<p>Jujurlah pada diri sendiri tentang hal-hal berikut:</p>
+<ul>
+<li><strong>Perangkat yang disusupi.</strong> Malware, keylogger, atau ekstensi browser yang jahat dapat membaca PIN saat Anda mengetiknya dan mengekstrak kunci yang telah didekripsi dari memori.</li>
+<li><strong>Recovery phrase yang hilang.</strong> Tidak ada mekanisme pemulihan. Tidak seorang pun dapat memulihkannya.</li>
+<li><strong>Phishing.</strong> Bila Anda memasukkan recovery phrase di situs palsu, dana lenyap. Orion Wallet tidak pernah meminta phrase Anda setelah penyiapan.</li>
+<li><strong>Node RPC yang disusupi.</strong> Node yang jahat dapat menyajikan saldo palsu atau menahan transaksi. Ia tidak dapat memalsukan tanda tangan atau mencuri kunci.</li>
+<li><strong>Kompromi supply-chain</strong> pada dependensi npm atau penyedia hosting.</li>
+<li><strong>Akses fisik</strong> ke perangkat yang tidak terkunci dengan wallet dalam keadaan terbuka.</li>
+</ul>
+<hr />
+<h2 id="cryptographic-design">Desain kriptografi</h2>
+<h3 id="key-derivation-and-storage">Penurunan dan penyimpanan kunci</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Tujuan</th><th>Algoritma</th></tr></thead>
+<tbody>
+<tr><td>Mnemonic</td><td>BIP39</td></tr>
+<tr><td>Penurunan HD</td><td>Ed25519, gaya SLIP-0010</td></tr>
+<tr><td>Penandatanganan</td><td>Ed25519 (tweetnacl)</td></tr>
+<tr><td>ECDH (stealth)</td><td>X25519 (@noble/curves)</td></tr>
+<tr><td>Enkripsi keystore</td><td>AES-256-GCM (WebCrypto)</td></tr>
+<tr><td>PIN → kunci</td><td>PBKDF2-HMAC-SHA256</td></tr>
+<tr><td>Keacakan</td><td><code>crypto.getRandomValues</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Format keystore cocok dengan versi C++ aslinya: magic <code>OCT1</code>, versi, jumlah iterasi<br />PBKDF2, salt, nonce, lalu ciphertext AES-GCM beserta tag autentikasinya.</p>
+<h3 id="pin-handling">Penanganan PIN</h3>
+<p>PIN <strong>tidak pernah dipersistensikan</strong>, dalam bentuk apa pun. Ia menurunkan kunci dekripsi saat pembukaan<br />lalu dibuang. Tidak ada "ingat PIN saya" — memang disengaja. Akibatnya, PIN yang<br />terlupa hanya dapat diatasi dengan memulihkan dari recovery phrase.</p>
+<h3 id="unlock-session">Sesi buka</h3>
+<p>PIN tidak dipersistensikan, tetapi <em>hasil</em> pembukaan dipersistensikan, selama sesi berlangsung:<br />memuat ulang halaman tidak boleh mengembalikan pengguna ke layar PIN. <code>src/wallet/unlock-session.ts</code><br />menyegel wallet yang telah didekripsi dengan AES-256-GCM dan membaginya ke dua penyimpanan:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Separuh</th><th>Di mana</th><th>Masa berlaku</th></tr></thead>
+<tbody>
+<tr><td>Ciphertext (<code>orion:unlock-session</code>)</td><td><code>sessionStorage</code></td><td>Satu tab. Hilang saat tab itu ditutup</td></tr>
+<tr><td>Kunci penyegel</td><td>IndexedDB <code>unlock-session-keys</code>, sebagai <code>CryptoKey</code> yang <strong>non-extractable</strong></td><td>Dihapus saat mengunci; yang yatim dipangkas berdasarkan usia</td></tr>
+</tbody>
+</table>
+</div>
+<p>Tidak satu pun separuh berguna sendirian. IndexedDB bertahan saat tab ditutup tetapi tidak menyimpan ciphertext;<br /><code>sessionStorage</code> menyimpan ciphertext tetapi tanpa kunci, dan tab kedua atau origin lain tidak bisa membacanya. Kunci dibuat dengan <code>extractable: false</code>, sehingga ia bisa <em>dipakai</em> oleh origin ini tetapi<br />byte-nya tidak bisa dibaca keluar — tidak oleh kode kami sendiri, dan tidak oleh apa pun yang berhasil berjalan di<br />halaman. Sesi berotasi (kunci baru, nonce baru) pada setiap pemulihan, dan membawa <code>createdAt</code><br />ke depan sehingga memuat ulang tidak dapat memperpanjang batas absolut.</p>
+<p>Kedaluwarsa: <strong>idle 30 menit</strong> (dapat dikonfigurasi, <code>autoLockMinutes</code>; <code>0</code> menonaktifkannya) dan <strong>batas absolut 8 jam</strong><br />sejak pembukaan awal. Keduanya diberlakukan saat pemulihan, dan jendela idle juga<br />diberlakukan secara langsung oleh <code>useAutoLock</code>, sehingga tab yang dibiarkan terbuka mengunci dirinya sendiri.</p>
+<p>Yang <em>tidak</em> dipertahankannya — bagian jujurnya:</p>
+<ul>
+<li><strong>Eksekusi skrip di dalam tab.</strong> Kode yang berjalan di halaman selama sesi berlangsung dapat meminta browser mendekripsi sesi lalu menandatangani dengan kunci, persis seperti yang dilakukan wallet. Ia tidak dapat mengekstraksi kunci penyegel, sehingga kompromi berakhir pada tab itu; ia tidak menjadi kunci curian yang dapat dipakai di tempat lain.</li>
+<li><strong>Perangkat yang disusupi.</strong> Tidak berubah dari model ancaman di atas: malware lokal dapat membaca IndexedDB dan <code>sessionStorage</code> sekaligus.</li>
+<li><strong>Konteks yang tidak aman.</strong> Tanpa <code>crypto.subtle</code> (<code>http://</code> polos, lihat di bawah), kunci penyegel jatuh kembali ke byte mentah di IndexedDB dan jaminan non-extractability hilang. Pembagian dan kedaluwarsanya tetap berlaku.</li>
+</ul>
+<p>Untuk menonaktifkannya sepenuhnya, matikan <strong>Settings → Security → Stay unlocked after a page refresh</strong><br />(<code>keepUnlocked: false</code>). Tidak ada yang ditulis, dan setiap reload meminta PIN — perilaku<br />sebelum fitur ini ada. Penguncian eksplisit (🔒) menghancurkan kedua separuh seketika.</p>
+<h3 id="passkey-unlock">Passkey unlock</h3>
+<p>Opsional, mati secara bawaan, dan bersifat tambahan: ia adalah cara kedua untuk membuka wallet yang sudah ada, bukan<br />pengganti PIN. <code>src/wallet/passkey.ts</code>.</p>
+<p>Pendaftaran membuat kredensial platform dengan <code>userVerification: 'required'</code> dan<br />ekstensi <strong>PRF</strong> WebAuthn. PRF memberi halaman sebuah secret yang diturunkan dari kredensial dan<br />salt 32-byte tersimpan, yang hanya akan dihasilkan browser setelah pengguna memverifikasi. Wallet<br />mengambil <code>sha256("orion-passkey-unlock-v1" || prf)</code> sebagai kunci AES-256, menyegel<br />wallet terserialisasi dengan AES-256-GCM, menolkan kunci, dan menyimpan blob tersegel di IndexedDB<br />di samping ID kredensial dan salt.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Disimpan</th><th>Tidak disimpan</th></tr></thead>
+<tbody>
+<tr><td>ID kredensial, salt PRF, IV, ciphertext wallet</td><td>Keluaran PRF, kunci turunan, PIN, materi kunci plaintext apa pun</td></tr>
+</tbody>
+</table>
+</div>
+<p>Konsekuensi yang layak dinyatakan dengan gamblang:</p>
+<ul>
+<li><strong>PRF diwajibkan, tidak pernah diturunkan mutunya.</strong> Bila autentikator tidak mendukungnya, pendaftaran gagal dan tidak menyimpan apa pun. Alternatifnya — menyimpan kunci yang dapat dibaca di samping ciphertext — akan membuat rekam itu mendekripsi dirinya sendiri, yang lebih buruk daripada tidak menawarkan fitur ini.</li>
+<li><strong>Rekam itu inert dengan sendirinya.</strong> Tanpa gestur terverifikasi-pengguna yang berhasil pada autentikator tersebut, tidak ada cara menurunkan kunci dari apa yang ada di disk.</li>
+<li><strong>Ia menyegel wallet, bukan PIN.</strong> PIN tetap satu-satunya yang mengekspor kunci, menampilkan phrase, mengganti PIN, atau menurunkan akun. Karena itu passkey unlock tidak dapat dipakai untuk meningkat ke hal-hal tersebut, dan rekam tersimpan membocorkan jauh lebih sedikit daripada PIN tersimpan.</li>
+<li><strong>Model sesi yang sama dengan pembukaan lewat PIN.</strong> Pembukaan lewat passkey menghasilkan sesi buka yang sama dengan batas idle dan absolut yang sama; ia tidak memperpanjang keduanya.</li>
+<li><strong>Terbatas pada perangkat dan browser.</strong> Terikat pada <code>rpId</code> origin dan disimpan secara lokal. Ia bukan bagian dari ekspor wallet dan tidak diturunkan dari recovery phrase.</li>
+<li><strong>Kredensial basi gagal-tertutup.</strong> Bila dekripsi gagal — kredensial yang dirotasi atau didaftarkan ulang, perangkat yang dipulihkan — rekam dihapus dan PIN diwajibkan. <em>Gestur yang dibatalkan atau kedaluwarsa</em> sengaja <strong>tidak</strong> menghapusnya, sehingga prompt yang dibatalkan tidak dapat menonaktifkan fitur ini diam-diam.</li>
+<li><strong>Ditolak untuk akun watch-only.</strong> Tidak ada materi kunci untuk disegel.</li>
+</ul>
+<p>Yang tidak dipertahankannya tetap sama: perangkat yang disusupi, dan eksekusi skrip dalam<br />sesi yang berlangsung, persis seperti pada sesi buka di atas. Ia memang menghilangkan satu paparan nyata —<br />PIN yang diketik dan diamati pada setiap pembukaan.</p>
+<h3 id="watch-only-accounts">Akun watch-only</h3>
+<p>Sebuah akun dapat ditambahkan hanya dengan alamat, tanpa keystore. Invariannya adalah bahwa akun<br />semacam itu tidak akan pernah bisa menandatangani, dan itu diberlakukan di tempat penandatanganan terjadi, bukan di UI:<br /><code>assertCanSign</code> (<code>src/wallet/watch-only.ts</code>) dipanggil oleh jalur send, encrypt, stealth,<br />kontrak, dan permintaan dApp, dan melempar galat yang menyebut baik aksinya maupun perbaikannya.</p>
+<p>Ia gagal-tertutup secara konstruksi: pemeriksaan menolak wallet mana pun yang secret key-nya bukan<br />kunci Ed25519 64-byte penuh, sehingga kunci yang terpotong atau hilang ditolak bahkan bila flag <code>watchOnly</code><br />entah bagaimana hilang. Flag itu dibawa melalui <code>serializeWallet</code>/<code>deserializeWallet</code>,<br />sehingga wallet yang dipulihkan dari sesi buka tetap watch-only.</p>
+<h3 id="randomness">Keacakan</h3>
+<p>Semua nilai yang relevan bagi keamanan memakai <code>crypto.getRandomValues</code> via <code>src/crypto/random.ts</code>.</p>
+<p><code>makeId</code> di <code>src/sdk/protocol.ts</code> memiliki fallback <code>Math.random</code>. Itu dipakai <strong>hanya</strong> untuk<br />ID korelasi pesan, tidak pernah untuk nilai keamanan, dan dianotasikan demikian. Jangan pakai ulang<br />untuk challenge, nonce, kunci, atau salt.</p>
+<hr />
+<h2 id="browser-security-posture">Postur keamanan browser</h2>
+<h3 id="content-security-policy">Content-Security-Policy</h3>
+<p>Ditetapkan di <code>index.html</code>:</p>
+<pre><code class="language-">default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob:; font-src 'self' data:;
+connect-src 'self' https: http://localhost:* http://127.0.0.1:* http://[::1]:*;
+frame-src 'self' https:; worker-src 'self' blob:; object-src 'none';
+base-uri 'self'; form-action 'self';</code></pre>
+<p>Tiga entri layak dijelaskan:</p>
+<ul>
+<li><strong><code>'wasm-unsafe-eval'</code></strong> diperlukan untuk modul FHE PVAC. Chromium memblokir <code>WebAssembly.instantiate()</code> tanpanya. Ia hanya mengizinkan kompilasi WebAssembly — ia <strong>tidak</strong> mengaktifkan kembali <code>eval()</code> JavaScript.</li>
+<li><strong><code>'unsafe-inline'</code> untuk styles</strong> diperlukan bagi CSS kritis pra-paint yang menghindari flash konten tak bergaya. Ia hanya berlaku untuk styles, tidak pernah untuk skrip.</li>
+<li><strong>Loopback di <code>connect-src</code></strong> memungkinkan node yang dijalankan secara lokal dipakai tanpa melonggarkan kebijakan ke plaintext secara umum. Lalu lintas ke <code>localhost</code> / <code>127.0.0.0/8</code> / <code>[::1]</code> tidak pernah keluar dari mesin, sehingga tidak ada apa pun di jalur jaringan yang bisa dicegat.</li>
+</ul>
+<h3 id="plaintext-http-rpc-endpoints">Endpoint RPC plaintext (http)</h3>
+<p>Apa pun selain itu lewat <code>http://</code> polos ditolak secara bawaan, dan <code>src/wallet/endpoint-policy.ts</code><br />adalah satu-satunya tempat yang memutuskan. Ia adalah fungsi murni dari URL plus konteks eksplisit,<br />sehingga store, UI Settings, dan pengujian tidak dapat berbeda pendapat tentang apa yang diizinkan.</p>
+<p>Tiga penghalang independen berlaku, dan vonisnya menyebut yang paling fundamental lebih dulu agar<br />pengguna tidak pernah disuruh memperbaiki allowlist padahal mixed content-lah penyebab sebenarnya:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Penghalang</th><th>Siapa yang memberlakukannya</th><th>Cara mencabutnya</th></tr></thead>
+<tbody>
+<tr><td>Mixed content</td><td>Browser, tanpa syarat</td><td>Tidak dapat dicabut. Gunakan TLS atau proxy</td></tr>
+<tr><td>Content-Security-Policy</td><td>CSP meta-tag yang dikirimkan</td><td>Build ulang dengan <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code></td></tr>
+<tr><td>Persetujuan pengguna</td><td><code>allowedInsecureOrigins</code> di setelan</td><td><strong>Trust</strong> origin di Settings → Network</td></tr>
+</tbody>
+</table>
+</div>
+<p>Catatan tentang desainnya:</p>
+<ul>
+<li>CSP adalah meta tag, sehingga ia <strong>tidak dapat dilonggarkan saat runtime</strong> — tidak ada setelan yang bisa memberi izin ini, itulah sebabnya ia berupa build flag. <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code> menambahkan <code>http:</code> ke <code>connect-src</code> saat build dan tidak lebih; persetujuan pengguna tetap diperlukan di atasnya.</li>
+<li>Persetujuan bersifat <strong>per origin</strong> — skema, host, dan port. Ia bukan pencocokan hostname dan bukan prefiks URL, sehingga memercayai <code>http://node.lan:8080</code> tidak memercayai port lain pada host itu, dan <code>http://127.0.0.1.evil.com</code> tidak diperlakukan sebagai loopback.</li>
+<li><strong>URL explorer dikecualikan</strong> karena mereka hanya pernah berupa navigasi <code>&lt;a href&gt;</code>, bukan fetch. <code>connect-src</code> dan mixed content tidak berlaku padanya. <code>relayerUrl</code> disimpan tetapi tidak pernah di-fetch. Hanya <code>rpcUrl</code> yang tunduk pada kebijakan ini.</li>
+<li>Endpoint yang diblokir tetap membangun sebuah <code>RpcClient</code>, secara sengaja: menolak membuatnya akan membuat pengguna tidak bisa mencapai Settings untuk memperbaikinya. Alasannya justru muncul sebagai lencana <strong>⚠️ Insecure RPC</strong> di header dan sebagai <code>RpcClient.unreachableHint</code>, yang ditambahkan hanya pada <code>TypeError</code> yang dilempar — tidak pernah pada error server sungguhan atau timeout, yang akan menyesatkan.</li>
+<li><strong><code>rpcProxyUrl</code></strong> memindahkan keputusan ke proxy: endpoint dinilai berdasarkan skema milik proxy itu sendiri, karena itulah yang sebenarnya dihubungi browser. Proxy melihat setiap permintaan, sehingga UI menyarankan untuk menjalankan milik Anda sendiri. Ia tidak dapat mencapai kunci atau menandatangani.</li>
+</ul>
+<p>RPC plaintext adalah paparan kerahasiaan <em>dan</em> integritas — sebuah node di jalur dapat membaca<br />setiap pencarian dan mengubah balasannya — tetapi bukan paparan kompromi-kunci: tanda tangan dihasilkan<br />secara lokal dan wallet tidak memverifikasi apa pun yang diterimanya menjadi materi kunci.</p>
+<h3 id="cross-origin-isolation">Isolasi lintas-origin</h3>
+<p>COOP/COEP bernilai <code>same-origin</code> / <code>require-corp</code> di seluruh aplikasi, dengan override <code>unsafe-none</code><br />pada <code>/connect</code> agar popup persetujuan dapat bertukar MessagePort dengan opener-nya.<br />Penyempitan ini disengaja dan terbatas pada satu rute itu saja.</p>
+<hr />
+<h2 id="dapp-connection-security">Keamanan koneksi dApp</h2>
+<p>Saat sebuah situs meminta koneksi:</p>
+<ol>
+<li>Popup menampilkan origin peminta secara menonjol.</li>
+<li>Pengguna harus menyetujui secara eksplisit; tidak ada koneksi diam-diam untuk origin baru.</li>
+<li>Persetujuan dibatasi pada origin itu dan dipersistensikan per-origin.</li>
+<li>Operasi penandatanganan selalu memerlukan konfirmasi, bahkan untuk situs tepercaya.</li>
+</ol>
+<p>"Trust this site" menekan prompt hanya untuk permintaan <strong>baca-saja</strong> (saldo, akun,<br />network). Ia tidak pernah memberikan penandatanganan diam-diam.</p>
+<p>Koneksi dapat ditinjau dan dicabut di <strong>Settings → Connected Sites</strong>.</p>
+<h3 id="what-a-dapp-learns-about-a-custom-network">Apa yang dipelajari dApp tentang jaringan kustom</h3>
+<p>Jaringan yang ditambahkan pengguna secara manual terlihat oleh situs yang terhubung (<code>wallet_getNetworkInfo</code>,<br /><code>wallet_getNetworks</code>, dan event <code>networkChanged</code>), karena sebuah dApp tidak dapat menampilkan<br />tautan explorer atau label chain yang benar tanpa mengetahui jaringan mana yang sedang dipakai. Rekam yang melintasi<br />jalur adalah subset yang disengaja:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Dikirim</th><th>Ditahan</th></tr></thead>
+<tbody>
+<tr><td><code>id</code>, <code>name</code>, <code>explorerUrl</code>, <code>icon</code>, <code>custom</code></td><td><code>rpcUrl</code>, <code>relayerUrl</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Endpoint ditahan karena jaringan yang ditambahkan pengguna biasanya bersifat privat — alamat LAN,<br />sebuah tunnel, URL penyedia berbayar dengan API key di query string. Menghubungkan ke sebuah<br />situs seharusnya tidak mengungkap di mana node pengguna berada atau menyerahkan URL berkredensial. Tidak ada<br />fungsionalitas yang hilang: baca di-proxy melalui wallet dan transaksi dibangun serta<br />disiarkan oleh wallet, sehingga sebuah dApp tidak pernah perlu menjangkau RPC itu sendiri.</p>
+<p>Dua konsekuensi yang layak diketahui:</p>
+<ul>
+<li><strong>Nama</strong> jaringan kustom dipilih pengguna dan ditampilkan ke dApp. Menamainya dengan pengenal pribadi mengungkap pengenal itu ke setiap situs yang Anda hubungi.</li>
+<li><code>wallet_getNetworks</code> mengungkap <strong>berapa banyak</strong> jaringan yang telah Anda konfigurasikan. Ini adalah permukaan fingerprinting kecil, yang diterima agar sebuah dApp dapat menawarkan panduan "beralih ke X".</li>
+</ul>
+<p>Tidak ada dApp yang dapat mengubah jaringan. Tidak ada metode <code>wallet_switchNetwork</code>; peralihan hanya terjadi<br />di UI wallet itu sendiri, dan dApp mengetahuinya setelahnya via <code>networkChanged</code>.</p>
+<hr />
+<h2 id="dependency-status">Status dependensi</h2>
+<p>Dependensi produksi: <strong>nol kerentanan yang diketahui</strong> (<code>npm audit --omit=dev</code>).</p>
+<p>Dependensi pengembangan membawa advisory pada vitest, vite, esbuild, dan paket terkait.<br />Setiap perbaikan yang tersisa memerlukan upgrade mayor (vite 5→8, vitest 2→4) yang berisiko merusak<br />build. Paket-paket ini adalah perkakas build — mereka tidak dikirim ke pengguna dan tidak dapat memengaruhi<br />wallet yang ter-deploy.</p>
+<p>Ini adalah trade-off yang disengaja, ditinjau kembali pada setiap rilis. Jalankan <code>npm audit --omit=dev</code> untuk<br />memastikan permukaan yang dikirim tetap bersih.</p>
+<hr />
+<h2 id="guidance-for-users">Panduan untuk pengguna</h2>
+<p><strong>Lakukan</strong></p>
+<ul>
+<li>Simpan recovery phrase Anda secara offline, di kertas, di lebih dari satu tempat</li>
+<li>Verifikasi alamat penerima karakter demi karakter sebelum mengirim</li>
+<li>Verifikasi origin di setiap prompt koneksi dApp</li>
+<li>Kirim jumlah uji yang kecil terlebih dahulu saat memakai alamat baru</li>
+<li>Jaga browser dan OS Anda tetap diperbarui</li>
+</ul>
+<p><strong>Jangan pernah</strong></p>
+<ul>
+<li>Memasukkan recovery phrase Anda di situs web mana pun setelah penyiapan</li>
+<li>Menyimpan phrase secara digital — tanpa tangkapan layar, catatan cloud, atau pesan chat</li>
+<li>Membagikan private key atau file backup <code>.oct</code> Anda</li>
+<li>Memakai wallet berisi dana sungguhan di komputer bersama atau yang tidak dipercaya</li>
+</ul>
+<hr />
+<h2 id="for-contributors">Untuk kontributor</h2>
+<p>Invarian yang sensitif terhadap keamanan yang tidak boleh dilemahkan:</p>
+<ul>
+<li>Validasi origin pada setiap <code>postMessage</code> masuk</li>
+<li>CSPRNG untuk semua nilai keamanan; <code>makeId</code> bukan salah satunya</li>
+<li>Tidak ada secret di <code>localStorage</code>, <code>sessionStorage</code>, log, atau pesan error</li>
+<li>Tidak ada <code>innerHTML</code> atau <code>dangerouslySetInnerHTML</code></li>
+<li>PIN tidak pernah dipersistensikan</li>
+<li>Passkey unlock memerlukan PRF; jangan pernah jatuh ke penyimpanan kunci yang dapat dibaca</li>
+<li><code>assertCanSign</code> menjaga setiap jalur penandatanganan — akun watch-only tidak boleh pernah menandatangani</li>
+<li>Kebijakan endpoint plaintext tetap berada di <code>endpoint-policy.ts</code>; tidak ada pemeriksaan URL ad-hoc di tempat lain</li>
+<li>JSON kanonis tetap byte-exact — tanda tangan bergantung padanya</li>
+</ul>
+<p>Setiap perubahan yang menyentuh kripto, penanganan kunci, penyimpanan, atau alur connect harus menyatakannya<br />secara eksplisit di pull request.</p>
+</body>
+</html>

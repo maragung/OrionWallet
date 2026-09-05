@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="sw">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mwongozo wa Msanidi — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="orion-wallet-developer-guide">Orion Wallet — Mwongozo wa Msanidi</h1>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Msimbo chanzo, masuala, na matoleo.</blockquote>
+<h2 id="contents">Yaliyomo</h2>
+<ul>
+<li><a href="#setup">Usanidi</a></li>
+<li><a href="#project-layout">Mpangilio wa mradi</a></li>
+<li><a href="#architecture">Usanifu</a></li>
+<li><a href="#build-system">Mfumo wa kuunda (build)</a></li>
+<li><a href="#the-pvac-wasm-pipeline">Safu ya PVAC WASM</a></li>
+<li><a href="#state-management">Usimamizi wa hali</a></li>
+<li><a href="#error-handling">Kushughulikia makosa</a></li>
+<li><a href="#loading-states">Hali za upakiaji</a></li>
+<li><a href="#storage-and-migrations">Uhifadhi na uhamishaji</a></li>
+<li><a href="#wallet-sdk">SDK ya Pochi</a></li>
+<li><a href="#dapp-integration">Ushirikiano wa dApp</a></li>
+<li><a href="#session-management">Usimamizi wa kipindi</a></li>
+<li><a href="#testing">Upimaji</a></li>
+<li><a href="#release-checklist">Orodha ya ukaguzi wa toleo</a></li>
+<li><a href="#known-issues">Masuala yanayojulikana</a></li>
+</ul>
+<hr />
+<h2 id="setup">Usanidi</h2>
+<pre><code class="language-bash">npm install --legacy-peer-deps
+npm run dev</code></pre>
+<p><code>--legacy-peer-deps</code> ni ya lazima: ESLint 9 na <code>@eslint/js</code> 10 zinatangaza safu<br />pinzani za peer dependencies. <code>vercel.json</code> inatumia bendera ileile, kwa hiyo CI na usakinishaji wa ndani wanaendana.</p>
+<p>Node 20+ inapendekezwa.</p>
+<hr />
+<h2 id="project-layout">Mpangilio wa mradi</h2>
+<pre><code class="language-">src/
+├── api/          High-level operations (wallet-api, send, encrypt)
+├── components/   React components, one panel per tab
+├── connect/      dApp approval popup (/connect route)
+├── crypto/       Primitives: ed25519, x25519, sha256, aes, bip39, hd, base58/64
+├── hooks/        useTheme, usePanelLoading
+├── i18n/         Translations and the provider
+├── pvac/         FHE bridge: stub + WASM implementation
+├── rpc/          JSON-RPC client
+├── sdk/          Provider injected into dApps + transport
+├── stealth/      Stealth address derivation
+├── store/        Zustand store
+├── tx/           Canonical JSON, signing, ABI helpers
+├── utils/        Clipboard, progress reporting, CSV export
+└── wallet/       Keystore, IndexedDB storage, PIN, passkey unlock, watch-only
+                  guard, endpoint policy, payment URIs, mnemonic backup check
+
+public/
+  demo/           Standalone dApp integration demo (dapp.html)
+  docs/           Static HTML documentation pages
+  wasm/           Compiled PVAC module (pvac.js + pvac.wasm)
+
+tests/unit/       Vitest
+tests/e2e/        Playwright
+docs/             This documentation</code></pre>
+<hr />
+<h2 id="architecture">Usanifu</h2>
+<p>Hutekelezwa kabisa upande wa mteja; hakuna seva ya nyuma. Data inapita katika mwelekeo mmoja:</p>
+<pre><code class="language-">React components  (src/components/)
+       │  read state, dispatch actions
+       ▼
+Zustand store  (src/store/wallet-store.ts)
+       │
+       ▼
+API layer  (src/api/)          ← orchestrates crypto + RPC
+       │
+       ├──► Crypto core  (src/crypto/)   WebCrypto, tweetnacl, @noble
+       ├──► PVAC FHE     (src/pvac/)     WebAssembly
+       ├──► Transaction  (src/tx/)       canonical JSON + signing
+       └──► RPC client   (src/rpc/)      fetch
+                                           │ HTTPS
+                                           ▼
+                                    Octra RPC node</code></pre>
+<h3 id="design-constraints">Vikwazo vya muundo</h3>
+<p><strong>Canonical JSON lazima iwe sawasawa kwa baiti.</strong> <code>src/tx/canonical-json.ts</code> huzalisha upya<br />mpangilio wa funguo na umbizo la <code>nlohmann::json</code> haswa. Sahihi hukokotolewa juu ya baiti<br />hizi, kwa hivyo mkengeuko wowote hutoa sahihi ambayo mtandao hukataa. Usiiweke "safi" (tidy up)<br />serializer hii.</p>
+<p><strong>Upeanaji majina: bidhaa dhidi ya itifaki.</strong> "Orion Wallet" ndiyo bidhaa. Mbinu za RPC za <code>octra_*</code>,<br />kiambishi awali cha anwani cha <code>oct</code>, alama ya <code>OCT</code>, na "Octra Network" ni vitambulisho vya itifaki<br />na haipaswi kamwe kubadilishwa majina.</p>
+<hr />
+<h2 id="build-system">Mfumo wa kuunda (build)</h2>
+<p>Faili za usanidi wa TypeScript ndizo <strong>chanzo kikuu cha ukweli</strong>:</p>
+<ul>
+<li><code>vite.config.ts</code></li>
+<li><code>vitest.config.ts</code></li>
+<li><code>playwright.config.ts</code></li>
+</ul>
+<blockquote><strong>Usiongeze faili pacha za <code>.js</code> kwa hizi.</strong> Vite hutatua <code>vite.config.js</code> kabla ya<br /><code>vite.config.ts</code>, kwa hivyo nakala iliyotafsiriwa (transpiled) iliyopitwa na wakati huivulianga usanidi halisi kimya-kimya na<br />mabadiliko kwenye faili ya <code>.ts</code> hayafanyi kazi. Majina hayo matatu ya faili yamo kwenye <code>.gitignore</code>.<br /><code>eslint.config.js</code> ni flat config halisi na imeachwa kimakusudi.</blockquote>
+<p>Kuzipuuza peke yake hakutosha, kwa sababu hakuna kilichozuia zisije <em>zikaundwa</em>:<br /><code>tsconfig.node.json</code> ni mradi wa <code>composite</code>, unaolazimisha utoaji wa tamko, na bila<br /><code>outDir</code> yoyote ya <code>tsc -b</code> iliandika <code>vite.config.js</code> moja kwa moja karibu na chanzo. Ilitokea mara mbili.<br />Utoaji wa mradi huo sasa unaenda kwenye <code>node_modules/.tmp/tsconfig-node/</code>, ambako hauwezi kuvulianga<br />chochote. Ukiongeza faili ya usanidi kwenye mradi huo, acha <code>outDir</code> ikiwa kama ilivyo.</p>
+<h3 id="environment-flags">Vigezo vya mazingira</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Kigezo</th><th>Madhara</th></tr></thead>
+<tbody>
+<tr><td><code>VITE_ALLOW_HTTP_ENDPOINTS=1</code></td><td>Huongeza <code>http:</code> kwenye maelekezo ya <code>connect-src</code> ya CSP wakati wa kuunda, ili toleo linalojiendesha (self-hosted) liweze kufikia nodi ya RPC ya http-rahisi. Idhini ya mtumiaji kwa kila asili bado inatumika — angalia <code>src/wallet/endpoint-policy.ts</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Huwekwa wakati wa kuunda pekee. Husomwa katika <code>vite.config.ts</code> na programu-jalizi ya <code>allowHttpEndpointsCsp</code><br />na huandika upya <code>index.html</code>; haina athari wakati wa uendeshaji, kwa sababu CSP ya meta-tag haiwezi kupanjwa<br />mara tu hati inapochanganuliwa.</p>
+<h3 id="headers">Vichwa (Headers)</h3>
+<p>COOP/COEP zimewekwa kuwa <code>same-origin</code> / <code>require-corp</code> (zimehifadhiwa kwa ajili ya nyuzi za WASM za baadaye),<br />huku kukiwa na vivukio vya <code>unsafe-none</code> kwenye <code>/connect</code> ili uhamishaji wa <code>postMessage</code> na MessagePort wa popup ufanye kazi.<br />Vichwa vya ukuzaji vipo kwenye <code>vite.config.ts</code>; vichwa vya uzalishaji vipo kwenye <code>vercel.json</code>.<br /><strong>Zilinganishe hizo mbili.</strong></p>
+<h3 id="content-security-policy">Content-Security-Policy</h3>
+<p>Imefafanuliwa katika <code>index.html</code>. <code>script-src</code> lazima ijumuishe <code>'wasm-unsafe-eval'</code> — Chromium anakataa<br /><code>WebAssembly.instantiate()</code> bila hiyo, ambayo ndiyo hasa iliyofanya moduli ya PVAC kushindwa<br />kupakia kimya-kimya. Maelekezo hayo yanaruhusu ukusanyaji wa WebAssembly pekee; haiwashi upya<br />JavaScript <code>eval()</code>.</p>
+<p><code>connect-src</code> ni <code>'self' https:</code> pamoja na loopback (<code>http://localhost:*</code>, <code>http://127.0.0.1:*</code>,<br /><code>http://[::1]:*</code>) ili nodi inayoendeshwa ndani ifanye kazi bila kufungua maandishi wazi kwa ujumla. Chochote<br />kingine kupitia <code>http://</code> hudhibitiwa na <code>src/wallet/endpoint-policy.ts</code>, ambayo ndiyo sehemu pekee<br />inayoamua — ni kazi safi ya URL pamoja na muktadha wa wazi, kwa hivyo store, UI ya Mipangilio,<br />na majaribio haviwezi kutofautiana. Usiongeze ukaguzi wa URL wa dharula mahali pengine. Vizuizi vitatu<br />vinavyojitegemea vinatumika (mixed content → CSP → idhini ya mtumiaji) na uamuzi unaripoti<br />la msingi zaidi kwanza, ili mtumiaji asisemwe kurekebisha orodha-nyeupe wakati kivinjari ndicho<br />kinachokataa.</p>
+<hr />
+<h2 id="the-pvac-wasm-pipeline">Safu ya PVAC WASM</h2>
+<h3 id="building">Kuunda (Building)</h3>
+<pre><code class="language-bash">git clone https://github.com/emscripten-core/emsdk.git /tmp/emsdk
+cd /tmp/emsdk &amp;&amp; ./emsdk install latest &amp;&amp; ./emsdk activate latest
+source /tmp/emsdk/emsdk_env.sh
+
+git clone https://github.com/octra-labs/webcli ../webcli-source
+python3 scripts/patch-pvac-aes.py ../webcli-source/pvac   # software AES fallback
+npm run build:wasm</code></pre>
+<p><code>patch-pvac-aes.py</code> inahitajika kwa sababu PVAC hutoa <code>#error</code> ngumu bila AES ya maunzi (AES-NI au<br />viendelezi vya kriptografia vya ARM), ambavyo WebAssembly hakiitoi. Kiraka huongeza utekelezaji wa programu<br />unaojibebeka ambao ni sawa kwa baiti lakini ni polepole takriban mara 5–10. Ni nyongeza tu: njia za maunzi<br />hazijaguswa, na faili ya chelezo ya <code>.hpp.bak</code> huandikwa.</p>
+<h3 id="loading">Kupakia (Loading)</h3>
+<p><code>src/pvac/wasm-bridge.ts</code> hupakia moduli kwa hatua tatu:</p>
+<ol>
+<li><strong>Probe</strong> — <code>HEAD</code> kwenye URL ya gundi, ili "haikujengwa" (404) itofautishwe na<br />"imezuiwa na CSP". Bila hii, zote mbili zinaonekana kama hitilafu ya kuingiza isiyo wazi inayofanana.</li>
+<li><strong>Import</strong> — <code>import()</code> inayobadilika ya URL kamili yenye <code>/* @vite-ignore */</code>. Lazima iwe<br />kamili: kielezi tupu (bare specifier) kinashindwa kutatuliwa, na <code>./wasm/pvac.js</code> hutatuliwa kuelekea<br /><code>/assets/</code> na kurudisha 404.</li>
+<li><strong>Verify</strong> — hakikisha eksporti zote 13 zinazohitajika za <code>_pvac_*</code> zipo kabla ya kubadilisha daraja (bridge).<br />Matoleo ya awali yaliacha kazi za usimbaji mfululizo (serialization), jambo lililovunja usimbaji fiche/ufichuaji kwa<br />njia ambayo nodi iliripoti tu kama "malformed transaction".</li>
+</ol>
+<p>Hitilafu huainishwa kama <code>PvacFailureReason</code>: <code>not-built</code>, <code>csp-blocked</code>,<br /><code>missing-exports</code>, <code>init-failed</code>, <code>unknown</code>. Kila moja inalingana na suluhisho dhahiri linaloonyeshwa<br />kwenye Mipangilio. Ahadi ya singleton huwekwa upya ikishindwa ili <strong>↻ Reload PVAC</strong> iweze kujaribu tena<br />badala ya kurudia kukataliwa kwenye kashe.</p>
+<h3 id="memory-rules">Sheria za kumbukumbu</h3>
+<p>API ya C ina kumbukumbu ya mwongozo. Kila <code>_malloc</code> inahitaji <code>_free</code>; kila <code>serialize_*</code> inarudisha<br />bafa inayopaswa kutolewa kwa <code>_pvac_free_bytes</code>. Vipini kutoka kwa <code>keygen</code>/<code>enc_*</code> vinahitaji<br /><code>_pvac_free_*</code> vinavyolingana. Tumia <code>try/finally</code> — angalia <code>WasmPvacBridge</code> kwa mfano.</p>
+<hr />
+<h2 id="state-management">Usimamizi wa hali</h2>
+<p>Zustand, katika <code>src/store/wallet-store.ts</code>. Inamiliki pochi, mteja wa RPC, mipangilio, hali ya PVAC,<br />arifa (toasts), na bendera ya upakiaji ya kimataifa.</p>
+<p>Bendera ya upakiaji ya kimataifa (<code>isLoading</code>) huendesha kifuniko cha blur cha skrini nzima na imetengwa kwa<br /><strong>mabadiliko ya programu nzima pekee</strong>, kama vile kufungua pochi. Kazi ya kila paneli lazima itumie<br /><code>usePanelLoading</code> badala yake — angalia hapa chini.</p>
+<hr />
+<h2 id="error-handling">Kushughulikia makosa</h2>
+<p><code>src/components/ErrorBoundary.tsx</code> hufunika kila paneli katika <code>Layout.tsx</code>, kikifungwa kwenye kichupo<br />kinachotumika ili mpaka uliovunjika uweze kuweka upya unaposogeza, pamoja na mpaka mmoja kwenye mzizi katika <code>main.tsx</code>.</p>
+<p>Hili ni muhimu kuliko inavyoonekana. <code>index.html</code> ina:</p>
+<pre><code class="language-css">#root:empty::before { content: 'Loading Orion Wallet…'; }</code></pre>
+<p>Bila mpaka, kosa lolote wakati wa utoaji (render) hufanya React 18 kufungua mti mzima, <code>#root</code><br />likawa tupu, na ujazaji huo wa dharura huonyeshwa — ukitoa ukurasa mweupe tupu unaoonekana umekwama<br />ukipakia milele. Mpaka huweka ganda (shell) hai na kuonyesha kadi ya kosa inayoweza kujaribiwa tena.</p>
+<p><strong>Matokeo:</strong> kazi zinazoitwa wakati wa utoaji lazima zisitupe makosa kwa ingizo lililoharibika.<br /><code>formatAmount</code> katika <code>src/tx/builder.ts</code> hupokea <code>unknown</code> na kushuka hadi placeholder,<br />kwa sababu majibu ya RPC na kashe ya tx ya ndani havijathibitishwa kwa schema. Sanifisha<br />safu zisizoaminika kabla ya kuzionyesha — <code>HistoryView</code> linaonyesha mfano.</p>
+<hr />
+<h2 id="loading-states">Hali za upakiaji</h2>
+<p>Tumia <code>usePanelLoading</code> (<code>src/hooks/usePanelLoading.ts</code>) kwa kazi za kiwango cha paneli:</p>
+<pre><code class="language-typescript">const panelLoading = usePanelLoading();
+
+await panelLoading.run('Loading history', async () =&gt; {
+  const data = await fetchSomething();
+  if (!panelLoading.isMounted()) return;   // guard late setState
+  setData(data);
+}, 'Fetching from the network…');</code></pre>
+<p>Kisha onyesha <code>&lt;ProcessingModal open={panelLoading.loading} … dismissible onClose={panelLoading.hide} /&gt;</code>.</p>
+<p>Sifa mbili zinajalisha: modal ni ya <strong>kufungika</strong> (kazi inaendelea chinichini, kwa hivyo<br />mtandao mwepesi haumfungi mtumiaji), na uandishi wa hali umefungwa kwenye <code>isMounted()</code> ili<br />kusogeza mbali katikati ya mchakato kusiache modal imekwama kwenye skrini.</p>
+<hr />
+<h2 id="storage-and-migrations">Uhifadhi na uhamishaji</h2>
+<p>IndexedDB kupitia <code>idb</code>, hifadhidata <code>orion-wallet</code>, toleo la 6. Hifadhi (stores) hutangazwa mara moja kwenye safu ya<br /><code>OBJECT_STORES</code> ndani ya <code>src/wallet/storage.ts</code>; ongeza mpya hapo ili uundaji na uhamishaji vibaki sanjari — safu hiyo pia huendesha<br /><code>wipeEverything()</code>, kwa hivyo hifadhi iliyoongezwa mahali pengine ingesalia baada ya kufuta.</p>
+<p>Uhamishaji ni <strong>wa nyongeza tu</strong>: ongeza <code>DB_VERSION</code>, ambatanisha kwenye safu, na andika<br />toleo kwenye maoni kando ya viingilio vipya. Hifadhi zilizopo hazibadilishwi jina wala hazifutwi.<br />Matoleo hadi sasa: v2 hifadhi za SDK, v3 tokeni za OCS01, v4 alamisho za <code>oct://</code>, v5<br /><code>unlock-session-keys</code>, v6 <code>contacts</code> + <code>passkey-unlock</code>.</p>
+<h3 id="the-rebrand-migration">Uhamishaji wa kuweka upya chapa (rebrand)</h3>
+<p>Kubadilisha jina la hifadhidata kutoka <code>webcli-react</code> kungeyaacha pochi zote zilizopo bila mzazi (orphaned), kwa kuwa<br />IndexedDB huweka mipaka ya data kwa jina la hifadhidata. <code>migrateLegacyDatabase</code> hunakili hifadhi zote kwenda mbele<br />wakati wa uzinduzi wa kwanza. Ni:</p>
+<ul>
+<li><strong>isiyo na athari ya kurudia (idempotent)</strong> — hurukwa mara tu lengo linapokuwa na pochi yoyote</li>
+<li><strong>isiyoharibu (non-destructive)</strong> — hifadhidata ya zamani huachwa ikiwa kamili kwa ajili ya kurudisha nyuma</li>
+<li><strong>isiyo ya hatari (non-fatal)</strong> — hitilafu huandikwa kwenye kumbukumbu, hazitupwi; hitilafu ya uhamishaji haipaswi kuzuia kuanza</li>
+</ul>
+<p>Kumbuka kwamba <code>clearIndexedDB</code> katika visaidizi vya E2E lazima ifute hifadhidata <strong>zote mbili</strong>, la sivyo<br />uhamishaji utanakili data ya zamani kurudi moja kwa moja na "hali safi" haitakuwa safi.</p>
+<hr />
+<h2 id="wallet-sdk">SDK ya Pochi</h2>
+<p><code>src/sdk/</code> ni mtoa huduma anayekabili dApp; <code>src/connect/</code> ni popup ya uidhinishaji inayotolewa katika<br /><code>/connect</code>.</p>
+<h3 id="method-namespaces">Sehemu za majina za mbinu</h3>
+<p>Pochi huitikia sehemu mbili za majina zinazolingana:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Generic</th><th>Kwa chapa ya Orion</th><th>Operesheni</th></tr></thead>
+<tbody>
+<tr><td><code>wallet_connect</code></td><td><code>orion_wallet_connect</code></td><td>Anzisha muunganisho</td></tr>
+<tr><td><code>wallet_signMessage</code></td><td><code>orion_wallet_signMessage</code></td><td>Tia sahihi ujumbe wa kawaida</td></tr>
+<tr><td><code>wallet_signTypedData</code></td><td><code>orion_wallet_signTypedData</code></td><td>Tia sahihi data iliyopangwa</td></tr>
+<tr><td><code>wallet_approveContract</code></td><td><code>orion_wallet_approveContract</code></td><td>Idhinisha mapema mwito wa kontrakta</td></tr>
+<tr><td><code>wallet_signContract</code></td><td><code>orion_wallet_signContract</code></td><td>Tia sahihi muamala wa kontrakta</td></tr>
+<tr><td><code>wallet_getAccounts</code></td><td><code>orion_wallet_getAccounts</code></td><td>Orodhesha akaunti</td></tr>
+<tr><td><code>wallet_getBalance</code></td><td><code>orion_wallet_getBalance</code></td><td>Soma salio</td></tr>
+<tr><td><code>wallet_getNetworkInfo</code></td><td><code>orion_wallet_getNetworkInfo</code></td><td>Soma mtandao unaotumika kama rekodi</td></tr>
+<tr><td><code>wallet_getNetworks</code></td><td><code>orion_wallet_getNetworks</code></td><td>Orodhesha kila mtandao unaotolewa na pochi</td></tr>
+<tr><td>…</td><td>…</td><td>…</td></tr>
+</tbody>
+</table>
+</div>
+<p>Zote mbili zinakubaliwa na kutekelezwa sawasawa. Majina ya <code>orion_wallet_*</code> yapo kwa dApps<br />zinazotaka kulenga Orion Wallet kwa uwazi; majina ya generic <code>wallet_*</code> yanaendelea kuauniwa ili<br />ushirikiano uliopo uendelee kufanya kazi.</p>
+<p><code>canonicalizeMethod</code> katika <code>src/sdk/protocol.ts</code> hupunguza kila jina la mbinu hadi umbo lake la kanuni<br />(canonical) la <code>wallet_*</code> kabla ya usambazaji, ili sehemu hizo mbili za majina zisipotee kamwe kutoka kwa<br />mfuatano.</p>
+<h3 id="connection-lifecycle">Mzunguko wa maisha wa muunganisho</h3>
+<p><strong>Handshake (mara moja kwa kila kipindi):</strong></p>
+<ol>
+<li>dApp huita <code>provider.connect()</code> → <code>PopupTransport</code> hufungua <code>/connect?v=1&amp;rid=…&amp;origin=…</code></li>
+<li>Pochi huonyesha <code>ConnectApp</code>, mtumiaji anafungua ikiwa inahitajika</li>
+<li>Pochi hutuma <code>hello</code> + MessagePort kupitia <code>window.postMessage</code>, asili yake ikiwa imehakikiwa</li>
+<li>dApp hurudisha <code>challenge</code> kupitia bandari (anti-replay)</li>
+<li><code>ConnectHandler</code> huthibitisha ack, hutumikia RPC ya <code>CONNECT</code> → inarudisha anwani, akaunti, mtandao</li>
+</ol>
+<p><strong>Baada ya kuunganisha:</strong></p>
+<ul>
+<li><strong>Popup inaweza kufungwa</strong>, lakini MessagePort inabaki wazi — haitegemei dirisha</li>
+<li>Kipindi hudumu katika IndexedDB (<code>sdk-sessions</code>) kwa TTL ya kutokutumika + kamili</li>
+<li>Mbinu za kusoma (<code>getBalance</code>, <code>getAccounts</code>) ziko kimya kwenye kipindi</li>
+<li>Mbinu za kutia sahihi <strong>daima</strong> hufungua kidokezo kipya cha uidhinishaji</li>
+</ul>
+<p><strong>Suluhisho la "muunganisho unafanya kazi, lakini hakuna kingine":</strong></p>
+<p>Awali <code>PopupTransport.isConnected()</code> iliangalia <code>popup.closed</code>, kwa hivyo kila simu baada ya dirisha<br />la uidhinishaji kufungwa ilishindikana kwa "Transport is not connected". Sasa inaangalia bandari<br />pekee, ambayo hudumu kuliko popup. Pochi hufunga popup baada ya uidhinishaji, lakini<br />muunganisho unabaki hai.</p>
+<h3 id="permission-model">Muundo wa ruhusa</h3>
+<p><strong>Wakati wa kuunganisha:</strong> ni wigo wa kusoma tu (<code>viewAccounts</code>, <code>viewBalance</code>, <code>viewNetwork</code>).</p>
+<p><strong>Wigo wa kutia sahihi</strong> (<code>signMessage</code>, <code>signContract</code>, n.k.) <strong>hutolewa kwa ulegevu (lazily)</strong> kwenye<br />uidhinishaji wa kwanza uliofaulu. Kabla ya suluhisho, hayakuwa kwenye <code>DEFAULT_PERMISSIONS</code> na<br />msambazaji alikataa kila simu ya kutia sahihi kwa <code>UNAUTHORIZED</code> kabla kidokezo hakijaonekana —<br />chanzo cha pili cha dalili hiyo.</p>
+<p>Sasa:</p>
+<ul>
+<li>Ukaguzi wa ruhusa huruhusu wigo wa kutia sahihi ambao haujapewa ruhusa kuendelea hadi kidokezo cha uidhinishaji</li>
+<li>Baada ya uidhinishaji, <code>grantPermission</code> hudumisha wigo kwenye kipindi</li>
+<li>Simu zinazofuata huruka ukaguzi wa ruhusa lakini <strong>bado zinahitaji uidhinishaji</strong> — kutoa wigo kunarekodi tu kwamba mtumiaji anakubali dApp inaweza kuuliza</li>
+</ul>
+<p>Ufutaji ni wa wazi: <code>revokePermission</code> huondoa wigo kutoka kwenye <code>permissions</code> na kuurekodi<br />kwenye <code>deniedPermissions</code>, ambao msambazaji hukataa kabisa.</p>
+<h3 id="security-invariants">Vikwazo visivyobadilika vya usalama</h3>
+<p>Usivipunguze:</p>
+<ul>
+<li><strong>Uthibitishaji wa asili (origin)</strong> kwenye kila <code>postMessage</code> unaoingia (<code>PopupTransport.ts</code>, <code>rpc-handler.ts</code>)</li>
+<li><strong>Kuzuia kurudiwa (anti-replay):</strong> changamoto ya CSPRNG + nonce ya dApp + nonce ya mfuatano kwa kila kipindi. <code>makeId</code> ni kwa ajili ya uhusiano wa ujumbe pekee na haipaswi kamwe kutumika kama thamani ya usalama</li>
+<li><strong>Ruhusa</strong> ni kwa kila asili, hudumishwa katika <code>sdk-sessions</code>, na hutolewa/kufutwa kwa uwazi</li>
+<li><strong>Uhuru wa MessagePort:</strong> Bandari hiyo hudumu zaidi ya popup. Ikihamishwa, pochi inaweza kufunga dirisha la uidhinishaji bila kuvunja muunganisho</li>
+<li><strong>Mbinu zilizopigwa marufuku</strong> hukataliwa upande wa mteja (<code>WalletProvider</code>) na upande wa pochi (<code>rpc-handler</code>), ili utekelezaji wa muamala usiweze kamwe kutoroka hadi SDK hata kupitia mlango wa dharura wa <code>request()</code> wa kiwango cha chini</li>
+<li><strong><code>localStorage</code></strong> huhifadhi kidokezo cha kurejesha kipindi (anwani, mtandao) pekee — kamwe siri</li>
+</ul>
+<hr />
+<h2 id="dapp-integration">Ushirikiano wa dApp</h2>
+<h3 id="quick-start">Kuanza haraka (Quick start)</h3>
+<pre><code class="language-javascript">import { WalletProvider } from '@orion-wallet/sdk';
+
+const provider = new WalletProvider({
+  walletUrl: 'https://orionwallet.example/connect',
+  capabilities: [
+    'signMessage',
+    'signTypedData',
+    'approveContract',
+    'signContract',
+    'multiAccount',
+    'events',
+    'sessionRestore',
+    'customNetworks',
+  ],
+});
+
+const result = await provider.connect();</code></pre>
+<h3 id="session-management">Usimamizi wa kipindi</h3>
+<p>Vipindi vya Orion huisha baada ya <strong>dakika 30 za kutokutumika</strong> au <strong>saa 8 kamili</strong>. SDK hutoa<br />ukaguzi wa afya wa kipindi uliojengwa ndani na kujiunganisha upya kiotomatiki:</p>
+<pre><code class="language-javascript">// Check session health before every signing operation
+if (!provider.isSessionAlive()) {
+  await provider.refreshSession();
+}
+
+// Listen for session expiry events
+provider.on('sessionExpired', () =&gt; {
+  setConnected(false);
+});</code></pre>
+<h3 id="networks-including-the-users-own">Mitandao, ikijumuisha yako mwenyewe</h3>
+<p>Mtumiaji anaweza kuongeza mtandao wake mwenyewe kwenye Mipangilio → Mtandao (nodi yake mwenyewe, tawi la devnet,<br />RPC ya kulipia). Mitandao hiyo ni ya daraja la kwanza: inaonekana kwenye kiteuzi cha popup ya muunganisho<br />kando ya viwekeo (presets), na dApp iliyounganishwa inaweza kuviona.</p>
+<pre><code class="language-javascript">// Which network am I on? A record, not just an id string.
+const active = await provider.getNetworkInfo();
+// { id: 'home-node', name: 'Home node', explorerUrl: 'https://octrascan.io',
+//   icon: '🏠', custom: true }
+
+// Everything the wallet offers — presets first, user-added ones after.
+const all = await provider.getNetworks();
+const userAdded = all.filter((n) =&gt; n.custom);
+
+// Cached from the connect reply, no round-trip; null before connect.
+provider.networkInfo();
+
+provider.on('networkChanged', ({ network, chainId, networkInfo }) =&gt; {
+  // networkInfo is present on wallets that granted `customNetworks`.
+  setChain(networkInfo?.name ?? network);
+});</code></pre>
+<p>Gundua kipengele kwenye uwezo wa <strong><code>customNetworks</code></strong> kabla ya kutegemea chochote kati ya hivyo — matoleo ya<br />zamani ya pochi hujibu tu <code>wallet_getNetwork</code> tupu, ambayo inarudisha mfuatano wa id.</p>
+<p><strong><code>NetworkInfo</code> kimakusudi hubeba <code>rpcUrl</code> wala <code>relayerUrl</code>.</strong> Mtandao ulioongezwa na mtumiaji<br />mara nyingi ni kituo cha kibinafsi — anwani ya LAN, tunnel, URL ya mtoa huduma iliyo na ufunguo wa API kwenye<br />mfuatano wa hoja — na kuukabidhi kwa kila tovuti ambayo mtumiaji anajiunga nayo kungevuja miundombinu yake.<br />dApp haihitaji huo: kila usomaji unapitia pochi (<code>wallet_getBalance</code> na wengine) na utekelezaji haujitokei<br />kamwe nje ya UI ya pochi. Kinachovuka waya ndicho dApp inachohitaji halali — ni mtandao gani inazungumza nao,<br />kama mmiliki aliuongeza kwa mkono (<code>custom</code>), na wapi pa kuunganisha muamala (<code>explorerUrl</code>).</p>
+<p>Hakuna <strong><code>wallet_switchNetwork</code></strong>. Kubadilisha mtandao kunakaa kwenye UI yenyewe ya pochi — kiteuzi cha popup<br />au kidhibiti cha mtandao (network pill) cha dirisha kuu — sambamba na kanuni kwamba mabadiliko ya hali<br />hayatoki kamwe kwa dApp. dApp inayohitaji mtandao mwingine humwomba mtumiaji abadilishe, kisha<br />inasubiri <code>networkChanged</code>.</p>
+<p><code>networkChanged</code> hutolewa kutoka <strong>sehemu zote mbili</strong> ambapo ubadilishaji unaweza kutokea: popup ya muunganisho na<br />dirisha kuu. Vipindi hukabidhiwa kwa dirisha kuu popup inapofungwa, kwa hivyo wakati watumiaji wengi wanagusa<br />kidhibiti cha mtandao popup imekwisha muda mrefu — <code>Layout.tsx</code> hutoa kwa vidhibiti vilivyopitishwa (adopted<br />handlers) ili dApp iliyounganishwa isionyeshwe mtandao uliopitwa na wakati.</p>
+<p>Madaraja (hosts) mawili yanayojitegemea hutekeleza <code>WalletHost</code> — <code>src/connect/host.ts</code> (dirisha kuu) na<br />daraja la ndani katika <code>src/connect/ConnectApp.tsx</code> (popup). Chochote kinachoongezwa kwenye kiolesura lazima<br />kitekelezwe kwa zote mbili, pamoja na fixture kwenye <code>tests/unit/connect-handler.test.ts</code>.</p>
+<h3 id="connection-flow-diagram">Mchoro wa mzunguko wa muunganisho</h3>
+<pre><code class="language-">dApp                          Orion Wallet
+  │                              │
+  │  provider.connect()          │
+  │  ──────────────────────────► │
+  │  │  opens popup ───────────► │  User approves
+  │  │  hello + MessagePort ◄── │  ──────────────────►
+  │  │  challenge echo ────────► │
+  │  │  CONNECT RPC ──────────► │  Returns address
+  │  │  ◄────────────────────── │
+  │  ◄────────────────────────── │
+  │                              │
+  │  provider.signContract()     │
+  │  ──────────────────────────► │  Opens approval prompt
+  │  │  signContract RPC ──────► │  User approves
+  │  │  ◄────────────────────── │  Returns signed tx
+  │  ◄────────────────────────── │
+  │                              │
+  │  (session expires after      │
+  │   30 min idle / 8h absolute) │
+  │                              │
+  │  provider.isSessionAlive()   │  Returns false
+  │  ──────────────────────────► │
+  │                              │
+  │  provider.refreshSession()   │
+  │  ──────────────────────────► │  Reopens popup
+  │  │  (reconnects) ◄───────── │
+  │  ◄────────────────────────── │</code></pre>
+<h3 id="prohibited-methods">Mbinu zilizopigwa marufuku</h3>
+<p>SDK huzuia mbinu hizi ndani kabla ya kufikia usafirishaji (transport). Pochi pia<br />huangalia upya upande wa seva, ili utekelezaji wa muamala usiweze kamwe kutoroka:</p>
+<ul>
+<li><code>wallet_sendTransaction</code> / <code>sendTransaction</code></li>
+<li><code>wallet_broadcastTransaction</code> / <code>broadcastTransaction</code></li>
+<li><code>wallet_transfer</code> / <code>transfer</code></li>
+<li><code>wallet_swap</code> / <code>swap</code></li>
+<li><code>wallet_bridge</code> / <code>bridge</code></li>
+</ul>
+<hr />
+<h2 id="session-management-1">Usimamizi wa kipindi</h2>
+<p>Vipindi vya Orion Wallet vinasimamiwa kiotomatiki na SDK. Vipindi huisha baada ya:</p>
+<ul>
+<li><strong>Muda wa kutokutumika (idle):</strong> dakika 30 za kutofanya kazi</li>
+<li><strong>Muda kamili (absolute):</strong> saa 8 tangu muunganisho</li>
+</ul>
+<p>dApp inaweza kuangalia afya ya kipindi wakati wowote:</p>
+<pre><code class="language-javascript">if (!provider.isSessionAlive()) {
+  await provider.refreshSession();
+}</code></pre>
+<p>Kipindi kinapoisha, pochi hutoa tukio la <code>sessionExpired</code>. dApp inapaswa<br />kusikiliza tukio hili na kumwomba mtumiaji aunganishe tena:</p>
+<pre><code class="language-javascript">provider.on('sessionExpired', () =&gt; {
+  // Prompt user to reconnect
+  setConnected(false);
+});</code></pre>
+<p>Kurejesha kipindi hushughulikiwa kiotomatiki — pochi huhifadhi kidokezo cha kipindi kwenye<br />IndexedDB, kwa hivyo kuunganisha tena baada ya kumalizika hakumtaki mtumiaji kuingiza pochi yake upya.</p>
+<hr />
+<h2 id="testing">Upimaji</h2>
+<pre><code class="language-bash">npm test                 # 676 unit tests, 56 files
+npm run test:coverage    # V8 coverage, 60% threshold
+npm run test:e2e         # 7 Playwright specs (needs npm run build first)
+npm run autofix          # typecheck → format → lint --fix → test → build
+npm run check            # same, read-only (CI)</code></pre>
+<p>Majaribio ya kitengo yanaendeshwa chini ya jsdom na <code>fake-indexeddb</code>. Majaribio ya vipengele hutumia<br /><code>renderToStaticMarkup</code> badala ya maktaba ya upimaji ya DOM — angalia<br /><code>tests/unit/processing-modal.test.tsx</code>.</p>
+<p>WebAuthn haina utekelezaji wa jsdom, kwa hivyo <code>tests/unit/passkey.test.ts</code> husakinisha<br /><code>FakeAuthenticator</code> inayoiga kiendelezi cha PRF (ikijumuisha uthibitishaji usiokuwa nao,<br />kidokezo kilichofutwa, na siri iliyozungushwa). Inadai kile ambacho rekodi iliyohifadhiwa haipaswi<br /><em>kuwa nayo</em>, ambayo ndiyo sifa inayojalisha kweli.</p>
+<p>Dokezo la E2E: kabla ya kuamini ukuta wa hitilafu za Playwright, angalia mashine, si mabadiliko.<br />Vikwazo viwili vya mazingira huzalisha hitilafu zinazoonekana kama regression halisi:</p>
+<ul>
+<li><strong>Nafasi ya muda (Temp).</strong> Chromium huweka kila profaili ya kivinjari chini ya <code>TMPDIR</code> (<code>/tmp</code> kwa kawaida). Ikiwa<br />mfumo wa faili huo umejaa — rahisi wakati <code>/tmp</code> ni tmpfs ndogo inayoshirikiwa na michakato mingine —<br />miktadha hufa wakati wa uzinduzi na majaribio yasiyohusiana hushindikana kwa milisekunde, au hunyongea hadi<br />muda wa sekunde 30. Angalia <code>df -h /tmp</code> kwanza; endesha upya kwa <code>TMPDIR=$HOME/.cache/e2e-tmp</code> kwenye<br />mfumo wa faili wenye nafasi na spec hizo hizo huenda kutoka kumaliza muda hadi kufaulu katika ~sekunde 4.</li>
+</ul>
+<ul>
+<li><strong>Kumbukumbu.</strong> Takriban GB 2 za kumbukumbu huru kwa kila mfanyakazi (worker). Inapoisha, Chromium huuwawa<br />katikati ya jaribio na Playwright huripoti <code>Target crashed</code>; endesha upya kwa <code>--workers=1</code>.</li>
+</ul>
+<p><code>playwright.config.ts</code> huweka <code>reuseExistingServer: !isCI</code>, kwa hivyo <code>npm run preview</code> iliyosalia kwenye<br />bandari 4173 hutumika tena kimya-kimya — ikijumuisha iliyoanzishwa kutoka kwenye nakala <em>nyingine</em> ya mradi.<br />Unapolinganisha miti miwili, ua kisikilizaji kati ya uendeshaji (<code>ss -lptn | grep 4173</code>) la sivyo<br />uendeshaji wa pili hujaribu toleo la kwanza.</p>
+<p>Unaporekebisha hitilafu, ongeza jaribio linaloandika hali ya kushindwa, si suluhisho pekee.<br /><code>tests/unit/history-view.test.ts</code> na <code>error-boundary.test.tsx</code> zinafuata hili: kila moja inataja<br />dalili inayoizuia isijirudie.</p>
+<hr />
+<h2 id="release-checklist">Orodha ya ukaguzi wa toleo</h2>
+<ol>
+<li><code>npm run autofix</code> — lazima iwe kijani kabisa</li>
+<li><code>npm run test:e2e</code> dhidi ya <code>npm run build</code> mpya</li>
+<li><code>npm audit --omit=dev</code> — uzalishaji lazima uripoti udhaifu sifuri</li>
+<li>Hakikisha PVAC inapakia katika onyesho la awali la uzalishaji (<code>npm run preview</code>), si dev pekee</li>
+<li>Jaribu njia ya uhamishaji kutoka kwa toleo la kabla ya kuweka upya chapa lenye data ya pochi iliyopo</li>
+<li>Thibitisha kwamba vichwa vya seva vya <code>vite.config.ts</code> bado vinalingana na <code>vercel.json</code></li>
+</ol>
+<hr />
+<h2 id="known-issues">Masuala yanayojulikana</h2>
+<p><strong>Ushauri wa udhaifu wa vitegemezi vya dev.</strong> <code>npm audit</code> huripoti udhaifu katika vitest, vite, esbuild,<br />na vifurushi vinavyohusiana. Kila suluhisho lililobaki linahitaji sasisho kuu (vite 5→8, vitest 2→4).<br />Hizi ni zana za kuunda pekee na hazifikii watumiaji; ukaguzi wa uzalishaji ni safi. Tazama<br /><a href="SECURITY.html#dependency-status">SECURITY.html</a>.</p>
+<p><strong>Onyo la kupasua vipande vya <code>storage.ts</code>.</strong> Mfumo wa kuunda unaonya kwamba <code>storage.ts</code> inaingizwa kitakwimu na<br />kwa kubadilika, kwa hivyo haiwezi kupasuliwa kuwa kipande chake. Haina madhara, lakini inamaanisha<br />uingizaji wa kubadilika katika <code>HistoryView</code> na <code>WalletExportImport</code> hautoi faida ya kupasua msimbo.</p>
+<p><strong>Utendaji wa AES ya programu.</strong> Ujazaji wa AES ya WASM ni polepole mara 5–10 kuliko asilia. Operesheni nzito za PVAC<br />huzuia nyuzi kuu; kuzihamishia kwenye Web Worker ndiyo hatua inayofuata yenye mantiki.</p>
+</body>
+</html>

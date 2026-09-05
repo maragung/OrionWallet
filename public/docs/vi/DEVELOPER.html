@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hướng dẫn nhà phát triển — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="orion-wallet-developer-guide">Orion Wallet — Hướng dẫn nhà phát triển</h1>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Mã nguồn, vấn đề (issues) và các bản phát hành.</blockquote>
+<h2 id="contents">Mục lục</h2>
+<ul>
+<li><a href="#setup">Thiết lập</a></li>
+<li><a href="#project-layout">Cấu trúc dự án</a></li>
+<li><a href="#architecture">Kiến trúc</a></li>
+<li><a href="#build-system">Hệ thống build</a></li>
+<li><a href="#the-pvac-wasm-pipeline">Quy trình PVAC WASM</a></li>
+<li><a href="#state-management">Quản lý trạng thái</a></li>
+<li><a href="#error-handling">Xử lý lỗi</a></li>
+<li><a href="#loading-states">Các trạng thái tải</a></li>
+<li><a href="#storage-and-migrations">Lưu trữ và di trú dữ liệu</a></li>
+<li><a href="#wallet-sdk">Wallet SDK</a></li>
+<li><a href="#dapp-integration">Tích hợp dApp</a></li>
+<li><a href="#session-management">Quản lý phiên</a></li>
+<li><a href="#testing">Kiểm thử</a></li>
+<li><a href="#release-checklist">Danh sách kiểm tra phát hành</a></li>
+<li><a href="#known-issues">Các vấn đề đã biết</a></li>
+</ul>
+<hr />
+<h2 id="setup">Thiết lập</h2>
+<pre><code class="language-bash">npm install --legacy-peer-deps
+npm run dev</code></pre>
+<p><code>--legacy-peer-deps</code> là bắt buộc: ESLint 9 và <code>@eslint/js</code> 10 khai báo các dải phiên bản peer xung đột<br />nhau. <code>vercel.json</code> cũng dùng cờ này, nên CI và bản cài đặt cục bộ khớp với nhau.</p>
+<p>Nên dùng Node 20 trở lên.</p>
+<hr />
+<h2 id="project-layout">Cấu trúc dự án</h2>
+<pre><code class="language-">src/
+├── api/          High-level operations (wallet-api, send, encrypt)
+├── components/   React components, one panel per tab
+├── connect/      dApp approval popup (/connect route)
+├── crypto/       Primitives: ed25519, x25519, sha256, aes, bip39, hd, base58/64
+├── hooks/        useTheme, usePanelLoading
+├── i18n/         Translations and the provider
+├── pvac/         FHE bridge: stub + WASM implementation
+├── rpc/          JSON-RPC client
+├── sdk/          Provider injected into dApps + transport
+├── stealth/      Stealth address derivation
+├── store/        Zustand store
+├── tx/           Canonical JSON, signing, ABI helpers
+├── utils/        Clipboard, progress reporting, CSV export
+└── wallet/       Keystore, IndexedDB storage, PIN, passkey unlock, watch-only
+                  guard, endpoint policy, payment URIs, mnemonic backup check
+
+public/
+  demo/           Standalone dApp integration demo (dapp.html)
+  docs/           Static HTML documentation pages
+  wasm/           Compiled PVAC module (pvac.js + pvac.wasm)
+
+tests/unit/       Vitest
+tests/e2e/        Playwright
+docs/             This documentation</code></pre>
+<hr />
+<h2 id="architecture">Kiến trúc</h2>
+<p>Thuần chạy phía máy khách; không có máy chủ hậu phương. Dữ liệu chảy theo một chiều:</p>
+<pre><code class="language-">React components  (src/components/)
+       │  read state, dispatch actions
+       ▼
+Zustand store  (src/store/wallet-store.ts)
+       │
+       ▼
+API layer  (src/api/)          ← orchestrates crypto + RPC
+       │
+       ├──► Crypto core  (src/crypto/)   WebCrypto, tweetnacl, @noble
+       ├──► PVAC FHE     (src/pvac/)     WebAssembly
+       ├──► Transaction  (src/tx/)       canonical JSON + signing
+       └──► RPC client   (src/rpc/)      fetch
+                                           │ HTTPS
+                                           ▼
+                                    Octra RPC node</code></pre>
+<h3 id="design-constraints">Các ràng buộc thiết kế</h3>
+<p><strong>JSON chuẩn phải khớp chính xác từng byte.</strong> <code>src/tx/canonical-json.ts</code> tái tạo<br />chính xác thứ tự khóa và định dạng của <code>nlohmann::json</code>. Chữ ký được tính trên chính các<br />byte này, nên bất kỳ sai lệch nào cũng tạo ra chữ ký mà mạng lưới từ chối. Đừng "dọn dẹp"<br />trình tuần tự hóa này.</p>
+<p><strong>Đặt tên: sản phẩm so với giao thức.</strong> "Orion Wallet" là sản phẩm. Các phương thức RPC <code>octra_*</code>,<br />tiền tố địa chỉ <code>oct</code>, mã ticker <code>OCT</code> và "Octra Network" là các định danh giao thức<br />và không bao giờ được đổi tên.</p>
+<hr />
+<h2 id="build-system">Hệ thống build</h2>
+<p>Các tệp cấu hình TypeScript là <strong>nguồn chân lý duy nhất</strong>:</p>
+<ul>
+<li><code>vite.config.ts</code></li>
+<li><code>vitest.config.ts</code></li>
+<li><code>playwright.config.ts</code></li>
+</ul>
+<blockquote><strong>Đừng thêm các tệp <code>.js</code> đi kèm cho những tệp này.</strong> Vite phân giải <code>vite.config.js</code> trước<br /><code>vite.config.ts</code>, nên một bản đã dịch (transpiled) cũ nằm im sẽ che khuất cấu hình thật, và các chỉnh sửa<br />đối với tệp <code>.ts</code> không có tác dụng gì. Ba tên tệp đó được liệt kê trong <code>.gitignore</code>.<br /><code>eslint.config.js</code> là cấu hình phẳng (flat config) thật và được giữ lại có chủ đích.</blockquote>
+<p>Riêng việc thêm chúng vào <code>.gitignore</code> là chưa đủ, vì không gì ngăn chúng được <em>tạo ra</em>:<br /><code>tsconfig.node.json</code> là một dự án <code>composite</code>, vốn buộc phải phát sinh khai báo (declaration emit), và khi không có<br /><code>outDir</code>, bất kỳ lệnh <code>tsc -b</code> nào cũng ghi <code>vite.config.js</code> ngay cạnh mã nguồn. Điều đó đã xảy ra hai lần.<br />Phần phát sinh (emit) của dự án đó giờ được đưa vào <code>node_modules/.tmp/tsconfig-node/</code>, nơi nó không thể che khuất<br />gì được. Nếu bạn thêm một tệp cấu hình vào dự án đó, hãy để nguyên <code>outDir</code>.</p>
+<h3 id="environment-flags">Cờ môi trường</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Cờ</th><th>Tác dụng</th></tr></thead>
+<tbody>
+<tr><td><code>VITE_ALLOW_HTTP_ENDPOINTS=1</code></td><td>Thêm <code>http:</code> vào chỉ thị CSP <code>connect-src</code> tại thời điểm build, để một bản build tự lưu trữ có thể tới được một nút RPC http thường. Sự đồng ý theo từng nguồn gốc (origin) vẫn được áp dụng — xem <code>src/wallet/endpoint-policy.ts</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Chỉ được đặt tại thời điểm build. Cờ này được plugin <code>allowHttpEndpointsCsp</code> đọc trong <code>vite.config.ts</code><br />và viết lại <code>index.html</code>; nó không có tác dụng lúc chạy, vì một CSP dạng meta-tag không thể được nới rộng<br />sau khi tài liệu đã được phân tích cú pháp.</p>
+<h3 id="headers">Các header</h3>
+<p>COOP/COEP được đặt là <code>same-origin</code> / <code>require-corp</code> (dành riêng cho WASM đa luồng trong tương lai),<br />với các ghi đè <code>unsafe-none</code> trên <code>/connect</code> để việc chuyển <code>postMessage</code> + MessagePort của popup<br />hoạt động được. Header khi phát triển nằm trong <code>vite.config.ts</code>; header sản xuất nằm trong <code>vercel.json</code>.<br /><strong>Giữ hai nơi này đồng bộ.</strong></p>
+<h3 id="content-security-policy">Content-Security-Policy</h3>
+<p>Được định nghĩa trong <code>index.html</code>. <code>script-src</code> phải bao gồm <code>'wasm-unsafe-eval'</code> — Chromium từ chối<br /><code>WebAssembly.instantiate()</code> nếu thiếu nó, và đó chính là điều khiến mô-đun PVAC không tải được<br />một cách âm thầm. Chỉ thị đó chỉ cho phép biên dịch WebAssembly; nó không bật lại<br />JavaScript <code>eval()</code>.</p>
+<p><code>connect-src</code> là <code>'self' https:</code> cộng với loopback (<code>http://localhost:*</code>, <code>http://127.0.0.1:*</code>,<br /><code>http://[::1]:*</code>) để một nút chạy cục bộ hoạt động được mà không mở plaintext nói chung. Bất cứ thứ gì<br />khác qua <code>http://</code> đều bị kiểm soát bởi <code>src/wallet/endpoint-policy.ts</code> — nơi duy nhất<br />đưa ra quyết định, một hàm thuần của URL cộng một ngữ cảnh tường minh, nên store, giao diện Settings<br />và các bài kiểm thử không thể bất đồng. Đừng thêm các kiểm tra URL tùy tiện ở nơi khác. Ba<br />rào cản độc lập được áp dụng (mixed content → CSP → sự đồng ý của người dùng) và kết luận báo rào cản<br />cơ bản nhất trước tiên, để người dùng không bao giờ bị bảo hãy sửa danh sách cho phép khi chính trình duyệt là<br />kẻ từ chối.</p>
+<hr />
+<h2 id="the-pvac-wasm-pipeline">Quy trình PVAC WASM</h2>
+<h3 id="building">Xây dựng</h3>
+<pre><code class="language-bash">git clone https://github.com/emscripten-core/emsdk.git /tmp/emsdk
+cd /tmp/emsdk &amp;&amp; ./emsdk install latest &amp;&amp; ./emsdk activate latest
+source /tmp/emsdk/emsdk_env.sh
+
+git clone https://github.com/octra-labs/webcli ../webcli-source
+python3 scripts/patch-pvac-aes.py ../webcli-source/pvac   # software AES fallback
+npm run build:wasm</code></pre>
+<p>Cần <code>patch-pvac-aes.py</code> vì PVAC cứng nhắc báo lỗi <code>#error</code> khi không có AES phần cứng (AES-NI hoặc<br />các phần mở rộng mật mã ARM), thứ mà WebAssembly không cung cấp. Bản vá thêm một bộ cài đặt phần mềm di động<br />cho kết quả giống hệt từng bit nhưng chậm hơn khoảng 5–10 lần. Nó chỉ thêm vào: các đường dẫn phần cứng<br />không bị đụng tới, và một bản sao dự phòng <code>.hpp.bak</code> được ghi ra.</p>
+<h3 id="loading">Tải</h3>
+<p><code>src/pvac/wasm-bridge.ts</code> tải mô-đun theo ba bước:</p>
+<ol>
+<li><strong>Dò (Probe)</strong> — gửi <code>HEAD</code> tới URL glue, để phân biệt được "chưa build" (404) với<br />"bị CSP chặn". Nếu thiếu bước này, cả hai đều hiện ra như một lỗi import mờ mịt giống hệt nhau.</li>
+<li><strong>Import</strong> — <code>import()</code> động một URL tuyệt đối kèm <code>/* @vite-ignore */</code>. Nó phải là URL<br />tuyệt đối: một specifier trần sẽ không phân giải được, còn <code>./wasm/pvac.js</code> phân giải theo<br /><code>/assets/</code> và trả về 404.</li>
+<li><strong>Xác minh (Verify)</strong> — khẳng định tất cả 13 export <code>_pvac_*</code> cần thiết tồn tại trước khi hoán đổi bridge vào.</li>
+</ol>
+<p>Các bản build trước đó bỏ sót các hàm tuần tự hóa, khiến encrypt/decrypt hỏng theo cách<br />nút mạng chỉ báo là "malformed transaction".</p>
+<p>Các lỗi được phân loại thành <code>PvacFailureReason</code>: <code>not-built</code>, <code>csp-blocked</code>,<br /><code>missing-exports</code>, <code>init-failed</code>, <code>unknown</code>. Mỗi loại ánh xạ tới một cách khắc phục cụ thể được hiển thị trong<br />Settings. Promise đơn (singleton) được đặt lại khi lỗi, để nút <strong>↻ Reload PVAC</strong> có thể thử lại thay vì<br />phát lại một lần từ chối đã lưu trong bộ nhớ đệm.</p>
+<h3 id="memory-rules">Quy tắc bộ nhớ</h3>
+<p>API C quản lý bộ nhớ thủ công. Mỗi <code>_malloc</code> cần một <code>_free</code>; mỗi <code>serialize_*</code> trả về một<br />buffer phải được giải phóng bằng <code>_pvac_free_bytes</code>. Các handle từ <code>keygen</code>/<code>enc_*</code> cần<br />đúng <code>_pvac_free_*</code> tương ứng của chúng. Hãy dùng <code>try/finally</code> — xem <code>WasmPvacBridge</code> để biết khuôn mẫu.</p>
+<hr />
+<h2 id="state-management">Quản lý trạng thái</h2>
+<p>Zustand, trong <code>src/store/wallet-store.ts</code>. Nó sở hữu ví, máy khách RPC, cài đặt, trạng thái PVAC,<br />toasts và cờ tải toàn cục.</p>
+<p>Cờ tải toàn cục (<code>isLoading</code>) điều khiển một lớp phủ mờ toàn màn hình và chỉ được dành cho<br /><strong>các chuyển tiếp toàn ứng dụng</strong>, như mở khóa ví. Công việc theo từng bảng điều khiển phải dùng<br /><code>usePanelLoading</code> để thay thế — xem bên dưới.</p>
+<hr />
+<h2 id="error-handling">Xử lý lỗi</h2>
+<p><code>src/components/ErrorBoundary.tsx</code> bọc mọi bảng điều khiển trong <code>Layout.tsx</code>, khóa theo tab đang hoạt động<br />để một boundary bị vấp sẽ được đặt lại khi điều hướng, cộng thêm một boundary ở gốc trong <code>main.tsx</code>.</p>
+<p>Điều này quan trọng hơn vẻ ngoài của nó. <code>index.html</code> chứa:</p>
+<pre><code class="language-css">#root:empty::before { content: 'Loading Orion Wallet…'; }</code></pre>
+<p>Không có boundary, bất kỳ lỗi ném ra lúc render nào cũng khiến React 18 tháo toàn bộ cây, <code>#root</code><br />trở nên rỗng, và phần dự phòng đó được render — tạo ra một trang trắng trống trơn trông như bị kẹt<br />tải vĩnh viễn. Boundary giữ cho vỏ (shell) sống và hiển thị một thẻ lỗi có thể thử lại.</p>
+<p><strong>Hệ quả:</strong> các hàm được gọi trong lúc render không được ném lỗi trên dữ liệu vào sai định dạng.<br /><code>formatAmount</code> trong <code>src/tx/builder.ts</code> chấp nhận <code>unknown</code> và hạ cấp thành một placeholder,<br />vì cả phản hồi RPC lẫn bộ nhớ đệm tx cục bộ đều không được kiểm tra schema. Hãy chuẩn hóa<br />các hàng không đáng tin trước khi render chúng — <code>HistoryView</code> cho thấy khuôn mẫu này.</p>
+<hr />
+<h2 id="loading-states">Các trạng thái tải</h2>
+<p>Dùng <code>usePanelLoading</code> (<code>src/hooks/usePanelLoading.ts</code>) cho các công việc theo phạm vi bảng điều khiển:</p>
+<pre><code class="language-typescript">const panelLoading = usePanelLoading();
+
+await panelLoading.run('Loading history', async () =&gt; {
+  const data = await fetchSomething();
+  if (!panelLoading.isMounted()) return;   // guard late setState
+  setData(data);
+}, 'Fetching from the network…');</code></pre>
+<p>Sau đó render <code>&lt;ProcessingModal open={panelLoading.loading} … dismissible onClose={panelLoading.hide} /&gt;</code>.</p>
+<p>Hai thuộc tính quan trọng: modal có thể <strong>đóng được</strong> (công việc vẫn tiếp tục ở hậu trường, nên một<br />mạng chậm không bao giờ nhốt người dùng), và các thao tác ghi trạng thái được chặn bởi <code>isMounted()</code> để<br />việc điều hướng đi giữa chừng không thể để lại một modal kẹt trên màn hình.</p>
+<hr />
+<h2 id="storage-and-migrations">Lưu trữ và di trú dữ liệu</h2>
+<p>IndexedDB qua <code>idb</code>, cơ sở dữ liệu <code>orion-wallet</code>, phiên bản 6. Các store được khai báo một lần trong<br />mảng <code>OBJECT_STORES</code> trong <code>src/wallet/storage.ts</code>; hãy thêm store mới vào đó để việc tạo và di trú<br />nhất quán — mảng đó cũng điều khiển <code>wipeEverything()</code>, nên một store được thêm ở nơi khác sẽ<br />sống sót qua một lần xóa sạch.</p>
+<p>Các cuộc di trú <strong>chỉ thêm vào</strong>: tăng <code>DB_VERSION</code>, nối thêm vào mảng, và ghi chú<br />phiên bản trong một chú thích cạnh các mục mới. Các store hiện có không bao giờ bị đổi tên hay gỡ bỏ.<br />Các phiên bản cho tới nay: v2 các store SDK, v3 token OCS01, v4 bookmark <code>oct://</code>, v5<br /><code>unlock-session-keys</code>, v6 <code>contacts</code> + <code>passkey-unlock</code>.</p>
+<h3 id="the-rebrand-migration">Cuộc di trú đổi thương hiệu</h3>
+<p>Đổi tên cơ sở dữ liệu từ <code>webcli-react</code> sẽ làm mồ côi mọi ví hiện có, vì<br />IndexedDB phạm vi dữ liệu theo tên cơ sở dữ liệu. <code>migrateLegacyDatabase</code> sao chép tất cả store về phía trước ở<br />lần khởi động đầu tiên. Nó có tính chất:</p>
+<ul>
+<li><strong>idempotent</strong> — được bỏ qua một khi store đích đã có bất kỳ ví nào</li>
+<li><strong>không phá hủy</strong> — cơ sở dữ liệu cũ được giữ nguyên vẹn để có thể khôi phục</li>
+<li><strong>không gây chết</strong> — các lỗi được ghi log, không bao giờ ném ra; một lỗi di trú không được chặn việc khởi động</li>
+</ul>
+<p>Hãy nhớ rằng <code>clearIndexedDB</code> trong các helper E2E phải xóa <strong>cả hai</strong> cơ sở dữ liệu, nếu không cuộc<br />di trú sẽ sao chép dữ liệu cũ ngay trở lại và "trạng thái sạch" không còn sạch.</p>
+<hr />
+<h2 id="wallet-sdk">Wallet SDK</h2>
+<p><code>src/sdk/</code> là provider hướng tới dApp; <code>src/connect/</code> là popup phê duyệt được phục vụ tại<br /><code>/connect</code>.</p>
+<h3 id="method-namespaces">Các không gian tên phương thức</h3>
+<p>Ví đáp ứng hai không gian tên tương đương nhau:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Tổng quát</th><th>Orion-branded</th><th>Thao tác</th></tr></thead>
+<tbody>
+<tr><td><code>wallet_connect</code></td><td><code>orion_wallet_connect</code></td><td>Khởi tạo kết nối</td></tr>
+<tr><td><code>wallet_signMessage</code></td><td><code>orion_wallet_signMessage</code></td><td>Ký một thông điệp thô</td></tr>
+<tr><td><code>wallet_signTypedData</code></td><td><code>orion_wallet_signTypedData</code></td><td>Ký dữ liệu có cấu trúc</td></tr>
+<tr><td><code>wallet_approveContract</code></td><td><code>orion_wallet_approveContract</code></td><td>Phê duyệt trước một lời gọi hợp đồng</td></tr>
+<tr><td><code>wallet_signContract</code></td><td><code>orion_wallet_signContract</code></td><td>Ký một giao dịch hợp đồng</td></tr>
+<tr><td><code>wallet_getAccounts</code></td><td><code>orion_wallet_getAccounts</code></td><td>Liệt kê tài khoản</td></tr>
+<tr><td><code>wallet_getBalance</code></td><td><code>orion_wallet_getBalance</code></td><td>Đọc số dư</td></tr>
+<tr><td><code>wallet_getNetworkInfo</code></td><td><code>orion_wallet_getNetworkInfo</code></td><td>Đọc mạng đang hoạt động dưới dạng một record</td></tr>
+<tr><td><code>wallet_getNetworks</code></td><td><code>orion_wallet_getNetworks</code></td><td>Liệt kê mọi mạng mà ví cung cấp</td></tr>
+<tr><td>…</td><td>…</td><td>…</td></tr>
+</tbody>
+</table>
+</div>
+<p>Cả hai đều được chấp nhận và thực thi giống hệt nhau. Các tên <code>orion_wallet_*</code> tồn tại cho các dApp<br />muốn nhắm đích tường minh vào Orion Wallet; các tên chung <code>wallet_*</code> vẫn được hỗ trợ để<br />các tích hợp hiện có tiếp tục hoạt động.</p>
+<p><code>canonicalizeMethod</code> trong <code>src/sdk/protocol.ts</code> thu gọn mọi tên phương thức về dạng chuẩn<br /><code>wallet_*</code> trước khi phân phối, nên hai không gian tên không bao giờ lệch nhịp với nhau.</p>
+<h3 id="connection-lifecycle">Vòng đời kết nối</h3>
+<p><strong>Bắt tay (mỗi phiên một lần):</strong></p>
+<ol>
+<li>dApp gọi <code>provider.connect()</code> → <code>PopupTransport</code> mở <code>/connect?v=1&amp;rid=…&amp;origin=…</code></li>
+<li>Ví render <code>ConnectApp</code>; người dùng mở khóa nếu cần</li>
+<li>Ví gửi <code>hello</code> + MessagePort qua <code>window.postMessage</code>, đã kiểm tra origin</li>
+<li>dApp gửi lại <code>challenge</code> qua port (chống phát lại)</li>
+<li><code>ConnectHandler</code> xác minh ack, phục vụ RPC <code>CONNECT</code> → trả về địa chỉ, tài khoản, mạng</li>
+</ol>
+<p><strong>Sau khi kết nối:</strong></p>
+<ul>
+<li><strong>Popup có thể đóng</strong>, nhưng MessagePort vẫn mở — nó độc lập với cửa sổ</li>
+<li>Phiên được lưu trong IndexedDB (<code>sdk-sessions</code>) với TTL thời gian rảnh + TTL tuyệt đối</li>
+<li>Các phương thức đọc (<code>getBalance</code>, <code>getAccounts</code>) không làm phiền phiên</li>
+<li>Các phương thức ký <strong>luôn luôn</strong> mở một lời nhắc phê duyệt mới</li>
+</ul>
+<p><strong>Cách khắc phục cho "kết nối được nhưng mọi thứ khác thì không":</strong></p>
+<p>Ban đầu <code>PopupTransport.isConnected()</code> kiểm tra <code>popup.closed</code>, nên mọi lời gọi sau khi cửa sổ<br />phê duyệt đóng đều thất bại với "Transport is not connected". Giờ nó chỉ kiểm tra<br />port, thứ sống lâu hơn popup. Ví đóng popup sau khi phê duyệt, nhưng<br />kết nối vẫn sống.</p>
+<h3 id="permission-model">Mô hình quyền hạn</h3>
+<p><strong>Tại thời điểm kết nối:</strong> Chỉ các phạm vi chỉ đọc (<code>viewAccounts</code>, <code>viewBalance</code>, <code>viewNetwork</code>).</p>
+<p><strong>Các phạm vi ký</strong> (<code>signMessage</code>, <code>signContract</code>, v.v.) được <strong>cấp một cách lười biếng</strong> ở lần<br />phê duyệt thành công đầu tiên. Trước khi sửa, chúng vắng mặt trong <code>DEFAULT_PERMISSIONS</code> và bộ<br />phân phối từ chối mọi lời gọi ký với <code>UNAUTHORIZED</code> trước khi lời nhắc có thể xuất hiện —<br />nguyên nhân gốc thứ hai của triệu chứng này.</p>
+<p>Giờ đây:</p>
+<ul>
+<li>Việc kiểm tra quyền cho phép các phạm vi ký chưa được cấp tiến tới lời nhắc phê duyệt</li>
+<li>Khi phê duyệt, <code>grantPermission</code> lưu phạm vi vào phiên</li>
+<li>Các lời gọi sau bỏ qua kiểm tra quyền nhưng <strong>vẫn cần phê duyệt</strong> — việc cấp một phạm vi chỉ ghi nhận rằng người dùng đồng ý cho dApp được hỏi</li>
+</ul>
+<p>Việc thu hồi là tường minh: <code>revokePermission</code> gỡ phạm vi khỏi <code>permissions</code> và ghi lại<br />nó trong <code>deniedPermissions</code>, thứ mà bộ phân phối từ chối thẳng thừng.</p>
+<h3 id="security-invariants">Các bất biến bảo mật</h3>
+<p>Đừng làm suy yếu những điều này:</p>
+<ul>
+<li><strong>Kiểm tra origin</strong> trên mọi <code>postMessage</code> đi vào (<code>PopupTransport.ts</code>, <code>rpc-handler.ts</code>)</li>
+<li><strong>Chống phát lại:</strong> thử thách CSPRNG + nonce của dApp + nonce đơn điệu theo phiên. <code>makeId</code> chỉ dùng để tương quan thông điệp và không bao giờ được dùng như một giá trị bảo mật</li>
+<li><strong>Quyền hạn</strong> theo từng origin, được lưu trong <code>sdk-sessions</code>, và được cấp/thu hồi một cách tường minh</li>
+<li><strong>Tính độc lập của MessagePort:</strong> Port sống lâu hơn popup. Một khi đã được chuyển giao, ví có thể đóng cửa sổ phê duyệt mà không làm gãy kết nối</li>
+<li><strong>Các phương thức bị cấm</strong> bị từ chối cả phía máy khách (<code>WalletProvider</code>) lẫn phía ví<br />(<code>rpc-handler</code>), nên việc thực thi giao dịch không bao giờ có thể thoát ra ngoài SDK, kể cả qua<br />lối thoát <code>request()</code> cấp thấp</li>
+<li><strong><code>localStorage</code></strong> chỉ giữ một gợi ý khôi phục phiên (địa chỉ, mạng) — không bao giờ là bí mật</li>
+</ul>
+<hr />
+<h2 id="dapp-integration">Tích hợp dApp</h2>
+<h3 id="quick-start">Bắt đầu nhanh</h3>
+<pre><code class="language-javascript">import { WalletProvider } from '@orion-wallet/sdk';
+
+const provider = new WalletProvider({
+  walletUrl: 'https://orionwallet.example/connect',
+  capabilities: [
+    'signMessage',
+    'signTypedData',
+    'approveContract',
+    'signContract',
+    'multiAccount',
+    'events',
+    'sessionRestore',
+    'customNetworks',
+  ],
+});
+
+const result = await provider.connect();</code></pre>
+<h3 id="session-management">Quản lý phiên</h3>
+<p>Phiên Orion hết hạn sau <strong>30 phút rảnh</strong> hoặc <strong>8 giờ tuyệt đối</strong>. SDK cung cấp sẵn các<br />kiểm tra sức khỏe phiên và tự động kết nối lại:</p>
+<pre><code class="language-javascript">// Check session health before every signing operation
+if (!provider.isSessionAlive()) {
+  await provider.refreshSession();
+}
+
+// Listen for session expiry events
+provider.on('sessionExpired', () =&gt; {
+  setConnected(false);
+});</code></pre>
+<h3 id="networks-including-the-users-own">Mạng lưới, bao gồm mạng của chính người dùng</h3>
+<p>Người dùng có thể thêm mạng của riêng họ trong Settings → Network (nút riêng của họ, một nhánh devnet, một<br />RPC trả phí). Các mạng đó thuộc hạng nhất: chúng xuất hiện trong bộ chọn của popup kết nối<br />bên cạnh các mạng cài sẵn, và một dApp đã kết nối có thể thấy chúng.</p>
+<pre><code class="language-javascript">// Which network am I on? A record, not just an id string.
+const active = await provider.getNetworkInfo();
+// { id: 'home-node', name: 'Home node', explorerUrl: 'https://octrascan.io',
+//   icon: '🏠', custom: true }
+
+// Everything the wallet offers — presets first, user-added ones after.
+const all = await provider.getNetworks();
+const userAdded = all.filter((n) =&gt; n.custom);
+
+// Cached from the connect reply, no round-trip; null before connect.
+provider.networkInfo();
+
+provider.on('networkChanged', ({ network, chainId, networkInfo }) =&gt; {
+  // networkInfo is present on wallets that granted `customNetworks`.
+  setChain(networkInfo?.name ?? network);
+});</code></pre>
+<p>Hãy dò tính năng dựa trên năng lực <strong><code>customNetworks</code></strong> trước khi trông cậy vào bất kỳ điều gì trong số đó — các<br />bản build ví cũ chỉ trả lời <code>wallet_getNetwork</code> trần trụi, vốn trả về một chuỗi id.</p>
+<p><strong><code>NetworkInfo</code> cố tình không mang <code>rpcUrl</code> và không mang <code>relayerUrl</code>.</strong> Một mạng do người dùng tự thêm<br />thường là một điểm cuối riêng tư — một địa chỉ LAN, một đường hầm, một URL nhà cung cấp với khóa API trong chuỗi truy vấn — và trao nó cho mọi trang mà người dùng kết nối tới sẽ<br />làm lộ cơ sở hạ tầng của họ. Một dApp không cần nó: mọi thao tác đọc đều đi qua ví<br />(<code>wallet_getBalance</code> và các phương thức tương tự) và việc thực thi không bao giờ rời khỏi giao diện ví. Thứ đi qua<br />đường truyền là thứ một dApp chính đáng cần — đang nói chuyện với mạng nào, chủ sở hữu có tự tay thêm nó hay không<br />(<code>custom</code>),<br />và nơi để liên kết một giao dịch (<code>explorerUrl</code>).</p>
+<p>Không có <strong>phương thức <code>wallet_switchNetwork</code></strong>. Việc chuyển mạng nằm trong chính giao diện ví — bộ chọn của popup<br />hoặc viên mạng (network pill) của cửa sổ chính — nhất quán với quy tắc rằng các thay đổi trạng thái<br />không bao giờ khởi phát từ một dApp. Một dApp cần một mạng khác sẽ yêu cầu người dùng chuyển, rồi<br />chờ <code>networkChanged</code>.</p>
+<p><code>networkChanged</code> được phát ra từ <strong>cả hai</strong> nơi có thể xảy ra việc chuyển mạng: popup kết nối và<br />cửa sổ chính. Các phiên được bàn giao cho cửa sổ chính khi popup đóng, nên phần lớn thời điểm<br />người dùng chạm vào viên mạng thì popup đã biến mất từ lâu — <code>Layout.tsx</code> phát tới các<br />handler đã nhận nuôi để một dApp đã kết nối không bị bỏ lại với mạng cũ.</p>
+<p>Hai lớp độc lập triển khai <code>WalletHost</code> — <code>src/connect/host.ts</code> (cửa sổ chính) và một<br />host nội tuyến trong <code>src/connect/ConnectApp.tsx</code> (popup). Bất cứ thứ gì được thêm vào interface đều phải được<br />triển khai ở cả hai, cùng với fixture trong <code>tests/unit/connect-handler.test.ts</code>.</p>
+<h3 id="connection-flow-diagram">Sơ đồ luồng kết nối</h3>
+<pre><code class="language-">dApp                          Orion Wallet
+  │                              │
+  │  provider.connect()          │
+  │  ──────────────────────────► │
+  │  │  opens popup ───────────► │  User approves
+  │  │  hello + MessagePort ◄── │  ──────────────────►
+  │  │  challenge echo ────────► │
+  │  │  CONNECT RPC ──────────► │  Returns address
+  │  │  ◄────────────────────── │
+  │  ◄────────────────────────── │
+  │                              │
+  │  provider.signContract()     │
+  │  ──────────────────────────► │  Opens approval prompt
+  │  │  signContract RPC ──────► │  User approves
+  │  │  ◄────────────────────── │  Returns signed tx
+  │  ◄────────────────────────── │
+  │                              │
+  │  (session expires after      │
+  │   30 min idle / 8h absolute) │
+  │                              │
+  │  provider.isSessionAlive()   │  Returns false
+  │  ──────────────────────────► │
+  │                              │
+  │  provider.refreshSession()   │
+  │  ──────────────────────────► │  Reopens popup
+  │  │  (reconnects) ◄───────── │
+  │  ◄────────────────────────── │</code></pre>
+<h3 id="prohibited-methods">Các phương thức bị cấm</h3>
+<p>SDK chặn các phương thức này ở cục bộ trước khi chúng tới được transport. Ví cũng<br />kiểm tra lại phía máy chủ, nên việc thực thi giao dịch không bao giờ có thể thoát ra ngoài:</p>
+<ul>
+<li><code>wallet_sendTransaction</code> / <code>sendTransaction</code></li>
+<li><code>wallet_broadcastTransaction</code> / <code>broadcastTransaction</code></li>
+<li><code>wallet_transfer</code> / <code>transfer</code></li>
+<li><code>wallet_swap</code> / <code>swap</code></li>
+<li><code>wallet_bridge</code> / <code>bridge</code></li>
+</ul>
+<hr />
+<h2 id="session-management-1">Quản lý phiên</h2>
+<p>Các phiên của Orion Wallet được SDK quản lý tự động. Phiên hết hạn sau:</p>
+<ul>
+<li><strong>Hết thời gian rảnh (idle timeout):</strong> 30 phút không hoạt động</li>
+<li><strong>Hết thời gian tuyệt đối:</strong> 8 giờ kể từ lúc kết nối</li>
+</ul>
+<p>dApp có thể kiểm tra sức khỏe phiên bất cứ lúc nào:</p>
+<pre><code class="language-javascript">if (!provider.isSessionAlive()) {
+  await provider.refreshSession();
+}</code></pre>
+<p>Khi một phiên hết hạn, ví phát ra một sự kiện <code>sessionExpired</code>. dApp nên<br />lắng nghe sự kiện này và nhắc người dùng kết nối lại:</p>
+<pre><code class="language-javascript">provider.on('sessionExpired', () =&gt; {
+  // Prompt user to reconnect
+  setConnected(false);
+});</code></pre>
+<p>Việc khôi phục phiên được xử lý tự động — ví lưu giữ gợi ý phiên trong<br />IndexedDB, nên việc kết nối lại sau khi hết hạn không yêu cầu người dùng phải nhập lại ví của họ.</p>
+<hr />
+<h2 id="testing">Kiểm thử</h2>
+<pre><code class="language-bash">npm test                 # 676 unit tests, 56 files
+npm run test:coverage    # V8 coverage, 60% threshold
+npm run test:e2e         # 7 Playwright specs (needs npm run build first)
+npm run autofix          # typecheck → format → lint --fix → test → build
+npm run check            # same, read-only (CI)</code></pre>
+<p>Các bài kiểm thử đơn vị chạy dưới jsdom với <code>fake-indexeddb</code>. Các bài kiểm thử thành phần dùng<br /><code>renderToStaticMarkup</code> thay vì một thư viện kiểm thử DOM — xem<br /><code>tests/unit/processing-modal.test.tsx</code>.</p>
+<p>WebAuthn không có bộ cài đặt jsdom, nên <code>tests/unit/passkey.test.ts</code> gắn một<br /><code>FakeAuthenticator</code> mô phỏng phần mở rộng PRF (bao gồm một authenticator thiếu nó,<br />một lời nhắc bị bỏ qua, và một bí mật đã xoay vòng). Nó khẳng định những gì bản ghi lưu trữ phải <em>không</em> được<br />chứa — đó chính là thuộc tính thực sự quan trọng.</p>
+<p>Lưu ý E2E: trước khi tin vào một bức tường các lỗi Playwright, hãy kiểm tra máy, đừng kiểm tra bản diff.<br />Hai giới hạn môi trường tạo ra các lỗi trông hệt như các hồi quy thật:</p>
+<ul>
+<li><strong>Dung lượng tạm (temp space).</strong> Chromium đặt mỗi hồ sơ trình duyệt dưới <code>TMPDIR</code> (mặc định là <code>/tmp</code>). Nếu<br />hệ thống tệp đó đầy — dễ xảy ra khi <code>/tmp</code> là một tmpfs nhỏ dùng chung với các tiến trình khác —<br />các context chết ngay khi khởi động và các bài kiểm thử không liên quan fail trong vài mili giây, hoặc treo tới<br />mốc 30 s. Hãy chạy <code>df -h /tmp</code> trước; chạy lại với <code>TMPDIR=$HOME/.cache/e2e-tmp</code> trên một<br />hệ thống tệp rộng rãi và cùng các spec đó sẽ chuyển từ timeout sang pass trong ~4 s.</li>
+<li><strong>Bộ nhớ.</strong> Cần khoảng 2 GB bộ nhớ trống cho mỗi worker. Khi cạn bộ nhớ, Chromium bị giết<br />giữa chừng bài kiểm thử và Playwright báo <code>Target crashed</code>; hãy chạy lại với <code>--workers=1</code>.</li>
+</ul>
+<p><code>playwright.config.ts</code> đặt <code>reuseExistingServer: !isCI</code>, nên một <code>npm run preview</code> còn sót lại trên<br />cổng 4173 được tái sử dụng một cách âm thầm — kể cả một bản chạy khởi động từ một bản checkout <em>khác</em>. Khi<br />so sánh hai cây mã nguồn, hãy giết listener giữa các lần chạy (<code>ss -lptn | grep 4173</code>) nếu không lần chạy<br />thứ hai sẽ kiểm thử bản build của lần thứ nhất.</p>
+<p>Khi sửa một lỗi, hãy thêm một bài kiểm thử ghi lại kiểu hỏng hóc, không chỉ riêng phần sửa.<br /><code>tests/unit/history-view.test.ts</code> và <code>error-boundary.test.tsx</code> làm theo cách này: mỗi bài đặt tên cho<br />triệu chứng mà nó ngăn không tái diễn.</p>
+<hr />
+<h2 id="release-checklist">Danh sách kiểm tra phát hành</h2>
+<ol>
+<li><code>npm run autofix</code> — phải hoàn toàn xanh</li>
+<li><code>npm run test:e2e</code> chạy trên một <code>npm run build</code> mới</li>
+<li><code>npm audit --omit=dev</code> — bản sản xuất phải báo không có lỗ hổng nào</li>
+<li>Xác minh PVAC tải được trong một bản preview sản xuất (<code>npm run preview</code>), không chỉ bản dev</li>
+<li>Kiểm thử đường di trú từ một bản build trước khi đổi thương hiệu với dữ liệu ví hiện có</li>
+<li>Xác nhận các header máy chủ trong <code>vite.config.ts</code> vẫn khớp với <code>vercel.json</code></li>
+</ol>
+<hr />
+<h2 id="known-issues">Các vấn đề đã biết</h2>
+<p><strong>Các cảnh báo (advisory) về dependency phát triển.</strong> <code>npm audit</code> báo lỗ hổng trong vitest, vite, esbuild,<br />và các gói liên quan. Mọi cách sửa còn lại đều cần một bản nâng cấp lớn (vite 5→8, vitest 2→4).<br />Đây chỉ là công cụ build và không được chuyển tới người dùng; kiểm toán bản sản xuất sạch. Xem<br /><a href="SECURITY.html#dependency-status">SECURITY.html</a>.</p>
+<p><strong>Cảnh báo chia tách (chunking) <code>storage.ts</code>.</strong> Build cảnh báo rằng <code>storage.ts</code> được import cả tĩnh lẫn<br />động, nên nó không thể được tách thành một chunk riêng. Vô hại, nhưng điều đó có nghĩa<br />các import động trong <code>HistoryView</code> và <code>WalletExportImport</code> không mang lại lợi ích<br />code-splitting.</p>
+<p><strong>Hiệu năng AES phần mềm.</strong> Bộ dự phòng WASM AES chậm hơn 5–10 lần so với bản gốc. Các thao tác PVAC<br />nặng chặn luồng chính; đưa chúng vào một Web Worker là bước hợp lý tiếp theo.</p>
+</body>
+</html>

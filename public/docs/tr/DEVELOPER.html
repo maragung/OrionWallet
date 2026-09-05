@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Geliştirici Rehberi — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="orion-wallet-developer-guide">Orion Wallet — Geliştirici Rehberi</h1>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Kaynak kod, sorunlar ve sürümler.</blockquote>
+<h2 id="contents">İçindekiler</h2>
+<ul>
+<li><a href="#setup">Kurulum</a></li>
+<li><a href="#project-layout">Proje yapısı</a></li>
+<li><a href="#architecture">Mimari</a></li>
+<li><a href="#build-system">Derleme sistemi</a></li>
+<li><a href="#the-pvac-wasm-pipeline">PVAC WASM hattı</a></li>
+<li><a href="#state-management">Durum yönetimi</a></li>
+<li><a href="#error-handling">Hata işleme</a></li>
+<li><a href="#loading-states">Yükleme durumları</a></li>
+<li><a href="#storage-and-migrations">Depolama ve geçişler</a></li>
+<li><a href="#wallet-sdk">Cüzdan SDK'sı</a></li>
+<li><a href="#dapp-integration">dApp Entegrasyonu</a></li>
+<li><a href="#session-management">Oturum yönetimi</a></li>
+<li><a href="#testing">Test etme</a></li>
+<li><a href="#release-checklist">Sürüm kontrol listesi</a></li>
+<li><a href="#known-issues">Bilinen sorunlar</a></li>
+</ul>
+<hr />
+<h2 id="setup">Kurulum</h2>
+<pre><code class="language-bash">npm install --legacy-peer-deps
+npm run dev</code></pre>
+<p><code>--legacy-peer-deps</code> zorunludur: ESLint 9 ve <code>@eslint/js</code> 10 çakışan peer bağımlılık<br />aralıkları bildirir. <code>vercel.json</code> da aynı bayrağı kullanır; böylece CI ve yerel kurulumlar eşleşir.</p>
+<p>Node 20+ önerilir.</p>
+<hr />
+<h2 id="project-layout">Proje yapısı</h2>
+<pre><code class="language-">src/
+├── api/          High-level operations (wallet-api, send, encrypt)
+├── components/   React components, one panel per tab
+├── connect/      dApp approval popup (/connect route)
+├── crypto/       Primitives: ed25519, x25519, sha256, aes, bip39, hd, base58/64
+├── hooks/        useTheme, usePanelLoading
+├── i18n/         Translations and the provider
+├── pvac/         FHE bridge: stub + WASM implementation
+├── rpc/          JSON-RPC client
+├── sdk/          Provider injected into dApps + transport
+├── stealth/      Stealth address derivation
+├── store/        Zustand store
+├── tx/           Canonical JSON, signing, ABI helpers
+├── utils/        Clipboard, progress reporting, CSV export
+└── wallet/       Keystore, IndexedDB storage, PIN, passkey unlock, watch-only
+                  guard, endpoint policy, payment URIs, mnemonic backup check
+
+public/
+  demo/           Standalone dApp integration demo (dapp.html)
+  docs/           Static HTML documentation pages
+  wasm/           Compiled PVAC module (pvac.js + pvac.wasm)
+
+tests/unit/       Vitest
+tests/e2e/        Playwright
+docs/             This documentation</code></pre>
+<hr />
+<h2 id="architecture">Mimari</h2>
+<p>Tamamen istemci tarafındadır; arka uç yoktur. Veriler tek yönde akar:</p>
+<pre><code class="language-">React components  (src/components/)
+       │  read state, dispatch actions
+       ▼
+Zustand store  (src/store/wallet-store.ts)
+       │
+       ▼
+API layer  (src/api/)          ← orchestrates crypto + RPC
+       │
+       ├──► Crypto core  (src/crypto/)   WebCrypto, tweetnacl, @noble
+       ├──► PVAC FHE     (src/pvac/)     WebAssembly
+       ├──► Transaction  (src/tx/)       canonical JSON + signing
+       └──► RPC client   (src/rpc/)      fetch
+                                           │ HTTPS
+                                           ▼
+                                    Octra RPC node</code></pre>
+<h3 id="design-constraints">Tasarım kısıtları</h3>
+<p><strong>Canonical JSON bayt-bayt aynı olmalıdır.</strong> <code>src/tx/canonical-json.ts</code>,<br /><code>nlohmann::json</code> anahtar sıralamasını ve biçimlendirmesini aynen üretir. İmzalar bu baytlar üzerinden hesaplanır;<br />bu yüzden herhangi bir sapma, ağın reddettiği bir imza üretir. Bu serileştiriciyi "düzenlemeyin".</p>
+<p><strong>Adlandırma: ürün ile protokol arasındaki fark.</strong> "Orion Wallet" üründür. <code>octra_*</code> RPC yöntemleri,<br /><code>oct</code> adres öneki, <code>OCT</code> kısaltması ve "Octra Network" protokol tanımlayıcılarıdır<br />ve asla yeniden adlandırılmamalıdır.</p>
+<hr />
+<h2 id="build-system">Derleme sistemi</h2>
+<p>TypeScript yapılandırma dosyaları <strong>tek doğruluk kaynağıdır</strong>:</p>
+<ul>
+<li><code>vite.config.ts</code></li>
+<li><code>vitest.config.ts</code></li>
+<li><code>playwright.config.ts</code></li>
+</ul>
+<blockquote><strong>Bunlar için <code>.js</code> kardeş dosyalar eklemeyin.</strong> Vite, <code>vite.config.ts</code>'den önce <code>vite.config.js</code>'i çözer;<br />bayat bir derlenmiş kopya, gerçek yapılandırmayı sessizce gölgeler ve <code>.ts</code> dosyasındaki düzenlemeler hiçbir şey yapmaz.<br />Bu üç dosya adı <code>.gitignore</code> içindedir.<br /><code>eslint.config.js</code> gerçek bir düz yapılandırmadır ve bilinçli olarak tutulur.</blockquote>
+<p>Onları yok saymak tek başına yeterli olmadı, çünkü hiçbir şey onların <em>oluşturulmasını</em> engellemiyordu:<br /><code>tsconfig.node.json</code> bir <code>composite</code> projesidir; bu, bildirim üretimini zorunlu kılar ve<br /><code>outDir</code> olmadan her <code>tsc -b</code> <code>vite.config.js</code> dosyasını doğrudan kaynağın yanına yazardı. Bu iki kez oldu.<br />Bu projenin çıktısı artık <code>node_modules/.tmp/tsconfig-node/</code> altına gider ve orada hiçbir şeyi gölgeleyemez.<br />O projeye bir yapılandırma dosyası eklerseniz, <code>outDir</code> ayarına dokunmayın.</p>
+<h3 id="environment-flags">Ortam bayrakları</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Bayrak</th><th>Etki</th></tr></thead>
+<tbody>
+<tr><td><code>VITE_ALLOW_HTTP_ENDPOINTS=1</code></td><td>Derleme zamanında <code>connect-src</code> CSP yönergesine <code>http:</code> ekler; böylece kendi kendine barındırılan bir derleme düz-http bir RPC düğümüne ulaşabilir. Origin başına kullanıcı onayı hâlâ geçerlidir — bkz. <code>src/wallet/endpoint-policy.ts</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Yalnızca derleme zamanında ayarlanır. <code>vite.config.ts</code> içinde <code>allowHttpEndpointsCsp</code> eklentisi tarafından okunur<br />ve <code>index.html</code> dosyasını yeniden yazar; çalışma zamanı etkisi yoktur, çünkü bir meta-etiket CSP'si belge<br />ayrıştırıldıktan sonra genişletilemez.</p>
+<h3 id="headers">Başlıklar</h3>
+<p>COOP/COEP, <code>same-origin</code> / <code>require-corp</code> olarak ayarlanır (gelecekteki WASM iş parçacığı için ayrılmıştır);<br />popup'ın <code>postMessage</code> + MessagePort aktarımının çalışması için <code>/connect</code> üzerinde <code>unsafe-none</code> geçersiz kılmaları vardır.<br />Geliştirme başlıkları <code>vite.config.ts</code> içinde; üretim başlıkları <code>vercel.json</code> içindedir.<br /><strong>İkisini senkronize tutun.</strong></p>
+<h3 id="content-security-policy">Content-Security-Policy</h3>
+<p><code>index.html</code> içinde tanımlanır. <code>script-src</code>, <code>'wasm-unsafe-eval'</code> içermelidir — Chromium onsuz<br /><code>WebAssembly.instantiate()</code> çağrısını reddeder ve PVAC modülünün sessizce yüklenememesine tam olarak bu neden oldu.<br />Bu yönerge yalnızca WebAssembly derlemesine izin verir; JavaScript <code>eval()</code> işlevini yeniden etkinleştirmez.</p>
+<p><code>connect-src</code>, <code>'self' https:</code> ve loopback (<code>http://localhost:*</code>, <code>http://127.0.0.1:*</code>,<br /><code>http://[::1]:*</code>) değerleridir; böylece yerel olarak çalıştırılan bir düğüm, genel olarak düz metin açmadan işe yarar.<br /><code>http://</code> üzerinden başka her şey, kararı veren tek yer olan <code>src/wallet/endpoint-policy.ts</code> tarafından denetlenir —<br />URL'nin ve açık bir bağlamın saf bir işlevi; böylece store, Settings arayüzü ve testler çelişemez. Başka yerlere<br />uygun-görülen URL kontrolleri eklemeyin. Üç bağımsız engel uygulanır (karışık içerik → CSP → kullanıcı onayı) ve karar,<br />en temel olanı önce bildirir; böylece asıl reddeden tarayıcıyken kullanıcıya izin listesini düzeltmesi asla söylenmez.</p>
+<hr />
+<h2 id="the-pvac-wasm-pipeline">PVAC WASM hattı</h2>
+<h3 id="building">Derleme</h3>
+<pre><code class="language-bash">git clone https://github.com/emscripten-core/emsdk.git /tmp/emsdk
+cd /tmp/emsdk &amp;&amp; ./emsdk install latest &amp;&amp; ./emsdk activate latest
+source /tmp/emsdk/emsdk_env.sh
+
+git clone https://github.com/octra-labs/webcli ../webcli-source
+python3 scripts/patch-pvac-aes.py ../webcli-source/pvac   # software AES fallback
+npm run build:wasm</code></pre>
+<p><code>patch-pvac-aes.py</code> gereklidir, çünkü PVAC, WebAssembly'nin sunmadığı donanım AES'i (AES-NI veya<br />ARM kripto uzantıları) olmadan sert <code>#error</code> verir. Yama, bit olarak aynı ama yaklaşık 5–10× daha yavaş<br />taşınabilir bir yazılım uygulaması ekler. Eklemelidir: donanım yollarına dokunulmaz ve bir yedek <code>.hpp.bak</code> yazılır.</p>
+<h3 id="loading">Yükleme</h3>
+<p><code>src/pvac/wasm-bridge.ts</code>, modülü üç adımda yükler:</p>
+<ol>
+<li><strong>Probe</strong> — glue URL'sinde <code>HEAD</code> isteği; böylece "not built" (404) "blocked by CSP" durumundan ayırt edilebilir. Bu olmadan ikisi de aynı opak içe aktarma hatası olarak görünür.</li>
+<li><strong>Import</strong> — <code>/* @vite-ignore */</code> içeren mutlak bir URL'nin dinamik <code>import()</code> ile yüklenmesi. URL mutlak olmalıdır: yalın bir belirtici çözümlenemez ve <code>./wasm/pvac.js</code>, <code>/assets/</code> karşısında çözümlenip 404 verir.</li>
+<li><strong>Verify</strong> — köprüyü değiştirmeden önce gerekli 13 <code>_pvac_*</code> dışa aktarımının tümünün var olduğunu doğrulayın.</li>
+</ol>
+<p>Önceki derlemeler serileştirme işlevlerini atlamıştı; bu da şifreleme/şifre çözmeyi, düğümün yalnızca<br />"malformed transaction" olarak bildirdiği bir biçimde bozuyordu.</p>
+<p>Hatalar <code>PvacFailureReason</code> olarak sınıflandırılır: <code>not-built</code>, <code>csp-blocked</code>,<br /><code>missing-exports</code>, <code>init-failed</code>, <code>unknown</code>. Her biri Settings'te gösterilen somut bir çözüme karşılık gelir.<br />Tekil (singleton) promise, hata durumunda sıfırlanır; böylece <strong>↻ Reload PVAC</strong> önbelleğe alınmış bir reddi<br />tekrar oynatmak yerine yeniden deneyebilir.</p>
+<h3 id="memory-rules">Bellek kuralları</h3>
+<p>C API'si elle yönetilen bellektir. Her <code>_malloc</code> bir <code>_free</code> gerektirir; her <code>serialize_*</code>,<br /><code>_pvac_free_bytes</code> ile serbest bırakılması gereken bir arabellek döndürür. <code>keygen</code>/<code>enc_*</code> kaynaklı tanıtıcılar<br />karşılık gelen <code>_pvac_free_*</code> işlevini gerektirir. <code>try/finally</code> kullanın — desen için <code>WasmPvacBridge</code>'e bakın.</p>
+<hr />
+<h2 id="state-management">Durum yönetimi</h2>
+<p>Zustand, <code>src/store/wallet-store.ts</code> içinde. Store; cüzdana, RPC istemcisine, ayarlara, PVAC<br />durumuna, bildirimlere (toast) ve genel yükleme bayrağına sahiptir.</p>
+<p>Genel yükleme bayrağı (<code>isLoading</code>), tam ekran bir bulanıklık kaplamasını çalıştırır ve yalnızca<br /><strong>tüm uygulama geçişleri</strong> için ayrılmıştır; örneğin cüzdan kilidini açma gibi. Panel başına işlerde bunun yerine<br /><code>usePanelLoading</code> kullanılmalıdır — aşağıya bakın.</p>
+<hr />
+<h2 id="error-handling">Hata işleme</h2>
+<p><code>src/components/ErrorBoundary.tsx</code>, <code>Layout.tsx</code> içindeki her paneli, etkin sekmeye göre anahtarlayarak sarar;<br />böylece tetiklenen bir sınır gezinmede sıfırlanır. Ayrıca <code>main.tsx</code> içinde kökte bir sınır daha vardır.</p>
+<p>Bu, göründüğünden daha önemlidir. <code>index.html</code> şunları içerir:</p>
+<pre><code class="language-css">#root:empty::before { content: 'Loading Orion Wallet…'; }</code></pre>
+<p>Sınır olmadan, işleme sırasındaki herhangi bir hata React 18'in tüm ağacı sökmesine neden olur, <code>#root</code><br />boşalır ve bu yedek görüntülenir — sonsuza dek yükleniyormuş gibi görünen boş beyaz bir sayfa üretir. Sınır, kabuğu<br />canlı tutar ve yeniden denenebilir bir hata kartı gösterir.</p>
+<p><strong>Sonuç:</strong> işleme sırasında çağrılan işlevler, hatalı girdide hata fırlatmamalıdır.<br /><code>src/tx/builder.ts</code> içindeki <code>formatAmount</code>, <code>unknown</code> kabul eder ve bir yer tutucuya düşer;<br />çünkü ne RPC yanıtları ne de yerel işlem önbelleği şema doğrulamalıdır. Güvenilmeyen satırları işlemeden önce normalleştirin —<br /><code>HistoryView</code> bu deseni gösterir.</p>
+<hr />
+<h2 id="loading-states">Yükleme durumları</h2>
+<p>Panel kapsamlı işler için <code>usePanelLoading</code> (<code>src/hooks/usePanelLoading.ts</code>) kullanın:</p>
+<pre><code class="language-typescript">const panelLoading = usePanelLoading();
+
+await panelLoading.run('Loading history', async () =&gt; {
+  const data = await fetchSomething();
+  if (!panelLoading.isMounted()) return;   // guard late setState
+  setData(data);
+}, 'Fetching from the network…');</code></pre>
+<p>Ardından <code>&lt;ProcessingModal open={panelLoading.loading} … dismissible onClose={panelLoading.hide} /&gt;</code> öğesini işleyin.</p>
+<p>İki özellik önemlidir: modal <strong>kapatılabilir</strong> (iş arka planda devam eder; yavaş bir ağ kullanıcıyı asla tuzağa düşürmez) ve durum yazımları <code>isMounted()</code> ile koşullandırılır; böylece işlem sırasında başka yere geçmek, ekranda takılı bir modal bırakamaz.</p>
+<hr />
+<h2 id="storage-and-migrations">Depolama ve geçişler</h2>
+<p><code>idb</code> üzerinden IndexedDB, veritabanı <code>orion-wallet</code>, sürüm 6. Depolar, <code>src/wallet/storage.ts</code> içindeki<br /><code>OBJECT_STORES</code> dizisinde bir kez bildirilir; yenilerini oraya ekleyin ki oluşturma ve geçiş tutarlı kalsın —<br />bu dizi aynı zamanda <code>wipeEverything()</code> işlevini de sürer; başka bir yere eklenen bir depo, silme işleminden kurtulur.</p>
+<p>Geçişler <strong>yalnızca ekleme</strong> yönlüdür: <code>DB_VERSION</code> değerini yükseltin, diziye ekleyin ve yeni girdilerin yanına<br />bir yorumda sürümü not edin. Mevcut depolar asla yeniden adlandırılmaz veya kaldırılmaz.<br />Şimdiye kadarki sürümler: v2 SDK depoları, v3 OCS01 belirteçleri, v4 <code>oct://</code> yer imleri, v5<br /><code>unlock-session-keys</code>, v6 <code>contacts</code> + <code>passkey-unlock</code>.</p>
+<h3 id="the-rebrand-migration">Yeniden markalama geçişi</h3>
+<p>Veritabanını <code>webcli-react</code> olarak yeniden adlandırmak, IndexedDB veriyi veritabanı adına göre kapsamladığı için<br />mevcut her cüzdanı yetim bırakırdı. <code>migrateLegacyDatabase</code>, ilk açılışta tüm depoları ileriye kopyalar. Şunlardır:</p>
+<ul>
+<li><strong>idempotent</strong> — hedefte herhangi bir cüzdan olduğunda atlanır</li>
+<li><strong>tahrip edici değildir</strong> — eski veritabanı, geri alma için olduğu gibi bırakılır</li>
+<li><strong>ölümcül değildir</strong> — hatalar günlüğe yazılır, asla fırlatılmaz; bir geçiş hatası başlatmayı engellememelidir</li>
+</ul>
+<p>E2E yardımcılarındaki <code>clearIndexedDB</code> işlevinin <strong>her iki</strong> veritabanını da silmesi gerektiğini unutmayın; yoksa<br />geçiş eski verileri doğrudan geri kopyalar ve "temiz durum" temiz olmaz.</p>
+<hr />
+<h2 id="wallet-sdk">Cüzdan SDK'sı</h2>
+<p><code>src/sdk/</code>, dApp'e bakan sağlayıcıdır; <code>src/connect/</code>, <code>/connect</code> üzerinde sunulan onay popup'ıdır.</p>
+<h3 id="method-namespaces">Yöntem ad alanları</h3>
+<p>Cüzdan iki eşdeğer ad alanına yanıt verir:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Genel</th><th>Orion markalı</th><th>İşlem</th></tr></thead>
+<tbody>
+<tr><td><code>wallet_connect</code></td><td><code>orion_wallet_connect</code></td><td>Bağlantı başlat</td></tr>
+<tr><td><code>wallet_signMessage</code></td><td><code>orion_wallet_signMessage</code></td><td>Düz bir mesajı imzala</td></tr>
+<tr><td><code>wallet_signTypedData</code></td><td><code>orion_wallet_signTypedData</code></td><td>Yapılandırılmış veriyi imzala</td></tr>
+<tr><td><code>wallet_approveContract</code></td><td><code>orion_wallet_approveContract</code></td><td>Bir sözleşme çağrısını önceden onayla</td></tr>
+<tr><td><code>wallet_signContract</code></td><td><code>orion_wallet_signContract</code></td><td>Bir sözleşme işlemini imzala</td></tr>
+<tr><td><code>wallet_getAccounts</code></td><td><code>orion_wallet_getAccounts</code></td><td>Hesapları listele</td></tr>
+<tr><td><code>wallet_getBalance</code></td><td><code>orion_wallet_getBalance</code></td><td>Bakiyeyi oku</td></tr>
+<tr><td><code>wallet_getNetworkInfo</code></td><td><code>orion_wallet_getNetworkInfo</code></td><td>Etkin ağı bir kayıt olarak oku</td></tr>
+<tr><td><code>wallet_getNetworks</code></td><td><code>orion_wallet_getNetworks</code></td><td>Cüzdanın sunduğu her ağı listele</td></tr>
+<tr><td>…</td><td>…</td><td>…</td></tr>
+</tbody>
+</table>
+</div>
+<p>Her ikisi de kabul edilir ve aynı şekilde yürütülür. <code>orion_wallet_*</code> adları, açıkça Orion Wallet'ı hedeflemek isteyen<br />dApp'ler için vardır; genel <code>wallet_*</code> adları, mevcut entegrasyonlar çalışmaya devam etsin diye desteklenmeye devam eder.</p>
+<p><code>src/sdk/protocol.ts</code> içindeki <code>canonicalizeMethod</code>, her yöntem adını dağıtımdan önce kurallı <code>wallet_*</code><br />biçimine indirger; böylece iki ad alanı asla senkron dışına çıkamaz.</p>
+<h3 id="connection-lifecycle">Bağlantı yaşam döngüsü</h3>
+<p><strong>El sıkışma (oturum başına bir kez):</strong></p>
+<ol>
+<li>dApp, <code>provider.connect()</code> çağırır → <code>PopupTransport</code>, <code>/connect?v=1&amp;rid=…&amp;origin=…</code> açar</li>
+<li>Cüzdan <code>ConnectApp</code> öğesini işler; gerekirse kullanıcı kilidi açar</li>
+<li>Cüzdan, origin doğrulamalı <code>window.postMessage</code> üzerinden <code>hello</code> + MessagePort gönderir</li>
+<li>dApp, bağlantı noktası üzerinden <code>challenge</code> yankılar (anti-replay)</li>
+<li><code>ConnectHandler</code> onayı doğrular, <code>CONNECT</code> RPC'sine hizmet eder → adres, hesaplar ve ağı döndürür</li>
+</ol>
+<p><strong>Bağlantıdan sonra:</strong></p>
+<ul>
+<li><strong>Popup kapanabilir</strong>, ama MessagePort açık kalır — pencereden bağımsızdır</li>
+<li>Oturum, IndexedDB içinde (<code>sdk-sessions</code>) boşta + mutlak TTL ile kalıcıdır</li>
+<li>Okuma yöntemleri (<code>getBalance</code>, <code>getAccounts</code>) oturumda sessizdir</li>
+<li>İmzalama yöntemleri <strong>her zaman</strong> yeni bir onay istemi açar</li>
+</ul>
+<p><strong>"Bağlantı çalışıyor ama başka hiçbir şey çalışmıyor" sorununun çözümü:</strong></p>
+<p>Başlangıçta <code>PopupTransport.isConnected()</code>, <code>popup.closed</code> değerini kontrol ediyordu; bu yüzden onay<br />penceresi kapandıktan sonraki her çağrı "Transport is not connected" ile başarısız oluyordu. Artık yalnızca, popup'tan<br />daha uzun yaşayan bağlantı noktasını kontrol eder. Cüzdan, onaydan sonra popup'ı kapatır ama bağlantı canlı kalır.</p>
+<h3 id="permission-model">İzin modeli</h3>
+<p><strong>Bağlantı anında:</strong> Yalnızca salt-okunur kapsamlar (<code>viewAccounts</code>, <code>viewBalance</code>, <code>viewNetwork</code>).</p>
+<p><strong>İmzalama kapsamları</strong> (<code>signMessage</code>, <code>signContract</code> vb.), ilk başarılı onayda <strong>tembel biçimde tanınır</strong>.<br />Düzeltmeden önce bunlar <code>DEFAULT_PERMISSIONS</code> içinde yoktu ve dağıtıcı, istem görünemeden önce her imzalama<br />çağrısını <code>UNAUTHORIZED</code> ile reddediyordu — belirtinin ikinci kök nedeni.</p>
+<p>Şimdi:</p>
+<ul>
+<li>İzin kontrolü, tanınmamış imzalama kapsamlarının onay istemine ilerlemesine izin verir</li>
+<li>Onayda <code>grantPermission</code>, kapsamı oturuma kalıcı olarak işler</li>
+<li>Sonraki çağrılar izin kontrolünü atlar ama <strong>yine de onay gerektirir</strong> — bir kapsamı tanımak yalnızca, kullanıcının dApp'in sorabileceğini kabul ettiğini kaydeder</li>
+</ul>
+<p>Geri alma açıktır: <code>revokePermission</code>, kapsamı <code>permissions</code> listesinden çıkarır ve onu, dağıtıcının doğrudan<br />reddettiği <code>deniedPermissions</code> içine kaydeder.</p>
+<h3 id="security-invariants">Güvenlik değişmezleri</h3>
+<p>Bunları zayıflatmayın:</p>
+<ul>
+<li>Her gelen <code>postMessage</code> üzerinde <strong>origin doğrulaması</strong> (<code>PopupTransport.ts</code>, <code>rpc-handler.ts</code>)</li>
+<li><strong>Anti-replay:</strong> CSPRNG challenge + dApp nonce'u + oturum başına monoton nonce. <code>makeId</code> yalnızca mesaj ilişkilendirme içindir ve asla bir güvenlik değeri olarak kullanılmamalıdır</li>
+<li><strong>İzinler</strong> origin başınadır, <code>sdk-sessions</code> içinde kalıcıdır ve açıkça verilir/geri alınır</li>
+<li><strong>MessagePort bağımsızlığı:</strong> Bağlantı noktası popup'tan daha uzun yaşar. Bir kez aktarıldığında cüzdan, bağlantıyı koparmadan onay penceresini kapatabilir</li>
+<li><strong>Yasak yöntemler</strong> hem istemci tarafında (<code>WalletProvider</code>) hem de cüzdan tarafında (<code>rpc-handler</code>) reddedilir; böylece işlem yürütme, düşük seviyeli <code>request()</code> kaçış kapağı üzerinden bile asla SDK'ya kaçamaz</li>
+<li><strong><code>localStorage</code></strong> yalnızca bir oturum-geri yükleme ipucu (adres, ağ) tutar — asla sır değil</li>
+</ul>
+<hr />
+<h2 id="dapp-integration">dApp Entegrasyonu</h2>
+<h3 id="quick-start">Hızlı başlangıç</h3>
+<pre><code class="language-javascript">import { WalletProvider } from '@orion-wallet/sdk';
+
+const provider = new WalletProvider({
+  walletUrl: 'https://orionwallet.example/connect',
+  capabilities: [
+    'signMessage',
+    'signTypedData',
+    'approveContract',
+    'signContract',
+    'multiAccount',
+    'events',
+    'sessionRestore',
+    'customNetworks',
+  ],
+});
+
+const result = await provider.connect();</code></pre>
+<h3 id="session-management">Oturum yönetimi</h3>
+<p>Orion oturumları <strong>30 dakika boşta</strong> veya <strong>8 saat mutlak</strong> sonra dolar. SDK; yerleşik oturum<br />sağlık kontrolleri ve otomatik yeniden bağlanma sunar:</p>
+<pre><code class="language-javascript">// Check session health before every signing operation
+if (!provider.isSessionAlive()) {
+  await provider.refreshSession();
+}
+
+// Listen for session expiry events
+provider.on('sessionExpired', () =&gt; {
+  setConnected(false);
+});</code></pre>
+<h3 id="networks-including-the-users-own">Ağlar (kullanıcının kendi ağı dahil)</h3>
+<p>Kullanıcı, Settings → Network bölümünde kendi ağını ekleyebilir (kendi düğümü, bir devnet çatalı,<br />ücretli bir RPC). Bu ağlar birinci sınıftır: bağlantı popup'ının seçicisinde ön ayarların yanında görünürler<br />ve bağlı bir dApp bunları görebilir.</p>
+<pre><code class="language-javascript">// Which network am I on? A record, not just an id string.
+const active = await provider.getNetworkInfo();
+// { id: 'home-node', name: 'Home node', explorerUrl: 'https://octrascan.io',
+//   icon: '🏠', custom: true }
+
+// Everything the wallet offers — presets first, user-added ones after.
+const all = await provider.getNetworks();
+const userAdded = all.filter((n) =&gt; n.custom);
+
+// Cached from the connect reply, no round-trip; null before connect.
+provider.networkInfo();
+
+provider.on('networkChanged', ({ network, chainId, networkInfo }) =&gt; {
+  // networkInfo is present on wallets that granted `customNetworks`.
+  setChain(networkInfo?.name ?? network);
+});</code></pre>
+<p>Bunlardan herhangi birine güvenmeden önce <strong><code>customNetworks</code></strong> özelliğini özellik algılama ile yoklayın — eski<br />cüzdan derlemeleri yalnızca yalın <code>wallet_getNetwork</code> çağrısına yanıt verir; o da bir kimlik dizgesi döndürür.</p>
+<p><strong><code>NetworkInfo</code> bilinçli olarak ne <code>rpcUrl</code> ne de <code>relayerUrl</code> taşır.</strong> Kullanıcının eklediği bir<br />ağ genellikle özel bir uç noktadır — bir LAN adresi, bir tünel ya da sorgu dizgisinde API anahtarı bulunan bir<br />sağlayıcı URL'si — ve bunu kullanıcının bağlandığı her siteye vermek, altyapısını sızdırırdı. Bir dApp buna gerek<br />duymaz: her okuma cüzdan üzerinden gider (<code>wallet_getBalance</code> ve benzerleri) ve yürütme asla cüzdan arayüzünden<br />çıkmaz. Tel üzerinden geçen şey, bir dApp'in meşru biçimde ihtiyaç duyduğu şeydir — hangi ağla konuştuğu, sahibinin<br />onu elle ekleyip eklemediği (<code>custom</code>) ve bir işlemin nereye bağlanacağı (<code>explorerUrl</code>).</p>
+<p><strong><code>wallet_switchNetwork</code> yoktur.</strong> Ağ değiştirme, cüzdanın kendi arayüzünde kalır — popup'ın seçicisinde<br />ya da ana pencerenin ağ hapında — durum değişikliklerinin asla bir dApp'ten kaynaklanmaması kuralıyla tutarlıdır.<br />Başka bir ağa ihtiyaç duyan bir dApp, kullanıcıdan değiştirmesini ister, sonra <code>networkChanged</code> olayını bekler.</p>
+<p><code>networkChanged</code>, değişikliğin olabileceği <strong>her iki</strong> yerden de yayınlanır: bağlantı popup'ı ve ana pencere.<br />Popup kapandığında oturumlar ana pencereye devredilir; bu yüzden çoğu kullanıcı ağ hapına dokunduğunda popup çoktan<br />gitmiştir — <code>Layout.tsx</code>, benimsenen işleyicilere yayın yapar, böylece bağlı bir dApp eski bir ağı gösterir durumda<br />kalmaz.</p>
+<p><code>WalletHost</code> arayüzünü iki bağımsız sınıf uygular: <code>src/connect/host.ts</code> (ana pencere) ve<br /><code>src/connect/ConnectApp.tsx</code> içindeki satır içi bir konak (popup). Arayüze eklenen her şey her ikisinde de ve ayrıca<br /><code>tests/unit/connect-handler.test.ts</code> içindeki fikstürde uygulanmalıdır.</p>
+<h3 id="connection-flow-diagram">Bağlantı akış şeması</h3>
+<pre><code class="language-">dApp                          Orion Wallet
+  │                              │
+  │  provider.connect()          │
+  │  ──────────────────────────► │
+  │  │  opens popup ───────────► │  User approves
+  │  │  hello + MessagePort ◄── │  ──────────────────►
+  │  │  challenge echo ────────► │
+  │  │  CONNECT RPC ──────────► │  Returns address
+  │  │  ◄────────────────────── │
+  │  ◄────────────────────────── │
+  │                              │
+  │  provider.signContract()     │
+  │  ──────────────────────────► │  Opens approval prompt
+  │  │  signContract RPC ──────► │  User approves
+  │  │  ◄────────────────────── │  Returns signed tx
+  │  ◄────────────────────────── │
+  │                              │
+  │  (session expires after      │
+  │   30 min idle / 8h absolute) │
+  │                              │
+  │  provider.isSessionAlive()   │  Returns false
+  │  ──────────────────────────► │
+  │                              │
+  │  provider.refreshSession()   │
+  │  ──────────────────────────► │  Reopens popup
+  │  │  (reconnects) ◄───────── │
+  │  ◄────────────────────────── │</code></pre>
+<h3 id="prohibited-methods">Yasak yöntemler</h3>
+<p>SDK, bu yöntemleri taşımaya (transport) ulaşmadan önce yerel olarak engeller. Cüzdan da<br />sunucu tarafında yeniden kontrol eder; böylece işlem yürütme asla dışarı sızamaz:</p>
+<ul>
+<li><code>wallet_sendTransaction</code> / <code>sendTransaction</code></li>
+<li><code>wallet_broadcastTransaction</code> / <code>broadcastTransaction</code></li>
+<li><code>wallet_transfer</code> / <code>transfer</code></li>
+<li><code>wallet_swap</code> / <code>swap</code></li>
+<li><code>wallet_bridge</code> / <code>bridge</code></li>
+</ul>
+<hr />
+<h2 id="session-management-1">Oturum yönetimi</h2>
+<p>Orion Wallet oturumları SDK tarafından otomatik olarak yönetilir. Oturumlar şu durumlarda sona erer:</p>
+<ul>
+<li><strong>Boşta kalma zaman aşımı:</strong> 30 dakikalık hareketsizlik</li>
+<li><strong>Mutlak zaman aşımı:</strong> bağlantıdan itibaren 8 saat</li>
+</ul>
+<p>dApp, oturum sağlığını istediği zaman kontrol edebilir:</p>
+<pre><code class="language-javascript">if (!provider.isSessionAlive()) {
+  await provider.refreshSession();
+}</code></pre>
+<p>Bir oturum sona erdiğinde cüzdan bir <code>sessionExpired</code> olayı yayınlar. dApp bu olayı<br />dinlemeli ve kullanıcıdan yeniden bağlanmasını istemelidir:</p>
+<pre><code class="language-javascript">provider.on('sessionExpired', () =&gt; {
+  // Prompt user to reconnect
+  setConnected(false);
+});</code></pre>
+<p>Oturum geri yükleme otomatik olarak ele alınır — cüzdan, oturum ipucunu IndexedDB içinde korur;<br />böylece süre sonundan sonra yeniden bağlanmak, kullanıcının cüzdanını yeniden içe aktarmasını gerektirmez.</p>
+<hr />
+<h2 id="testing">Testler</h2>
+<pre><code class="language-bash">npm test                 # 676 unit tests, 56 files
+npm run test:coverage    # V8 coverage, 60% threshold
+npm run test:e2e         # 7 Playwright specs (needs npm run build first)
+npm run autofix          # typecheck → format → lint --fix → test → build
+npm run check            # same, read-only (CI)</code></pre>
+<p>Birim testleri jsdom ve <code>fake-indexeddb</code> altında çalışır. Bileşen testleri, bir DOM test<br />kütüphanesi yerine <code>renderToStaticMarkup</code> kullanır — bkz. <code>tests/unit/processing-modal.test.tsx</code>.</p>
+<p>WebAuthn'ın bir jsdom uygulaması yoktur, bu yüzden <code>tests/unit/passkey.test.ts</code>, PRF uzantısını modelleyen<br />bir <code>FakeAuthenticator</code> kurar (uzantıya sahip olmayan bir doğrulayıcı, kapatılmış bir istem ve döndürülmüş bir sır<br />dahil). Saklanan kaydın <em>neleri içermemesi</em> gerektiğini doğrular — asıl önemli olan özellik budur.</p>
+<p>E2E notu: bir Playwright hata duvarına inanmadan önce farkı değil, makineyi kontrol edin.<br />Gerçek regresyonlara tıpatıp benzeyen iki ortam sınırı bu hataları üretir:</p>
+<ul>
+<li><strong>Geçici alan.</strong> Chromium her tarayıcı profilini <code>TMPDIR</code> altına koyar (varsayılan olarak <code>/tmp</code>). Bu dosya<br />sistemi doluysa — <code>/tmp</code> başka süreçlerle paylaşılan küçük bir tmpfs olduğunda kolayca olur — bağlamlar açılışta<br />ölür ve ilgisiz testler milisaniyeler içinde başarısız olur ya da 30 saniyelik zaman aşımında asılı kalır. Önce<br /><code>df -h /tmp</code> çalıştırın; geniş bir dosya sisteminde <code>TMPDIR=$HOME/.cache/e2e-tmp</code> ile yeniden çalıştırın ve aynı<br />senaryolar zaman aşımına uğramaktan çıkıp ~4 saniyede geçmeye başlar.</li>
+<li><strong>Bellek.</strong> İşçi başına kabaca 2 GB boş bellek gerekir. Bellek tükendiğinde Chromium testin ortasında<br />öldürülür ve Playwright <code>Target crashed</code> bildirir; <code>--workers=1</code> ile yeniden çalıştırın.</li>
+</ul>
+<p><code>playwright.config.ts</code>, <code>reuseExistingServer: !isCI</code> ayarını yapar; böylece 4173 bağlantı noktasındaki artakalan bir<br /><code>npm run preview</code> sessizce yeniden kullanılır — buna <em>farklı</em> bir checkout'tan başlatılan da dahildir. İki ağacı<br />karşılaştırırken, çalıştırmalar arasında dinleyiciyi öldürün (<code>ss -lptn | grep 4173</code>); yoksa ikinci çalıştırma<br />birincinin derlemesini test eder.</p>
+<p>Bir hata düzeltirken, yalnızca düzeltmeyi değil, hata modunu belgeleyen bir test ekleyin.<br /><code>tests/unit/history-view.test.ts</code> ve <code>error-boundary.test.tsx</code> şunu yapar: her biri, tekrar oluşmasını<br />önlediği belirtiyi adlandırır.</p>
+<hr />
+<h2 id="release-checklist">Sürüm kontrol listesi</h2>
+<ol>
+<li><code>npm run autofix</code> — tamamen yeşil olmalı</li>
+<li>Taze bir <code>npm run build</code> üzerinde <code>npm run test:e2e</code></li>
+<li><code>npm audit --omit=dev</code> — üretim sıfır güvenlik açığı bildirmeli</li>
+<li>PVAC'in yalnızca geliştirmede değil, bir üretim önizlemesinde (<code>npm run preview</code>) yüklendiğini doğrulayın</li>
+<li>Mevcut cüzdan verileriyle yeniden markalama öncesi bir derlemeden geçiş yolunu test edin</li>
+<li><code>vite.config.ts</code> sunucu başlıklarının <code>vercel.json</code> ile hâlâ eşleştiğini doğrulayın</li>
+</ol>
+<hr />
+<h2 id="known-issues">Bilinen sorunlar</h2>
+<p><strong>Dev bağımlılığı danışmanlıkları.</strong> <code>npm audit</code>, vitest, vite, esbuild ve ilgili paketlerde güvenlik açıkları bildirir.<br />Geriye kalan her düzeltme büyük bir yükseltme gerektirir (vite 5→8, vitest 2→4). Bunlar yalnızca derleme araçlarıdır ve<br />kullanıcılara ulaşmaz; üretim denetimleri temizdir. Bkz. <a href="SECURITY.html#dependency-status">SECURITY.html</a>.</p>
+<p><strong><code>storage.ts</code> parçalama uyarısı.</strong> Derleme, <code>storage.ts</code> dosyasının hem statik hem de dinamik olarak içe<br />aktarıldığını ve bu yüzden kendi parçasına bölünemeyeceğini bildirir. Zararsızdır, ancak <code>HistoryView</code> ve<br /><code>WalletExportImport</code> içindeki dinamik içe aktarımların kod bölme avantajı sağlamadığı anlamına gelir.</p>
+<p><strong>Yazılımsal AES performansı.</strong> WASM AES geri dönüşü yerelden 5–10 kat daha yavaştır. Ağır PVAC işlemleri ana<br />iş parçacığını bloke eder; bunları bir Web Worker içine taşımak mantıklı bir sonraki adımdır.</p>
+</body>
+</html>

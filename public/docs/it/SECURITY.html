@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sicurezza — Orion Wallet</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --text: #e7e7ef;
+      --text-muted: #8a8aa0;
+      --accent: #0096ff;
+      --code-bg: #1a1a2e;
+      --border: #26263a;
+      --blockquote-border: #0096ff;
+      --th-bg: #15151f;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #1a1a2e;
+      --text-muted: #666;
+      --accent: #0069c4;
+      --code-bg: #f0f0f0;
+      --border: #ddd;
+      --blockquote-border: #999;
+      --th-bg: #e8e8e8;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 0 auto; padding: 2rem; line-height: 1.7; color: var(--text); background: var(--bg); }
+    a { color: var(--accent); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.5rem; }
+    h4 { margin-top: 1.25rem; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: 0.25rem 0; }
+    blockquote { border-left: 3px solid var(--blockquote-border); padding-left: 1rem; margin-left: 0; color: var(--text-muted); }
+    .table-wrap { overflow-x: auto; margin: 1rem 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.85rem; text-align: left; vertical-align: top; }
+    th { background: var(--th-bg); font-weight: 600; }
+    tbody tr:nth-child(even) { background: color-mix(in srgb, var(--th-bg) 45%, transparent); }
+  </style>
+  <script>
+    (function() {
+      function apply(t) { document.documentElement.setAttribute("data-theme", t); }
+      try { var t = parent.document.documentElement.getAttribute("data-theme"); if (t) apply(t); } catch(e) {}
+      try { new MutationObserver(function(m) { m.forEach(function(x) { if (x.attributeName === "data-theme") apply(parent.document.documentElement.getAttribute("data-theme")); }); }).observe(parent.document.documentElement, { attributes: true }); } catch(e) {}
+    })();
+  </script>
+</head>
+<body>
+<h1 id="security">Sicurezza</h1>
+<blockquote><strong>GitHub:</strong> <a href="https://github.com/maragung/OrionWallet">github.com/maragung/OrionWallet</a> — Codice sorgente, issue e release.<br /><strong>Segnala le vulnerabilità:</strong> <a href="https://github.com/maragung/OrionWallet/security/advisories/new">GitHub Security Advisories</a></blockquote>
+<h2 id="audit-status">Stato dell'audit</h2>
+<p><strong>Orion Wallet non ha ancora subito un audit di sicurezza indipendente di terze parti.</strong></p>
+<p>Il progetto crittografico segue l'implementazione di riferimento <code>octra-labs/webcli</code> e le<br />primitive provengono da librerie ben recensite. Ma l'integrazione in sé non è stata sottoposta ad audit.<br />Valuta questo aspetto prima di conservare un valore significativo.</p>
+<hr />
+<h2 id="reporting-a-vulnerability">Segnalare una vulnerabilità</h2>
+<p><strong>Non aprire una issue pubblica per un problema di sicurezza.</strong></p>
+<p>Segnala privatamente ai maintainer, includendo:</p>
+<ul>
+<li>Una descrizione del problema e del suo impatto</li>
+<li>I passaggi per riprodurlo</li>
+<li>La versione o il commit interessato</li>
+<li>Qualsiasi rimedio suggerito</li>
+</ul>
+<p>Concedi una finestra ragionevole per un fix prima della divulgazione pubblica. Le segnalazioni sono<br />benvenute e vengono accreditate, a meno che tu non preferisca altrimenti.</p>
+<hr />
+<h2 id="threat-model">Modello delle minacce</h2>
+<h3 id="what-orion-wallet-protects-against">Ciò contro cui Orion Wallet protegge</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Minaccia</th><th>Mitigazione</th></tr></thead>
+<tbody>
+<tr><td>Chiavi che trapelano a un server</td><td>Nessun backend. Le chiavi non lasciano mai il browser</td></tr>
+<tr><td>Furto del keystore a riposo</td><td>AES-256-GCM, chiave derivata dal PIN tramite PBKDF2</td></tr>
+<tr><td>Richieste dannose delle dApp</td><td>Permessi per origine con prompt di approvazione espliciti</td></tr>
+<tr><td>Falsificazione di messaggi cross-origin</td><td>Origine validata su ogni messaggio in ingresso</td></tr>
+<tr><td>Replay dei messaggi</td><td>Challenge CSPRNG e nonce per sessione</td></tr>
+<tr><td>XSS tramite markup iniettato</td><td>Niente <code>innerHTML</code> / <code>dangerouslySetInnerHTML</code>; la CSP limita le sorgenti</td></tr>
+<tr><td>Dati RPC malformati che mandano in crash l'app</td><td>Normalizzazione difensiva più error boundary</td></tr>
+<tr><td>Una frase di recupero mai trascritta davvero</td><td>La creazione è condizionata al re-inserimento di 3 parole casuali</td></tr>
+<tr><td>Firma da un account senza chiavi</td><td><code>assertCanSign</code> rifiuta al confine dell'API, non solo nella UI</td></tr>
+<tr><td>Traffico RPC intercettato silenziosamente</td><td>Gli endpoint in plaintext richiedono un consenso esplicito per origine</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="what-it-cannot-protect-against">Ciò contro cui non può proteggere</h3>
+<p>Sii esplicito con te stesso su questi punti:</p>
+<ul>
+<li><strong>Un dispositivo compromesso.</strong> Malware, un keylogger o un'estensione del browser ostile possono leggere<br />il PIN mentre lo digiti ed estrarre le chiavi decifrate dalla memoria.</li>
+</ul>
+<ul>
+<li><strong>Una frase di recupero persa.</strong> Non esiste alcun meccanismo di recupero. Nessuno può ripristinarla.</li>
+<li><strong>Phishing.</strong> Se inserisci la tua frase di recupero su un sito falso, i fondi sono persi. Orion<br />Wallet non chiede mai la tua frase dopo la configurazione.</li>
+</ul>
+<ul>
+<li><strong>Un nodo RPC compromesso.</strong> Un nodo malintenzionato può servire saldi falsi o trattenere<br />transazioni. Non può forgiare firme né rubare chiavi.</li>
+</ul>
+<ul>
+<li><strong>Compromissione della supply chain</strong> delle dependency npm o del provider di hosting.</li>
+<li><strong>Accesso fisico</strong> a un dispositivo sbloccato con il wallet sbloccato.</li>
+</ul>
+<hr />
+<h2 id="cryptographic-design">Progettazione crittografica</h2>
+<h3 id="key-derivation-and-storage">Derivazione e archiviazione delle chiavi</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Scopo</th><th>Algoritmo</th></tr></thead>
+<tbody>
+<tr><td>Frase mnemonica</td><td>BIP39</td></tr>
+<tr><td>Derivazione HD</td><td>Ed25519, stile SLIP-0010</td></tr>
+<tr><td>Firma</td><td>Ed25519 (tweetnacl)</td></tr>
+<tr><td>ECDH (stealth)</td><td>X25519 (@noble/curves)</td></tr>
+<tr><td>Cifratura del keystore</td><td>AES-256-GCM (WebCrypto)</td></tr>
+<tr><td>PIN → chiave</td><td>PBKDF2-HMAC-SHA256</td></tr>
+<tr><td>Casualità</td><td><code>crypto.getRandomValues</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Il formato del keystore corrisponde all'originale C++: magic <code>OCT1</code>, versione, conteggio delle<br />iterazioni PBKDF2, salt, nonce, poi il ciphertext AES-GCM con il suo tag di autenticazione.</p>
+<h3 id="pin-handling">Gestione del PIN</h3>
+<p>Il PIN non viene <strong>mai persistito</strong>, in nessuna forma. Deriva la chiave di decifratura al momento<br />dello sblocco e poi viene scartato. Non esiste un "ricorda il mio PIN" — per progettazione. Di<br />conseguenza, un PIN dimenticato può essere risolto solo ripristinando dalla frase di recupero.</p>
+<h3 id="unlock-session">Sessione di sblocco</h3>
+<p>Il PIN non è persistito, ma il <em>risultato</em> dello sblocco lo è, per tutta la durata della sessione:<br />ricaricare la pagina non deve riportare l'utente alla schermata del PIN. <code>src/wallet/unlock-session.ts</code><br />sigilla il wallet decifrato con AES-256-GCM e lo divide su due store:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Metà</th><th>Dove</th><th>Durata</th></tr></thead>
+<tbody>
+<tr><td>Ciphertext (<code>orion:unlock-session</code>)</td><td><code>sessionStorage</code></td><td>Una scheda. Sparisce quando quella scheda si chiude</td></tr>
+<tr><td>Chiave di sigillo</td><td>IndexedDB <code>unlock-session-keys</code>, come <code>CryptoKey</code> <strong>non estraibile</strong></td><td>Eliminata al blocco; gli orfani potati per età</td></tr>
+</tbody>
+</table>
+</div>
+<p>Nessuna delle due metà è utilizzabile da sola. IndexedDB sopravvive alla chiusura della scheda ma non<br />contiene ciphertext; <code>sessionStorage</code> contiene il ciphertext ma non la chiave, e una seconda<br />scheda o un'altra origine non possono leggerlo. La chiave è generata con <code>extractable: false</code>, quindi<br />può essere <em>usata</em> da questa origine ma i suoi byte non possono essere letti — né dal nostro codice,<br />né da qualunque cosa riesca a girare nella pagina. La sessione ruota (chiave fresca, nonce fresco) a ogni<br />ripristino e porta con sé <code>createdAt</code> in avanti, così un ricaricamento non può estendere il tetto<br />assoluto.</p>
+<p>Scadenza: <strong>30 minuti di inattività</strong> (configurabile, <code>autoLockMinutes</code>; <code>0</code> la disattiva) e un<br /><strong>tetto assoluto di 8 ore</strong> dallo sblocco originale. Entrambi sono applicati al ripristino e la finestra<br />di inattività è applicata anche dal vivo da <code>useAutoLock</code>, quindi una scheda lasciata aperta si<br />blocca da sola.</p>
+<p>Ciò contro cui questo <em>non</em> difende — la parte onesta:</p>
+<ul>
+<li><strong>Esecuzione di script nella scheda.</strong> Il codice che gira nella pagina durante una sessione attiva può<br />chiedere al browser di decifrare la sessione e poi firmare con le chiavi, esattamente come fa il wallet.<br />Non può esfiltrare la chiave di sigillo, quindi la compromissione finisce con la scheda; non diventa una<br />chiave rubata utilizzabile altrove.</li>
+</ul>
+<ul>
+<li><strong>Un dispositivo compromesso.</strong> Invariato rispetto al modello delle minacce sopra: il malware locale<br />può leggere IndexedDB e <code>sessionStorage</code> insieme.</li>
+</ul>
+<ul>
+<li><strong>Contesti insicuri.</strong> Senza <code>crypto.subtle</code> (<code>http://</code> semplice, vedi sotto), la chiave di<br />sigillo ripiega su byte grezzi in IndexedDB e la garanzia di non estraibilità è persa. La<br />separazione e la scadenza restano comunque valide.</li>
+</ul>
+<p>Per rinunciare del tutto, disattiva <strong>Settings → Security → Stay unlocked after a page refresh</strong><br />(<code>keepUnlocked: false</code>). Non viene scritto nulla e ogni ricaricamento chiede il PIN — il comportamento<br />precedente all'esistenza di questa funzione. Un blocco esplicito (🔒) distrugge immediatamente entrambe le metà.</p>
+<h3 id="passkey-unlock">Sblocco con passkey</h3>
+<p>Facoltativo, disattivato per impostazione predefinita e additivo: è un secondo modo per aprire un wallet<br />esistente, mai un sostituto del PIN. <code>src/wallet/passkey.ts</code>.</p>
+<p>La registrazione crea una credenziale di piattaforma con <code>userVerification: 'required'</code> e<br />l'estensione WebAuthn <strong>PRF</strong>. PRF dà alla pagina un segreto derivato dalla credenziale e da un salt<br />di 32 byte archiviato, che il browser produce solo dopo che l'utente si è verificato. Il<br />wallet prende <code>sha256("orion-passkey-unlock-v1" || prf)</code> come chiave AES-256, sigilla il<br />wallet serializzato con AES-256-GCM, azzera la chiave e archivia il blob sigillato in IndexedDB<br />accanto all'ID della credenziale e al salt.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Archiviato</th><th>Non archiviato</th></tr></thead>
+<tbody>
+<tr><td>ID della credenziale, salt PRF, IV, ciphertext del wallet</td><td>L'output PRF, la chiave derivata, il PIN, qualsiasi materiale di chiave in chiaro</td></tr>
+</tbody>
+</table>
+</div>
+<p>Conseguenze che vale la pena dichiarare chiaramente:</p>
+<ul>
+<li><strong>PRF è obbligatorio, mai degradato.</strong> Se l'authenticator non lo supporta,<br />la registrazione fallisce e non archivia nulla. L'alternativa — tenere una chiave leggibile<br />accanto al ciphertext — renderebbe il record auto-decifrabile, il che è peggio che non offrire<br />la funzione.</li>
+</ul>
+<ul>
+<li><strong>Il record è inerte da solo.</strong> Senza un gesto riuscito di verifica dell'utente su quel<br />authenticator, non c'è modo di derivare la chiave da ciò che è su disco.</li>
+</ul>
+<ul>
+<li><strong>Sigilla il wallet, non il PIN.</strong> Il PIN è ancora l'unica cosa che esporta le chiavi,<br />rivela la frase, cambia il PIN o deriva un account. Lo sblocco con passkey quindi<br />non può essere usato per scalare a quelle operazioni, e il record archiviato fa trapelare<br />strettamente meno di quanto farebbe un PIN archiviato.</li>
+</ul>
+<ul>
+<li><strong>Stesso modello di sessione di uno sblocco con PIN.</strong> Uno sblocco con passkey produce la stessa sessione<br />di sblocco con gli stessi tetti di inattività e assoluti; non estende né l'uno né l'altro.</li>
+</ul>
+<ul>
+<li><strong>Limitato al dispositivo e al browser.</strong> Vincolato al <code>rpId</code> dell'origine e archiviato localmente.<br />Non fa parte di un export del wallet e non è derivato dalla frase di recupero.</li>
+</ul>
+<ul>
+<li><strong>Una credenziale obsoleta fallisce in chiusura.</strong> Se la decifratura fallisce — una credenziale<br />ruotata o registrata di nuovo, un dispositivo ripristinato — il record viene eliminato e viene richiesto il PIN. Un<br /><em>gesto ignorato o scaduto</em> deliberatamente <strong>non</strong> lo elimina, quindi un prompt annullato non può<br />disattivare silenziosamente la funzione.</li>
+</ul>
+<ul>
+<li><strong>Rifiutato per gli account watch-only.</strong> Non c'è materiale di chiave da sigillare.</li>
+</ul>
+<p>Ciò contro cui non difende è invariato: un dispositivo compromesso ed esecuzione di script in una<br />sessione attiva, esattamente come per la sessione di sblocco sopra. Rimuove però una esposizione reale —<br />il PIN digitato e osservato a ogni sblocco.</p>
+<h3 id="watch-only-accounts">Account watch-only</h3>
+<p>Un account può essere aggiunto con il solo indirizzo, senza keystore. L'invariante è che un tale account<br />non può mai firmare, ed è applicato dove avviene la firma, non nella UI:<br /><code>assertCanSign</code> (<code>src/wallet/watch-only.ts</code>) è chiamato dai percorsi di invio, cifratura, stealth,<br />contratto e richieste delle dApp, e lancia un'eccezione che nomina sia l'azione sia la soluzione.</p>
+<p>Fallisce in chiusura per costruzione: il controllo rifiuta qualsiasi wallet la cui chiave segreta non sia<br />una chiave Ed25519 completa di 64 byte, quindi una chiave troncata o mancante viene rifiutata anche se il<br />flag <code>watchOnly</code> fosse in qualche modo perso. Il flag è trasportato attraverso<br /><code>serializeWallet</code>/<code>deserializeWallet</code>, quindi un wallet ripristinato da una sessione di sblocco è<br />ancora watch-only.</p>
+<h3 id="randomness">Casualità</h3>
+<p>Tutti i valori rilevanti per la sicurezza usano <code>crypto.getRandomValues</code> tramite<br /><code>src/crypto/random.ts</code>.</p>
+<p><code>makeId</code> in <code>src/sdk/protocol.ts</code> ha un fallback <code>Math.random</code>. È usato <strong>solo</strong> per<br />gli ID di correlazione dei messaggi, mai per valori di sicurezza, ed è annotato come tale. Non<br />riutilizzarlo per challenge, nonce, chiavi o salt.</p>
+<hr />
+<h2 id="browser-security-posture">Postura di sicurezza del browser</h2>
+<h3 id="content-security-policy">Content-Security-Policy</h3>
+<p>Impostata in <code>index.html</code>:</p>
+<pre><code class="language-">default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob:; font-src 'self' data:;
+connect-src 'self' https: http://localhost:* http://127.0.0.1:* http://[::1]:*;
+frame-src 'self' https:; worker-src 'self' blob:; object-src 'none';
+base-uri 'self'; form-action 'self';</code></pre>
+<p>Tre voci meritano una spiegazione:</p>
+<ul>
+<li><strong><code>'wasm-unsafe-eval'</code></strong> è richiesto per il modulo FHE PVAC. Chromium blocca<br /><code>WebAssembly.instantiate()</code> senza di esso. Consente solo la compilazione di WebAssembly — non<br />riabilita l'<code>eval()</code> di JavaScript.</li>
+</ul>
+<ul>
+<li><strong><code>'unsafe-inline'</code> per gli stili</strong> serve per il CSS critico pre-paint che evita un<br />flash di contenuto non stilizzato. Si applica solo agli stili, mai agli script.</li>
+</ul>
+<ul>
+<li><strong>Loopback in <code>connect-src</code></strong> consente di usare un nodo eseguito in locale senza ampliare la policy<br />al plaintext in generale. Il traffico verso <code>localhost</code> / <code>127.0.0.0/8</code> / <code>[::1]</code> non lascia mai la<br />macchina, quindi non c'è nulla sul filo da intercettare.</li>
+</ul>
+<h3 id="plaintext-http-rpc-endpoints">Endpoint RPC in plaintext (http)</h3>
+<p>Qualsiasi altra cosa su <code>http://</code> semplice è rifiutata per impostazione predefinita e<br /><code>src/wallet/endpoint-policy.ts</code> è l'unico posto che decide. È una funzione pura dell'URL più un<br />contesto esplicito, quindi lo store, la UI di Settings e i test non possono essere in disaccordo su ciò<br />che è consentito.</p>
+<p>Si applicano tre blocchi indipendenti e il verdetto nomina prima il più fondamentale, così all'utente non<br />viene mai detto di sistemare l'allowlist quando il mixed content è la vera causa:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Blocco</th><th>Chi lo applica</th><th>Come si rimuove</th></tr></thead>
+<tbody>
+<tr><td>Mixed content</td><td>Il browser, incondizionatamente</td><td>Non rimovibile. Usa TLS o un proxy</td></tr>
+<tr><td>Content-Security-Policy</td><td>La CSP del meta tag distribuita</td><td>Ricompila con <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code></td></tr>
+<tr><td>Consenso dell'utente</td><td><code>allowedInsecureOrigins</code> nelle impostazioni</td><td><strong>Trust</strong> l'origine in Settings → Network</td></tr>
+</tbody>
+</table>
+</div>
+<p>Note sulla progettazione:</p>
+<ul>
+<li>La CSP è un meta tag, quindi <strong>non può essere ampliata a runtime</strong> — nessuna impostazione<br />potrebbe concederlo, ed è per questo che è un flag di build. <code>VITE_ALLOW_HTTP_ENDPOINTS=1</code> aggiunge <code>http:</code> a<br /><code>connect-src</code> al momento della build e nient'altro; il consenso dell'utente è comunque richiesto in aggiunta.</li>
+</ul>
+<ul>
+<li>Il consenso è <strong>per origine</strong> — schema, host e porta. Non è una corrispondenza sul nome host e non un<br />prefisso di URL, quindi fidarsi di <code>http://node.lan:8080</code> non significa fidarsi di un'altra porta su quell'host,<br />e <code>http://127.0.0.1.evil.com</code> non è trattato come loopback.</li>
+</ul>
+<ul>
+<li><strong>Gli URL dell'esploratore sono esenti</strong> perché sono solo navigazioni <code>&lt;a href&gt;</code>, non<br />fetch. <code>connect-src</code> e mixed content non si applicano a loro. <code>relayerUrl</code> è archiviato ma<br />mai recuperato. Solo <code>rpcUrl</code> è soggetto a questa policy.</li>
+</ul>
+<ul>
+<li>Un endpoint bloccato costruisce comunque un <code>RpcClient</code>, di proposito: rifiutarsi di costruirne uno<br />lascierebbe l'utente impossibilitato a raggiungere Settings per sistemarlo. Il motivo emerge invece come<br />badge <strong>⚠️ Insecure RPC</strong> nell'intestazione e come <code>RpcClient.unreachableHint</code>, che è<br />aggiunto solo a un <code>TypeError</code> lanciato — mai a un vero errore del server o a un timeout, che<br />sarebbe fuorviante.</li>
+</ul>
+<ul>
+<li><strong><code>rpcProxyUrl</code></strong> sposta la decisione al proxy: l'endpoint è giudicato dallo schema del<br />proxy stesso, poiché è ciò a cui il browser si connette davvero. Il proxy vede ogni<br />richiesta, quindi la UI dice di gestirne uno proprio. Non può raggiungere le chiavi né firmare.</li>
+</ul>
+<p>L'RPC in plaintext è un'esposizione di riservatezza <em>e</em> integrità — un nodo sul percorso può leggere<br />ogni richiesta e alterare le risposte — ma non di compromissione delle chiavi: le firme sono prodotte<br />localmente e il wallet non verifica nulla di ciò che riceve come materiale di chiave.</p>
+<h3 id="cross-origin-isolation">Isolamento cross-origin</h3>
+<p>COOP/COEP sono <code>same-origin</code> / <code>require-corp</code> su tutta l'app, con override <code>unsafe-none</code><br />su <code>/connect</code> così il popup di approvazione può scambiare un MessagePort con l'opener.<br />Questo restringimento è deliberato e limitato a quella singola rotta.</p>
+<hr />
+<h2 id="dapp-connection-security">Sicurezza delle connessioni alle dApp</h2>
+<p>Quando un sito richiede una connessione:</p>
+<ol>
+<li>Il popup mostra l'origine richiedente in modo ben visibile.</li>
+<li>L'utente deve approvare esplicitamente; non esiste una connessione silenziosa per una nuova origine.</li>
+<li>L'approvazione è limitata a quell'origine e persistita per origine.</li>
+<li>Le operazioni di firma richiedono sempre conferma, anche per i siti fidati.</li>
+</ol>
+<p>"Trust this site" sopprime i prompt per le richieste <strong>di sola lettura</strong> (saldo, account,<br />rete) soltanto. Non concede mai una firma silenziosa.</p>
+<p>Le connessioni possono essere riesaminate e revocate in <strong>Settings → Connected Sites</strong>.</p>
+<h3 id="what-a-dapp-learns-about-a-custom-network">Cosa una dApp scopre su una rete personalizzata</h3>
+<p>Le reti aggiunte a mano dall'utente sono visibili ai siti connessi (<code>wallet_getNetworkInfo</code>,<br /><code>wallet_getNetworks</code> e l'evento <code>networkChanged</code>), perché una dApp non può mostrare un link<br />corretto all'esploratore o un'etichetta di chain senza sapere su quale rete si trova. Il record che<br />attraversa il filo è un sottoinsieme deliberato:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Inviato</th><th>Trattenuto</th></tr></thead>
+<tbody>
+<tr><td><code>id</code>, <code>name</code>, <code>explorerUrl</code>, <code>icon</code>, <code>custom</code></td><td><code>rpcUrl</code>, <code>relayerUrl</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Gli endpoint sono trattenuti perché una rete aggiunta dall'utente è di solito privata — un indirizzo LAN,<br />un tunnel, un URL di provider a pagamento con la chiave API nella query string. Connettersi a un<br />sito non dovrebbe rivelare dove vive il nodo dell'utente né consegnare un URL con credenziali. Non si<br />perde alcuna funzionalità: le letture sono proxate attraverso il wallet e le transazioni sono costruite e<br />trasmesse dal wallet, quindi una dApp non deve mai raggiungere l'RPC da sola.</p>
+<p>Due conseguenze che vale la pena conoscere:</p>
+<ul>
+<li>Il <strong>nome</strong> di una rete personalizzata è scelto dall'utente e viene mostrato alle dApp. Dare a una<br />rete un nome che richiami un identificatore personale rivela quell'identificatore a ogni sito a cui ti connetti.</li>
+</ul>
+<ul>
+<li><code>wallet_getNetworks</code> rivela <strong>quante</strong> reti hai configurato. È una piccola<br />superficie di fingerprinting, accettata così che una dApp possa offrire una guida del tipo «passa a X».</li>
+</ul>
+<p>Nessuna dApp può cambiare rete. Non esiste un metodo <code>wallet_switchNetwork</code>; il cambio avviene<br />solo nella UI del wallet e la dApp lo scopre dopo tramite <code>networkChanged</code>.</p>
+<hr />
+<h2 id="dependency-status">Stato delle dipendenze</h2>
+<p>Dipendenze di produzione: <strong>zero vulnerabilità note</strong> (<code>npm audit --omit=dev</code>).</p>
+<p>Le dipendenze di sviluppo portano avvisi in vitest, vite, esbuild e pacchetti correlati.<br />Ogni fix rimanente richiede un aggiornamento major (vite 5→8, vitest 2→4) che rischia di rompere la<br />build. Questi pacchetti sono strumenti di build — non vengono distribuiti agli utenti e non possono<br />influire su un wallet in produzione.</p>
+<p>È un compromesso deliberato, riconsiderato a ogni release. Esegui <code>npm audit --omit=dev</code> per<br />confermare che la superficie distribuita resti pulita.</p>
+<hr />
+<h2 id="guidance-for-users">Guida per gli utenti</h2>
+<p><strong>Da fare</strong></p>
+<ul>
+<li>Conserva la tua frase di recupero offline, su carta, in più di un luogo</li>
+<li>Verifica gli indirizzi dei destinatari carattere per carattere prima di inviare</li>
+<li>Verifica l'origine in ogni prompt di connessione delle dApp</li>
+<li>Invia prima un piccolo importo di prova quando usi un nuovo indirizzo</li>
+<li>Mantieni aggiornati browser e sistema operativo</li>
+</ul>
+<p><strong>Da non fare mai</strong></p>
+<ul>
+<li>Inserire la tua frase di recupero su qualsiasi sito web dopo la configurazione</li>
+<li>Conservare la frase digitalmente — niente screenshot, note nel cloud o messaggi in chat</li>
+<li>Condividere la tua chiave privata o il file di backup <code>.oct</code></li>
+<li>Usare un wallet con fondi reali su un computer condiviso o non affidabile</li>
+</ul>
+<hr />
+<h2 id="for-contributors">Per i contributori</h2>
+<p>Invarianti sensibili alla sicurezza che non devono essere indeboliti:</p>
+<ul>
+<li>Validazione dell'origine su ogni <code>postMessage</code> in ingresso</li>
+<li>CSPRNG per tutti i valori di sicurezza; <code>makeId</code> non lo è</li>
+<li>Nessun segreto in <code>localStorage</code>, <code>sessionStorage</code>, log o messaggi di errore</li>
+<li>Niente <code>innerHTML</code> o <code>dangerouslySetInnerHTML</code></li>
+<li>Il PIN non viene mai persistito</li>
+<li>Lo sblocco con passkey richiede PRF; non ripiegare mai su una chiave leggibile archiviata</li>
+<li><code>assertCanSign</code> protegge ogni percorso di firma — un account watch-only non deve mai firmare</li>
+<li>La policy sugli endpoint in plaintext resta in <code>endpoint-policy.ts</code>; niente controlli URL ad hoc altrove</li>
+<li>Il JSON canonico resta byte-esatto — le firme dipendono da esso</li>
+</ul>
+<p>Qualsiasi modifica che tocchi crittografia, gestione delle chiavi, archiviazione o il flusso di connessione<br />dovrebbe dichiararlo esplicitamente nella pull request.</p>
+</body>
+</html>
