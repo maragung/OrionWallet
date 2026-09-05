@@ -92,9 +92,9 @@ export function ConnectApprovalHost() {
         <PinModal
           open
           title="Unlock account"
-          description={`Enter your PIN to unlock ${
+          description={`Enter the PIN for ${
             accountNames[pendingUnlock.addr] ?? 'this account'
-          } for the connected dApp. Your active wallet account stays unchanged.`}
+          } to unlock it for the connected dApp. Each account has its own PIN. Your active wallet account stays unchanged.`}
           confirmLabel="Unlock"
           busyLabel="Unlocking…"
           onSubmit={handlePinSubmit}

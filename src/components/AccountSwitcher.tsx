@@ -255,7 +255,7 @@ export function AccountSwitcher() {
               />
             </div>
             <div className="form-row">
-              <label htmlFor="dpin">PIN (current wallet PIN)</label>
+              <label htmlFor="dpin">PIN (for the new account)</label>
               <input
                 id="dpin"
                 type="password"
@@ -387,10 +387,10 @@ export function AccountSwitcher() {
           <Icon name="info" size={16} />
           <div className="info-box-body">
             Accounts can come from different recovery phrases — importing another phrase adds its
-            first account here without touching the ones already stored. Switching asks for your PIN
-            (shared by every account on this device) because the signing keys must be decrypted
-            before an account can become active. Watch-only entries are just addresses — removing
-            one never deletes key material, because it holds none.
+            first account here without touching the ones already stored. Each account has its own
+            PIN, so switching asks for the PIN of the account being opened (the signing keys must be
+            decrypted before an account can become active). Watch-only entries are just addresses —
+            removing one never deletes key material, because it holds none.
           </div>
         </div>
       </div>
@@ -415,8 +415,8 @@ export function AccountSwitcher() {
         title="Switch account"
         description={
           pendingSwitch
-            ? `Enter your PIN to unlock "${pendingSwitch.name}" (${pendingSwitch.addr.slice(0, 12)}…). ` +
-              'The signing keys must be decrypted before this account can become active.'
+            ? `Enter the PIN for "${pendingSwitch.name}" (${pendingSwitch.addr.slice(0, 12)}…) to ` +
+              'switch to it. The signing keys must be decrypted before this account can become active.'
             : undefined
         }
         confirmLabel="Switch"

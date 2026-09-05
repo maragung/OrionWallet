@@ -221,23 +221,31 @@ describe('wallet API (integration with IndexedDB)', () => {
       expect(own!.addrHint).toBe(b.addr.slice(0, 8) + '...');
     });
 
-    it('rejects importing with a PIN that does not match the existing wallets', async () => {
-      await importMnemonic(MNEMONIC_A, 'Seed A', PIN);
-      await expect(importMnemonic(MNEMONIC_B, 'Seed B', 'Other1Pass!qw')).rejects.toThrow(
-        'does not match',
-      );
+    it('each account may have its own PIN — importing with a different PIN works', async () => {
+      const a = await importMnemonic(MNEMONIC_A, 'Seed A', PIN);
+      const b = await importMnemonic(MNEMONIC_B, 'Seed B', 'Other1Pass!qw');
+
+      // Both accounts unlock with their own PIN, whatever the other uses.
+      expect((await unlockAccount(a.addr, PIN)).addr).toBe(a.addr);
+      expect((await unlockAccount(b.addr, 'Other1Pass!qw')).addr).toBe(b.addr);
+      // A PIN from one account never opens the other.
+      await expect(unlockAccount(b.addr, PIN)).rejects.toThrow();
+      // …and switching back still works with the right PIN.
+      expect((await unlockAccount(a.addr, PIN)).addr).toBe(a.addr);
     });
 
-    it('changePin re-encrypts every account, all unlock with the new PIN', async () => {
+    it('changePin re-encrypts only the active account, leaving other PINs untouched', async () => {
       const { a, b } = await seedTwoWallets();
       const active = await unlockAccount(b.addr, PIN);
 
       await changePin(active, PIN, NEW_PIN);
 
-      expect((await unlockAccount(a.addr, NEW_PIN)).addr).toBe(a.addr);
+      // The changed account opens with its new PIN…
       expect((await unlockAccount(b.addr, NEW_PIN)).addr).toBe(b.addr);
-      // …and the old PIN no longer opens anything.
       await expect(unlockAccount(b.addr, PIN)).rejects.toThrow();
+      // …while the other account keeps its own (unchanged) PIN.
+      expect((await unlockAccount(a.addr, PIN)).addr).toBe(a.addr);
+      await expect(unlockAccount(a.addr, NEW_PIN)).rejects.toThrow();
     });
 
     it('removing a second-seed account keeps the default keystore intact', async () => {

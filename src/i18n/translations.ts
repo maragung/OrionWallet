@@ -172,8 +172,8 @@ const en: Translations = {
   'unlock.create': 'Create New Wallet',
   'unlock.noWallet': 'No stored wallet found. Create a new wallet to get started.',
   'unlock.pinReq': 'PIN requirements:',
-  'unlock.pinReq1': '8–64 characters',
-  'unlock.pinReq2': 'Under 15 chars: letter + digit + symbol',
+  'unlock.pinReq1': '6–64 characters',
+  'unlock.pinReq2': 'Any characters you like',
 
   // Create/Import
   'create.title': 'Create New Wallet',
@@ -192,11 +192,11 @@ const en: Translations = {
   'create.saveMnemonic': 'Save this mnemonic — shown only once!',
   'create.copyMnemonic': 'Copy Mnemonic',
   'create.continueBtn': "I've Saved My Mnemonic — Continue",
-  'create.pinWeak': 'Weak — add letters, digits, symbols',
-  'create.pinFair': 'Fair — consider more length or complexity',
+  'create.pinWeak': 'Weak — a longer PIN is harder to guess',
+  'create.pinFair': 'Fair — consider more length or varied characters',
   'create.pinGood': 'Good',
   'create.pinStrong': 'Strong',
-  'create.pinShort': 'Too short (min 8 chars)',
+  'create.pinShort': 'Too short (min 6 chars)',
   'create.pinMismatch': 'PINs do not match',
 
   // Balance

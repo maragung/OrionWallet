@@ -192,11 +192,11 @@ describe('wallet store — RPC auto-init', () => {
     useWalletStore.setState({ rpc: null, settings: null });
     useWalletStore.getState().setWallet(wallet);
 
-    // Wait a moment for async initRpc
-    await new Promise((r) => setTimeout(r, 100));
-
-    const state = useWalletStore.getState();
-    expect(state.rpc).not.toBeNull();
+    // Wait for the async initRpc — poll rather than sleep a fixed 100ms, which
+    // races the store when the whole suite is loaded.
+    await vi.waitFor(() => {
+      expect(useWalletStore.getState().rpc).not.toBeNull();
+    });
   });
 });
 

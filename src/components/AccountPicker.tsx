@@ -202,8 +202,8 @@ export function AccountPicker({ onManage }: { onManage?: () => void } = {}) {
         title="Switch account"
         description={
           pendingSwitch
-            ? `Enter your PIN to unlock "${pendingSwitch.name}" (${pendingSwitch.addr.slice(0, 12)}…). ` +
-              'The signing keys must be decrypted before this account can become active.'
+            ? `Enter the PIN for "${pendingSwitch.name}" (${pendingSwitch.addr.slice(0, 12)}…) to ` +
+              'switch to it. The signing keys must be decrypted before this account can become active.'
             : undefined
         }
         confirmLabel="Switch"

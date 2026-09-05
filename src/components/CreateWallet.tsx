@@ -21,7 +21,7 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
   const [generatedMnemonic, setGeneratedMnemonic] = useState<string | null>(null);
   const [showPin, setShowPin] = useState(false);
   const [showMnemonic, setShowMnemonic] = useState(false);
-  /** A wallet already exists on this device — the PIN fields ask for ITS PIN. */
+  /** A wallet already exists on this device — surface that in a notice. */
   const [hasExistingWallet, setHasExistingWallet] = useState(false);
 
   // Backup confirmation: a freshly created wallet is not opened until the user
@@ -245,8 +245,8 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
   const pinMismatch = Boolean(pinConfirm) && pin !== pinConfirm;
   const strength = getPinStrength(pin);
 
-  // All accounts on this device share one PIN, so when a wallet already exists
-  // the PIN fields below mean "your existing PIN", not "pick a new one".
+  // When a wallet already exists, say so in a notice below: the account being
+  // added is independent and may carry its own PIN.
   useEffect(() => {
     listStoredWallets()
       .then((entries) => setHasExistingWallet(entries.length > 0))
@@ -298,12 +298,12 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
           </div>
 
           {hasExistingWallet && (
-            <div className="info-box warn spaced">
+            <div className="info-box spaced">
               <Icon name="info" size={16} />
               <span>
-                A wallet already exists on this device. Enter the PIN you use to unlock it — every
-                account shares that one PIN, and the new account is added alongside the existing
-                ones (nothing is replaced).
+                A wallet already exists on this device. The new account is added alongside the
+                existing ones (nothing is replaced) and gets its own PIN — you can reuse your usual
+                PIN or pick a different one.
               </span>
             </div>
           )}
@@ -341,7 +341,7 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
             <div className="form-row">
               <label htmlFor="pin">
                 PIN{' '}
-                <InfoHint text="8-64 characters. If under 15 chars: must include letter + digit + symbol. If 15+ chars: any characters allowed (passphrase-style)." />
+                <InfoHint text="Any characters you like — letters, digits, symbols, even just digits. Minimum 6 characters." />
               </label>
               <div className="input-wrap">
                 <input
@@ -350,7 +350,7 @@ export function CreateWallet({ onBack }: { onBack: () => void }) {
                   className="mono"
                   value={pin}
                   onChange={(e) => setPin(e.target.value)}
-                  placeholder="Min 8 chars"
+                  placeholder="Min 6 chars"
                   autoComplete="new-password"
                 />
                 <button
@@ -561,10 +561,10 @@ function getPinStrength(pin: string): number {
 
 function getPinStrengthLabel(pin: string): string {
   if (!pin) return '';
-  if (pin.length < 8) return 'Too short (min 8 chars)';
+  if (pin.length < 6) return 'Too short (min 6 chars)';
   const strength = getPinStrength(pin);
-  if (strength <= 1) return 'Weak — add letters, digits, symbols';
-  if (strength <= 2) return 'Fair — consider more length or complexity';
+  if (strength <= 1) return 'Weak — a longer PIN is harder to guess';
+  if (strength <= 2) return 'Fair — consider more length or varied characters';
   if (strength <= 3) return 'Good';
   return 'Strong';
 }

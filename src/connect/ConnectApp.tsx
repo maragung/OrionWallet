@@ -800,7 +800,9 @@ export function ConnectApp() {
         title="Unlock account"
         description={
           pinRequest
-            ? `Enter your PIN to unlock ${accounts.find((a) => a.address === pinRequest.addr)?.name || 'this account'} for this connection. ` +
+            ? `Enter the PIN for ${
+                accounts.find((a) => a.address === pinRequest.addr)?.name || 'this account'
+              } to unlock it for this connection. Each account has its own PIN. ` +
               'Your active wallet account stays unchanged.'
             : undefined
         }

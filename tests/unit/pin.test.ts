@@ -2,21 +2,18 @@ import { describe, it, expect } from 'vitest';
 import { validatePin, assertValidPin } from '../../src/wallet/pin';
 
 describe('pin validation', () => {
-  it('accepts a strong short PIN with letter+digit+symbol', () => {
-    expect(validatePin('abc123!@').ok).toBe(true);
+  it('accepts any characters at 6+ chars — the content is the user’s choice', () => {
+    expect(validatePin('123456').ok).toBe(true); // digits only
+    expect(validatePin('abcdef').ok).toBe(true); // letters only
     expect(validatePin('Pass1word!').ok).toBe(true);
-  });
-
-  it('accepts a long passphrase (>= 15 chars) without complexity', () => {
     expect(validatePin('simple passphrase').ok).toBe(true);
-    expect(validatePin('alllowercaselettersok').ok).toBe(true);
-    expect(validatePin('1234567890123456789').ok).toBe(true);
+    expect(validatePin('にほんご123').ok).toBe(true); // any characters, really
   });
 
-  it('rejects too short', () => {
-    expect(validatePin('abc').ok).toBe(false);
-    expect(validatePin('abc12!').ok).toBe(false);
-    expect(validatePin('abc123!').ok).toBe(false); // 7 chars
+  it('rejects too short (< 6)', () => {
+    expect(validatePin('').ok).toBe(false);
+    expect(validatePin('abc12').ok).toBe(false); // 5 chars
+    expect(validatePin('abc123!').ok).toBe(true); // 7 chars is fine now
   });
 
   it('rejects too long (> 64)', () => {
@@ -24,21 +21,9 @@ describe('pin validation', () => {
     expect(validatePin(long).ok).toBe(false);
   });
 
-  it('rejects short PIN without letter', () => {
-    expect(validatePin('1234567!').ok).toBe(false);
-  });
-
-  it('rejects short PIN without digit', () => {
-    expect(validatePin('abcdefg!').ok).toBe(false);
-  });
-
-  it('rejects short PIN without symbol', () => {
-    expect(validatePin('abcdefg1').ok).toBe(false);
-  });
-
   it('assertValidPin throws on invalid', () => {
     expect(() => assertValidPin('short')).toThrow();
-    expect(() => assertValidPin('longenough1!')).not.toThrow();
+    expect(() => assertValidPin('123456')).not.toThrow();
   });
 
   it('rejects non-string input', () => {

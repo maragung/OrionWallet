@@ -74,27 +74,6 @@ export async function findWalletEntryFor(addr: string): Promise<StoredWalletEntr
 }
 
 /**
- * Reject a PIN that does not open the wallets already on this device.
- *
- * All accounts in one installation share a single PIN: switching accounts asks
- * for "your PIN" with no hint of which account it belongs to, so a second
- * wallet sealed under a different PIN would look exactly like a broken switch.
- */
-export async function assertPinMatchesExistingWallets(pin: string): Promise<void> {
-  const entries = await listWalletEntries();
-  if (entries.length === 0) return;
-  const probe = entries.find((e) => e.id === 'default') ?? entries[0];
-  try {
-    await loadWalletEncrypted(probe.blob, pin);
-  } catch {
-    throw new Error(
-      'That PIN does not match this wallet. All accounts on this device share one PIN — ' +
-        'enter the PIN you use to unlock your existing wallet.',
-    );
-  }
-}
-
-/**
  * Persist a key-holding wallet: its own per-account entry, plus `default` when
  * it is the first wallet on the device (the unlock screen and passkey unlock
  * prefer that entry, and pre-multi-seed accounts derive from it). Also records
@@ -128,7 +107,6 @@ export async function createNewWallet(
   pin: string,
 ): Promise<{ wallet: Wallet; mnemonic: string }> {
   assertValidPin(pin);
-  await assertPinMatchesExistingWallets(pin);
   const wallet = await _createWallet(name);
   await persistImportedWallet(wallet, pin);
   return { wallet, mnemonic: wallet.mnemonic };
@@ -137,7 +115,6 @@ export async function createNewWallet(
 /** Import a wallet from a mnemonic phrase. */
 export async function importMnemonic(mnemonic: string, name: string, pin: string): Promise<Wallet> {
   assertValidPin(pin);
-  await assertPinMatchesExistingWallets(pin);
   const wallet = await _importMnemonic(mnemonic, name, 0, { strictChecksum: false });
   await persistImportedWallet(wallet, pin);
   return wallet;
@@ -146,7 +123,6 @@ export async function importMnemonic(mnemonic: string, name: string, pin: string
 /** Import a wallet from a 32-byte seed (hex or base64). */
 export async function importSeed(seed: Uint8Array, name: string, pin: string): Promise<Wallet> {
   assertValidPin(pin);
-  await assertPinMatchesExistingWallets(pin);
   const wallet = _importSeed(seed);
   wallet.name = name;
   await persistImportedWallet(wallet, pin);
@@ -191,34 +167,41 @@ export async function removeStoredWallet(id: string): Promise<void> {
 }
 
 /**
- * Change PIN: re-encrypt every stored wallet blob with a new PIN.
+ * Change PIN: re-encrypt THIS account's stored wallet blob(s) with a new PIN.
  *
- * All accounts share one PIN (see `assertPinMatchesExistingWallets`), so a PIN
- * change has to reach every keystore entry or the untouched accounts would stop
- * unlocking. Entries the old PIN cannot open (pre-dating the shared-PIN rule)
- * are skipped with a warning rather than blocking the change.
+ * Each account has its own PIN, so a change reaches only the entries that hold
+ * the given wallet — its per-account keystore plus the `default` copy when this
+ * is the first wallet. Other accounts keep their own PINs untouched.
  */
 export async function changePin(wallet: Wallet, oldPin: string, newPin: string): Promise<void> {
   assertCanSign(wallet, 'change its PIN — it has no keystore');
   assertValidPin(newPin);
+  // Verify the old PIN against the account's own keystore first, so a wrong PIN
+  // fails before anything is written.
+  const target = await findWalletEntryFor(wallet.addr);
+  if (!target) throw new Error('No stored wallet to re-encrypt');
+  await loadWalletEncrypted(target.blob, oldPin); // throws on wrong PIN
+
   const entries = await listWalletEntries();
   let reencrypted = 0;
-  let lastError: unknown = null;
   for (const entry of entries) {
     try {
-      const w = await loadWalletEncrypted(entry.blob, oldPin); // throws on wrong PIN
-      const newBlob = await saveWalletEncrypted(w, newPin);
+      const stored = await loadWalletEncrypted(entry.blob, oldPin);
+      // Only entries holding THIS wallet (same address) — never another
+      // account's keystore, even one that happens to open with the same PIN.
+      if (stored.addr !== wallet.addr) continue;
+      const newBlob = await saveWalletEncrypted(stored, newPin);
       await saveWalletEntry({ ...entry, blob: newBlob });
       reencrypted += 1;
-    } catch (e) {
-      lastError = e;
-      console.warn(
-        `[wallet-api] changePin: skipping entry "${entry.id}" (old PIN did not open it)`,
-      );
+    } catch {
+      // A different account's keystore sealed with a different PIN — leave it
+      // alone; the target entry above already proved the old PIN is correct.
     }
   }
   if (reencrypted === 0) {
-    throw lastError instanceof Error ? lastError : new Error('No stored wallet to re-encrypt');
+    // Cannot happen when `target` opened above, but stay defensive rather than
+    // report success with nothing changed.
+    throw new Error('No stored wallet to re-encrypt');
   }
 }
 
@@ -234,7 +217,6 @@ export async function deriveNewHdAccount(
     throw new Error('Current wallet has no HD master seed (imported via private key)');
   }
   assertValidPin(pin);
-  await assertPinMatchesExistingWallets(pin);
   const newWallet = _deriveHd(parent, accountIndex, name);
   const blob = await saveWalletEncrypted(newWallet, pin);
   await saveWalletEntry({

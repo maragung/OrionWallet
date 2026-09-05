@@ -1,12 +1,12 @@
 /**
  * PIN validation policy.
- * Ported from main.cpp validate_pin.
  *
- * Rules:
- *   - Length: 8..64 chars
- *   - If length < 15: must contain at least one letter, one digit, and one symbol
- *   - Symbols: any non-alphanumeric character
- *   - If length >= 15: any characters allowed (passphrase-style)
+ * The PIN is the user's own secret for an account, so its content is entirely
+ * up to them — any characters are allowed, including plain digits like "123456".
+ * The only rule is a floor on length:
+ *
+ *   - Length: 6..64 chars (6 is the minimum worth encrypting keys with; 64 keeps
+ *     the PBKDF2 input bounded)
  */
 
 const attemptLog: Map<string, { count: number; lastAttempt: number }> = new Map();
@@ -20,16 +20,8 @@ export interface PinValidationResult {
 
 export function validatePin(pin: string): PinValidationResult {
   if (typeof pin !== 'string') return { ok: false, reason: 'PIN must be a string' };
-  if (pin.length < 8) return { ok: false, reason: 'PIN must be at least 8 characters' };
+  if (pin.length < 6) return { ok: false, reason: 'PIN must be at least 6 characters' };
   if (pin.length > 64) return { ok: false, reason: 'PIN must be at most 64 characters' };
-  if (pin.length < 15) {
-    const hasLetter = /[a-zA-Z]/.test(pin);
-    const hasDigit = /[0-9]/.test(pin);
-    const hasSymbol = /[^a-zA-Z0-9]/.test(pin);
-    if (!hasLetter) return { ok: false, reason: 'PIN < 15 chars must contain a letter' };
-    if (!hasDigit) return { ok: false, reason: 'PIN < 15 chars must contain a digit' };
-    if (!hasSymbol) return { ok: false, reason: 'PIN < 15 chars must contain a symbol' };
-  }
   return { ok: true };
 }
 

@@ -6,11 +6,7 @@ import { saveWalletEncrypted, loadWalletEncrypted } from '../wallet/wallet';
 import { assertValidPin } from '../wallet/pin';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Icon } from './icons';
-import {
-  assertPinMatchesExistingWallets,
-  findWalletEntryFor,
-  persistImportedWallet,
-} from '../api/wallet-api';
+import { findWalletEntryFor, persistImportedWallet } from '../api/wallet-api';
 
 export function WalletExportImport() {
   const { wallet, setWallet, pushToast } = useWalletStore();
@@ -75,13 +71,10 @@ export function WalletExportImport() {
 
     panelLoading.show('Importing wallet', `Reading ${file.name}…`);
     try {
-      // All accounts on this device share one PIN, so the "new" PIN the user
-      // typed must open the wallets already stored here.
-      await assertPinMatchesExistingWallets(importNewPin);
       const buf = new Uint8Array(await file.arrayBuffer());
       // Decrypt with the file's PIN
       const importedWallet = await loadWalletEncrypted(buf, importPin);
-      // Re-encrypt with the shared PIN and persist under the account's own
+      // Re-encrypt with this account's own PIN and persist under its own
       // keystore entry (plus `default` when this is the first wallet).
       await persistImportedWallet(importedWallet, importNewPin);
       setWallet(importedWallet);
