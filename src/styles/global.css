@@ -42,28 +42,28 @@
   --fg-4: #4a5162;
 
   /* ── Accent ramp ── */
-  --accent: #6366f1;
-  --accent-2: #8b5cf6;
-  --accent-3: #a855f7;
-  --accent-hover: #818cf8;
-  --accent-active: #4f46e5;
-  --accent-soft: rgba(99, 102, 241, 0.16);
+  --accent: #0096ff;
+  --accent-2: #33abff;
+  --accent-3: #66baff;
+  --accent-hover: #2ea3ff;
+  --accent-active: #0077cc;
+  --accent-soft: rgba(0, 150, 255, 0.16);
   --accent-text: #ffffff;
   /* Two different jobs, two tokens. --accent-text is ink laid ON the accent (white on the
      primary button). --accent-fg is the accent used AS ink, on a neutral surface: the active
-     nav item, the quick-action labels, links. --accent itself is only 4.09:1 on --surface-1
-     and 3.35:1 on --surface-3, so using it for text failed AA everywhere a card was
-     involved; this is the same hue two steps lighter and clears 5.25:1 at worst. */
-  --accent-fg: #8b8ff7;
+     nav item, the quick-action labels, links. #0096ff itself already clears the 4.5:1 AA
+     floor as ink (5.92 / 5.47 / 4.85:1 on --surface-1 / -2 / -3); this is one step lighter
+     still, for comfort rather than compliance. */
+  --accent-fg: #33a6ff;
   /* The focus ring must be visible against BOTH surface-0 and the gradient hero, so it is
      its own token rather than a reuse of --accent-soft (which is too faint to see). */
-  --accent-ring: rgba(99, 102, 241, 0.45);
+  --accent-ring: rgba(0, 150, 255, 0.45);
   /* One ramp for both themes — the hero is a saturated panel that does not need to change
      with the surface behind it. The stops are a step darker than the accent ramp above
-     because everything drawn on this gradient is white: the old 500-level stops put white
-     at 4.47 / 4.23 / 3.96:1, i.e. below AA at the violet end, so the balance's own label
-     was the least legible text in the wallet. These put white at 6.41 / 5.70 / 5.41. */
-  --grad-accent: linear-gradient(135deg, #5145e0 0%, #7d3ce8 55%, #9436e2 100%);
+     because everything drawn on this gradient is white: #0096ff itself puts white at only
+     3.09:1, i.e. below AA, so the balance's own label would be the least legible text in
+     the wallet. These put white at 7.41 / 5.45 / 4.56. */
+  --grad-accent: linear-gradient(135deg, #0053ac 0%, #0068cc 55%, #0077d6 100%);
   /* Highlight laid over the hero gradient so it reads as a lit surface, not flat fill. */
   --grad-hero-sheen: radial-gradient(
     120% 140% at 12% 0%,
@@ -87,7 +87,7 @@
   --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.25);
   --shadow-lg: 0 14px 32px rgba(0, 0, 0, 0.5), 0 4px 10px rgba(0, 0, 0, 0.3);
   --shadow-xl: 0 28px 60px rgba(0, 0, 0, 0.6), 0 8px 20px rgba(0, 0, 0, 0.4);
-  --shadow-accent: 0 6px 18px rgba(99, 102, 241, 0.35);
+  --shadow-accent: 0 6px 18px rgba(0, 150, 255, 0.35);
   --shadow-glow: 0 0 0 3px var(--accent-soft);
   --ring: 0 0 0 3px var(--accent-ring);
 
@@ -211,17 +211,18 @@
   --fg-3: #666d7e;
   --fg-4: #a8aebd;
 
-  --accent: #5b5ef0;
-  --accent-2: #7c4ef0;
-  --accent-3: #9a45ef;
-  --accent-hover: #4f46e5;
-  --accent-active: #4338ca;
-  --accent-soft: rgba(91, 94, 240, 0.12);
-  /* 4.39:1 on --surface-2 is not enough for 11px labels, so accent-as-ink is a step darker
-     here than --accent, exactly as in the dark theme. See the dark block for the split. */
-  --accent-fg: #5145e0;
+  --accent: #0083e8;
+  --accent-2: #3398f0;
+  --accent-3: #66aff5;
+  --accent-hover: #0069c4;
+  --accent-active: #005fad;
+  --accent-soft: rgba(0, 131, 232, 0.12);
+  /* --accent is 3.49:1 on --surface-2 — fine for borders and fills, not for text, so
+     accent-as-ink is a step darker here, exactly as in the dark theme. See the dark block
+     for the split. #0069c4 clears 4.95:1 on --surface-2. */
+  --accent-fg: #0069c4;
   /* Deliberately stronger than --accent-soft: a 0.1-alpha ring is invisible on white. */
-  --accent-ring: rgba(91, 94, 240, 0.4);
+  --accent-ring: rgba(0, 131, 232, 0.4);
   /* No --grad-accent override: the hero gradient is deliberately theme-independent. The
      override that used to sit here was a second ramp to keep in step with the first, and it
      put white at 4.70:1 on its last stop. */
@@ -245,7 +246,7 @@
   --shadow-md: 0 4px 10px rgba(17, 20, 32, 0.08), 0 2px 4px rgba(17, 20, 32, 0.04);
   --shadow-lg: 0 14px 32px rgba(17, 20, 32, 0.1), 0 4px 10px rgba(17, 20, 32, 0.06);
   --shadow-xl: 0 28px 60px rgba(17, 20, 32, 0.14), 0 8px 20px rgba(17, 20, 32, 0.08);
-  --shadow-accent: 0 6px 18px rgba(91, 94, 240, 0.28);
+  --shadow-accent: 0 6px 18px rgba(0, 131, 232, 0.28);
 
   --glass-bg: rgba(255, 255, 255, 0.82);
   --glass-border: rgba(17, 20, 32, 0.07);
