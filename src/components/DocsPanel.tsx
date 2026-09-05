@@ -21,11 +21,34 @@ export function DocsPanel() {
   // Documents are translated as whole files under /docs/<lang>/. Probe for the
   // selected language's copy and fall back to the English original at /docs/
   // when there is none — the notice below says which one the user is reading.
+  //
+  // English has no /docs/en/ directory: its originals live at /docs/<file>,
+  // so the root file is the native copy and needs no probe.
+  //
+  // Probing must verify the reply is a real document, not the app shell: the
+  // host answers any unknown /docs/... path with index.html (status 200) via
+  // its SPA rewrite, and treating that as "translated" would load the whole
+  // wallet UI inside this frame — a mirror. A genuine doc never contains the
+  // app mount point (`id="root"`), so its absence in the fetched body is the
+  // signal that the language copy really exists.
+  const native = lang === 'en';
   useEffect(() => {
     let cancelled = false;
-    fetch(`/docs/${lang}/${active.file}`, { method: 'HEAD' })
-      .then((r) => {
-        if (!cancelled) setLocalized(r.ok);
+    if (native) {
+      setLocalized(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+    fetch(`/docs/${lang}/${active.file}`)
+      .then(async (r) => {
+        if (cancelled) return;
+        if (!r.ok) {
+          setLocalized(false);
+          return;
+        }
+        const text = await r.text();
+        if (!cancelled) setLocalized(!text.includes('id="root"'));
       })
       .catch(() => {
         if (!cancelled) setLocalized(false);
@@ -33,9 +56,15 @@ export function DocsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [lang, active.file]);
+  }, [native, lang, active.file]);
 
-  const src = localized ? `/docs/${lang}/${active.file}` : `/docs/${active.file}`;
+  const src = native
+    ? `/docs/${active.file}`
+    : localized
+      ? `/docs/${lang}/${active.file}`
+      : `/docs/${active.file}`;
+
+  const showNotice = !native && !localized;
 
   return (
     <div className="page">
@@ -58,7 +87,7 @@ export function DocsPanel() {
         ))}
       </div>
 
-      {!localized && (
+      {showNotice && (
         <div className="info-box spaced">
           <Icon name="info" size={16} />
           <div className="info-box-body">{t('docs.untranslated')}</div>
