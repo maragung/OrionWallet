@@ -66,6 +66,10 @@ All notable changes to Orion Wallet will be documented in this file.
 - **`clearIndexedDB` left the tab's session behind** — the E2E helper now clears `sessionStorage` as well, so a "clean state" reload cannot come back unlocked.
 - **Stale transpiled configs came back, and silently froze `vite.config.ts`** — 0.1.0 deleted `vite.config.js` and friends but not the thing that emits them: `tsconfig.node.json` had `composite: true` and no `outDir`, so any `tsc -b` wrote `vite.config.js` next to the `.ts` source, and Vite resolves the `.js` sibling **first**. The regenerated copy predated every config change since, which is how the new CSP build flag appeared to do nothing. Emit for that project now goes to `node_modules/.tmp/tsconfig-node/`, where it cannot shadow a source file.
 
+### Changed
+
+- **New app mark** (`public/logo.png`) — the wallet's logo is now the Orion "O", replacing the previous circular badge. It keeps the same path, so everything that already pointed at it picks the new mark up with no code change: the favicon and Apple touch icon in `index.html`, the header brand, the unlock and session-restoring screens, and the README.
+
 ## [0.1.0] — 2026-08-05
 
 ### Added
